@@ -213,7 +213,31 @@ Present findings as a numbered list. Discuss each gap with the engineer until re
 
 ---
 
-## Sub-phase 1d — Document Generation
+## Sub-phase 1d — Metrics Initialization
+
+Create `.claude/session_metrics.md` in the project root before producing any output documents. Use the feature name from the TDD Objective section.
+
+```markdown
+# Session Metrics — [FeatureName]
+
+Started: [YYYY-MM-DD]
+
+inaccuracy_count: 0
+iteration_count:  0
+
+## Inaccuracies
+
+## Iterations
+```
+
+Remind the engineer:
+- Run `/inaccuracy <reason>` immediately after correcting an agent mistake.
+- Run `/iteration <description>` when deliberately changing direction or refining scope.
+- Run `/cost` before starting Phase 8 and paste the total into the Phase 8 benchmarks step.
+
+---
+
+## Sub-phase 1e — Document Generation
 
 With all TDD sections complete and reviewed, produce the output documents:
 
