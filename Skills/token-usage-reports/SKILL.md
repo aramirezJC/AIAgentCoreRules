@@ -27,6 +27,13 @@ Supported options:
 - `--project-config <path>` and `--sessions-root <path>` for explicit routing.
 - `--since <ISO timestamp>` to restrict discovered sessions.
 - `--include-content` only for Markdown reports when the user explicitly requests prompts, responses, commands, or paths.
+- `--per-session` for Markdown output writes the aggregate report plus one file per selected session; it requires `--output` to name a directory.
+
+On macOS, prefer the bundled `report-current.sh`,
+`report-recent-summary.sh`, `report-recent-detailed.sh`, or
+`report-all-detailed.sh` presets for common Codex reports. Within a Git repository,
+presets write beneath its root-level `Reports` directory; otherwise they use the
+current directory.
 
 ## Privacy Contract
 
@@ -40,9 +47,9 @@ Supported options:
 The runner resolves the portable `session-support` package in this order:
 
 1. `TOKEN_USAGE_SESSION_SUPPORT_ROOT` when set.
-2. `Tools/session-support` in the current repository.
-3. The sibling Core Rules package relative to this skill's checked-in location.
-4. `/Users/jasonfrehner/Repos/AIAgentCoreRules/Tools/session-support` as the local installation fallback.
+2. The skill's packaged `scripts/session_support` link.
+3. `Tools/session-support` in the current repository.
+4. The sibling Core Rules package relative to this skill's checked-in location.
 
 If none exists, report the missing package and the expected paths. Do not rebuild the report parser ad hoc.
 

@@ -26,7 +26,16 @@ python3 session_support/session-support report --scope current --format markdown
 python3 session_support/session-support report --scope last-30 --format markdown --output recent.md
 python3 session_support/session-support report --scope all --format json --output all.json
 python3 session_support/session-support report --scope current --format markdown --include-content --output reports/
+python3 session_support/session-support report --scope last-30 --format markdown --per-session --output reports/
 ```
+
+`--per-session` writes the normal aggregate Markdown report plus one Markdown
+report for each session selected by the scope. It requires an output directory
+and is intentionally unavailable for JSON, where the aggregate document already
+contains structured per-session records. Per-session Markdown includes token
+composition, tool-first compliance, category costs, turn trends, highest-cost
+turns, and timing/cache problem areas. Prompts and responses remain excluded
+unless `--include-content` is explicitly requested.
 
 The dashboard offers the same three Markdown downloads. It also shows average
 cache ratio, helper invocation details, category token cost, highest-cost turn

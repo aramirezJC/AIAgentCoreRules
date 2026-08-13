@@ -433,6 +433,53 @@ class SessionMonitorTests(unittest.TestCase):
         self.assertEqual(content["turns"][0]["tool_calls"][0]["name"], "function_call")
         self.assertIn("tools/helpers/check.sh", content["turns"][0]["tool_calls"][0]["arguments"])
 
+    def test_generated_session_reports_write_one_report_per_selected_session(self) -> None:
+        self.append_turn(
+            "first session",
+            "first response",
+            ["bash tools/helpers/check.sh"],
+        )
+        self.append_token_count(100)
+        secondary = self.root / "rollout-secondary.jsonl"
+        secondary.write_text("\n".join([
+            json.dumps({
+                "type": "session_meta",
+                "payload": {
+                    "id": "secondary",
+                    "timestamp": "2026-07-25T12:00:00Z",
+                    "source": "cli",
+                },
+            }),
+            json.dumps({"type": "event_msg", "payload": {"type": "task_started"}}),
+            json.dumps({"type": "event_msg", "payload": {"type": "task_complete"}}),
+        ]) + "\n", encoding="utf-8")
+
+        reports = self.monitor().generated_session_reports("all")
+
+        self.assertEqual(2, len(reports))
+        self.assertEqual(2, len({report["filename"] for report in reports}))
+        self.assertTrue(all(report["scope"] == "current" for report in reports))
+        self.assertTrue(all(report["filename"].endswith(".md") for report in reports))
+        self.assertTrue(all("## Tool-First Compliance" in report["content"] for report in reports))
+        self.assertTrue(all("## Category Breakdown" in report["content"] for report in reports))
+        self.assertTrue(all("## Turn Trend" in report["content"] for report in reports))
+        self.assertTrue(all("## Problem Areas" in report["content"] for report in reports))
+        self.assertTrue(all("first session" not in report["content"] for report in reports))
+
+        sensitive_reports = self.monitor().generated_session_reports("all", include_content=True)
+
+        self.assertTrue(any("first session" in report["content"] for report in sensitive_reports))
+        primary_sensitive = next(
+            report for report in sensitive_reports if "first session" in report["content"]
+        )
+        self.assertIn("## Sensitive Turn Content", primary_sensitive["content"])
+        self.assertIn("first response", primary_sensitive["content"])
+        self.assertIn("bash tools/helpers/check.sh", primary_sensitive["content"])
+        self.assertIn("**Tool calls**", primary_sensitive["content"])
+        self.assertIn("tools/helpers/check.sh", primary_sensitive["content"])
+        self.assertIn("**Paths**", primary_sensitive["content"])
+        self.assertTrue(all(report["filename"].endswith("-sensitive.md") for report in sensitive_reports))
+
     def test_codex_turn_duration_and_ttft_use_event_timestamps(self) -> None:
         self.write_event({"type": "event_msg", "timestamp": "2026-08-12T12:00:00Z", "payload": {"type": "task_started"}})
         self.write_event({"type": "response_item", "timestamp": "2026-08-12T12:00:02Z", "payload": {

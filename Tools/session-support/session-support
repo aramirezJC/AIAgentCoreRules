@@ -125,6 +125,11 @@ def main(argv: list[str] | None = None) -> int:
     report_parser.add_argument("--format", choices=("json", "markdown"), default="json")
     report_parser.add_argument("--output", type=Path)
     report_parser.add_argument("--include-content", action="store_true", help="Include prompts, responses, commands, and paths. Sensitive.")
+    report_parser.add_argument(
+        "--per-session",
+        action="store_true",
+        help="Also write one Markdown report per selected session. Requires --output directory.",
+    )
     subparsers.add_parser("split", help="Print split advice for the active session.")
     monitor_args = subparsers.add_parser("monitor", help="Run the live terminal/dashboard monitor.")
     monitor_args.add_argument("monitor_args", nargs=argparse.REMAINDER)
@@ -142,6 +147,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(session_monitor.recent_sessions(limit=50), indent=2))
         return 0
     if args.command == "report":
+        if args.per_session and args.format != "markdown":
+            parser.error("--per-session requires --format markdown")
+        if args.per_session and not args.output:
+            parser.error("--per-session requires --output directory")
         if args.include_content:
             if args.format != "markdown":
                 parser.error("--include-content currently requires --format markdown")
@@ -155,6 +164,31 @@ def main(argv: list[str] | None = None) -> int:
             default_filename = generated["filename"] if args.format == "markdown" else generated["filename"].removesuffix(".md") + ".json"
         if args.output:
             target = args.output.expanduser()
+            if args.per_session:
+                if target.exists() and not target.is_dir():
+                    parser.error("--per-session requires --output directory")
+                target.mkdir(parents=True, exist_ok=True)
+                aggregate_target = target / default_filename
+                session_reports = session_monitor.generated_session_reports(
+                    args.scope,
+                    args.include_content,
+                )
+                session_filenames = {report["filename"] for report in session_reports}
+                if aggregate_target.name in session_filenames:
+                    aggregate_target = aggregate_target.with_name(
+                        aggregate_target.stem + "-aggregate" + aggregate_target.suffix
+                    )
+                aggregate_target.write_text(rendered, encoding="utf-8")
+                print(aggregate_target)
+                for session_report in session_reports:
+                    session_target = target / session_report["filename"]
+                    session_content = session_report["content"].replace(
+                        "[Back To Aggregate Report](../README.md)",
+                        f"[Back To Aggregate Report](./{aggregate_target.name})",
+                    )
+                    session_target.write_text(session_content, encoding="utf-8")
+                    print(session_target)
+                return 0
             if target.is_dir() or str(args.output).endswith("/"):
                 target.mkdir(parents=True, exist_ok=True)
                 target = target / default_filename

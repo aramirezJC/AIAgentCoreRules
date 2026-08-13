@@ -7,7 +7,8 @@ help with the development of other projects.
 - `Skills/token-usage-reports/` packages the portable session-report workflow
   for sanitized Codex, Claude Code, Gemini CLI, and Junie token reports. It
   delegates to `Tools/session-support/` so report parsing has one implementation
-  owner.
+  owner. Markdown reports can include one aggregate file plus one file per
+  selected session.
 
 ## Portable Session Support
 

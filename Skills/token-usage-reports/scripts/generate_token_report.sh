@@ -15,6 +15,7 @@ Options:
   --sessions-root <path>
   --since <ISO timestamp>
   --include-content
+  --per-session
   -h, --help
 EOF
 }
@@ -28,6 +29,7 @@ PROJECT_CONFIG=""
 SESSIONS_ROOT=""
 SINCE=""
 INCLUDE_CONTENT=false
+PER_SESSION=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,6 +72,10 @@ while [[ $# -gt 0 ]]; do
       INCLUDE_CONTENT=true
       shift
       ;;
+    --per-session)
+      PER_SESSION=true
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -91,15 +97,23 @@ if [[ "$INCLUDE_CONTENT" == true && "$FORMAT" != "markdown" ]]; then
   echo "--include-content requires --format markdown" >&2
   exit 2
 fi
+if [[ "$PER_SESSION" == true && "$FORMAT" != "markdown" ]]; then
+  echo "--per-session requires --format markdown" >&2
+  exit 2
+fi
+if [[ "$PER_SESSION" == true && -z "$OUTPUT" ]]; then
+  echo "--per-session requires --output directory" >&2
+  exit 2
+fi
 
 CANDIDATES=()
 if [[ -n "${TOKEN_USAGE_SESSION_SUPPORT_ROOT:-}" ]]; then
   CANDIDATES+=("$TOKEN_USAGE_SESSION_SUPPORT_ROOT")
 fi
 CANDIDATES+=(
+  "$SKILL_DIRECTORY/scripts/session_support"
   "$PWD/Tools/session-support"
   "$SKILL_DIRECTORY/../../Tools/session-support"
-  "/Users/jasonfrehner/Repos/AIAgentCoreRules/Tools/session-support"
 )
 
 SUPPORT_ROOT=""
@@ -124,5 +138,6 @@ COMMAND=(python3 "$SUPPORT_ROOT/session-support")
 COMMAND+=(report --scope "$SCOPE" --format "$FORMAT")
 [[ -n "$OUTPUT" ]] && COMMAND+=(--output "$OUTPUT")
 [[ "$INCLUDE_CONTENT" == true ]] && COMMAND+=(--include-content)
+[[ "$PER_SESSION" == true ]] && COMMAND+=(--per-session)
 
 "${COMMAND[@]}"

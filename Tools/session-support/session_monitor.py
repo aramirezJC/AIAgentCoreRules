@@ -43,7 +43,7 @@ from session_workflow_support import (  # noqa: E402
 )
 
 CONTRACT_VERSION = 4
-PARSER_STATE_VERSION = 9
+PARSER_STATE_VERSION = 10
 STATE_ROOT = Path(os.environ.get("SESSION_MONITOR_STATE_ROOT", Path.home() / ".codex" / "session-monitor"))
 SERVER_STATE_PATH = STATE_ROOT / "server.json"
 SERVER_LOG_PATH = STATE_ROOT / "server.log"
@@ -163,6 +163,37 @@ def parse_timestamp(value: object) -> datetime | None:
         return parse_iso_timestamp(str(value))
     except SystemExit:
         return None
+
+
+def report_number(value: object) -> str:
+    return f"{int(value):,}" if value is not None else "unavailable"
+
+
+def report_percent(value: object) -> str:
+    return f"{float(value) * 100:.1f}%" if value is not None else "unavailable"
+
+
+def report_clip(value: object, limit: int = 96) -> str:
+    text = " ".join(str(value or "").strip().split()).replace("|", "\\|")
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def report_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    return [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("---" for _ in headers) + " |",
+        *["| " + " | ".join(row) + " |" for row in rows],
+    ]
+
+
+def report_date(value: object, fallback: object = None) -> str:
+    parsed = parse_timestamp(value) or parse_timestamp(fallback)
+    return parsed.strftime("%Y-%m-%d") if parsed else "unknown"
+
+
+def report_timestamp(value: object) -> str:
+    parsed = parse_timestamp(value)
+    return parsed.strftime("%Y-%m-%d %H:%M UTC") if parsed else "unknown"
 
 
 @dataclass
@@ -317,6 +348,7 @@ class IncrementalRolloutParser:
             completed = parse_timestamp(event_timestamp)
             turn_payload["duration_ms"] = max(0, int((completed - started).total_seconds() * 1000)) if started and completed else None
             turn_payload["ttft_ms"] = max(0, int((first - started).total_seconds() * 1000)) if started and first else None
+            turn_payload["completed_at"] = event_timestamp
             self.state.turns.append(turn_payload)
             self.state.previous_completed_token_usage = dict(self.state.current_total_token_usage)
             self.state.turn_in_progress = False
@@ -1487,6 +1519,329 @@ class SessionMonitor:
         if include_content:
             filename = filename.removesuffix(".md") + "-sensitive.md"
         return {"scope": scope, "include_content": include_content, "filename": filename, "content": "\n".join(lines) + "\n"}
+
+    def generated_session_reports(
+        self,
+        scope: str,
+        include_content: bool = False,
+    ) -> list[dict[str, str]]:
+        if scope not in {"current", "last-30", "all"}:
+            raise ValueError("Report scope must be current, last-30, or all.")
+
+        reports: list[dict[str, str]] = []
+        for path in self._report_paths(scope):
+            reports.append(self._generated_detailed_session_report(path, include_content))
+        return reports
+
+    def _generated_detailed_session_report(
+        self,
+        path: Path,
+        include_content: bool,
+    ) -> dict[str, str]:
+        state = self.source.parse(path, self.category_config, None)
+        session_id = state.session_id or path.stem
+        label = session_id[:12]
+        turns = state.turns
+        tokens = token_payload(state)
+        total = tokens["session"]
+        analytics = analytics_payload(state)
+        categories = analytics["category_costs"]
+        diagnostics = analytics["turn_diagnostics"]
+        helper_counts = Counter(
+            helper
+            for turn in turns
+            for helper in turn.get("helper_invocations", [])
+        )
+        helper_turns = sum(bool(turn.get("helper_invocations")) for turn in turns)
+        helper_invocations = sum(helper_counts.values())
+        cache_ratios = [
+            point["cached_input_tokens"] / point["input_tokens"]
+            for point in tokens["trend"]
+            if point.get("cached_input_tokens") is not None and point.get("input_tokens")
+        ]
+        average_cache_ratio = sum(cache_ratios) / len(cache_ratios) if cache_ratios else None
+        phases = infer_phase_history(turns)
+        warning = warning_state(
+            turns,
+            phases,
+            None,
+            context_ratio=tokens["context"]["used_ratio"],
+            baseline_thresholds=self.default_thresholds,
+        )
+        started = state.session_started_at
+        generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        lines = [
+            f"# Token Usage Session Report: {label}",
+            "",
+            "[Back To Aggregate Report](../README.md)",
+            "",
+            (
+                f"_Generated {generated} from sensitive `{self.agent}` session telemetry._"
+                if include_content
+                else f"_Generated {generated} from sanitized `{self.agent}` session telemetry._"
+            ),
+            "",
+            "## Summary",
+            *report_table(["Metric", "Value"], [
+                ["Session", label],
+                ["Started", report_timestamp(started)],
+                ["Session Id", session_id],
+                ["Turns", report_number(len(turns))],
+                ["Categories", report_number(len(categories))],
+                ["Total Tokens", report_number(total.get("total_tokens"))],
+                ["Input Tokens", report_number(total.get("input_tokens"))],
+                ["Cached Input Tokens", report_number(total.get("cached_input_tokens"))],
+                ["Uncached Input Tokens", report_number(total.get("uncached_input_tokens"))],
+                ["Output Tokens", report_number(total.get("output_tokens"))],
+                ["Reasoning Output Tokens", report_number(total.get("reasoning_output_tokens"))],
+                ["Average Cache Ratio", report_percent(average_cache_ratio)],
+                ["Helper Script Invocations", report_number(helper_invocations)],
+                ["Turns With Helper Usage", report_number(helper_turns)],
+                ["Helper Turn Coverage", report_percent(helper_turns / len(turns) if turns else 0)],
+                ["Unique Helpers Used", report_number(len(helper_counts))],
+            ]),
+            "",
+            "## Tool-First Compliance",
+            *report_table(["Metric", "Value"], [
+                ["Helper script invocations", report_number(helper_invocations)],
+                ["Turns with helper usage", report_number(helper_turns)],
+                ["Helper turn coverage", report_percent(helper_turns / len(turns) if turns else 0)],
+                ["Unique helpers used", report_number(len(helper_counts))],
+            ]),
+            "",
+            "### Split-Warning Heuristics",
+            *report_table(["Metric", "Value"], [
+                ["Flags", ", ".join(warning["triggered_rules"]) or "none"],
+                ["Recommendation", warning["recommended_action"]],
+            ]),
+            "",
+        ]
+        if helper_counts:
+            lines.extend(report_table(
+                ["Helper Script", "Invocations"],
+                [[name, report_number(count)] for name, count in helper_counts.most_common()],
+            ))
+            lines.append("")
+
+        uncached = total.get("uncached_input_tokens")
+        cached = total.get("cached_input_tokens")
+        output = total.get("output_tokens")
+        reasoning = total.get("reasoning_output_tokens")
+        if all(value is not None for value in (uncached, cached, output, reasoning)):
+            lines.extend([
+                "## Composition",
+                "```mermaid",
+                "pie showData",
+                f'  title "{label} Token Composition"',
+                f'  "Uncached Input" : {uncached}',
+                f'  "Cached Input" : {cached}',
+                f'  "Output" : {output}',
+                f'  "Reasoning Output" : {reasoning}',
+                "```",
+                "",
+            ])
+
+        lines.extend([
+            "## Category Breakdown",
+            *report_table(
+                ["Category", "Turns", "Total Tokens", "Uncached Input", "Output", "Cache Ratio"],
+                [
+                    [
+                        name,
+                        report_number(values["turns"]),
+                        report_number(values["total_tokens"]),
+                        report_number(values["uncached_input_tokens"]),
+                        report_number(values["output_tokens"]),
+                        report_percent(values["cache_ratio"]),
+                    ]
+                    for name, values in sorted(
+                        categories.items(),
+                        key=lambda item: (-item[1]["total_tokens"], item[0]),
+                    )
+                ],
+            ),
+            "",
+        ])
+
+        trend = tokens["trend"]
+        if trend:
+            maximum = max(int(point.get("total_tokens") or 0) for point in trend)
+            lines.extend([
+                "## Turn Trend",
+                "```mermaid",
+                "xychart-beta",
+                f'  title "{label} Total Tokens By Turn"',
+                "  x-axis [" + ", ".join(f'"T{point["turn"]}"' for point in trend) + "]",
+                f'  y-axis "Tokens" 0 --> {max(1, maximum)}',
+                "  bar [" + ", ".join(str(point.get("total_tokens") or 0) for point in trend) + "]",
+                "```",
+                "",
+            ])
+
+        top = sorted(diagnostics, key=lambda item: item["total_tokens"], reverse=True)[:10]
+        if top:
+            maximum = max(item["total_tokens"] for item in top)
+            lines.extend(["### Highest-Cost Turns (ASCII)", "```text"])
+            for item in top:
+                width = max(1, round((item["total_tokens"] / maximum) * 28)) if maximum else 0
+                lines.append(f'T{item["turn"]:>3} {"█" * width} {item["total_tokens"]:,}')
+            lines.extend(["```", ""])
+
+        turn_by_index = {int(turn.get("turn_index") or 0): turn for turn in turns}
+        high_headers = [
+            "Turn", "Date", "Total Tokens", "Uncached In", "Output", "Reasoning",
+            "Duration ms", "TTFT ms", "Category", "Tool Calls",
+        ]
+        if include_content:
+            high_headers.extend(["User Prompt", "Last Agent Message"])
+        high_rows: list[list[str]] = []
+        for item in top:
+            turn = turn_by_index.get(item["turn"], {})
+            usage = normalize_token_usage(turn.get("token_usage"))
+            row = [
+                f'T{item["turn"]}',
+                report_date(turn.get("completed_at"), started),
+                report_number(usage["total_tokens"]),
+                report_number(max(0, usage["input_tokens"] - usage["cached_input_tokens"])),
+                report_number(usage["output_tokens"]),
+                report_number(usage["reasoning_output_tokens"]),
+                report_number(item.get("duration_ms")),
+                report_number(item.get("ttft_ms")),
+                item["category"],
+                report_number(item["tool_calls"]),
+            ]
+            if include_content:
+                row.extend([
+                    report_clip(turn.get("user_message")),
+                    report_clip(turn.get("last_agent_message")),
+                ])
+            high_rows.append(row)
+        lines.extend(["## Highest-Cost Turns", *report_table(high_headers, high_rows), ""])
+
+        def diagnostic_rows(items: list[dict[str, Any]], metric: str) -> list[list[str]]:
+            rows: list[list[str]] = []
+            for item in items:
+                turn = turn_by_index.get(item["turn"], {})
+                rows.append([
+                    f'T{item["turn"]}',
+                    report_date(turn.get("completed_at"), started),
+                    report_number(item.get(metric)),
+                    report_number(item["total_tokens"]),
+                    report_number(item["tool_calls"]),
+                    report_clip(turn.get("last_agent_message")) if include_content else "redacted",
+                ])
+            return rows
+
+        timed_ttft = sorted(
+            [item for item in diagnostics if item.get("ttft_ms") is not None],
+            key=lambda item: item["ttft_ms"],
+            reverse=True,
+        )[:5]
+        timed_duration = sorted(
+            [item for item in diagnostics if item.get("duration_ms") is not None],
+            key=lambda item: item["duration_ms"],
+            reverse=True,
+        )[:5]
+        low_cache = sorted(
+            [item for item in diagnostics if item.get("cache_ratio") is not None],
+            key=lambda item: item["cache_ratio"],
+        )[:5]
+        lines.extend(["## Problem Areas", "### Slowest Time-To-First-Token"])
+        if timed_ttft:
+            lines.extend(report_table(
+                ["Turn", "Date", "TTFT ms", "Total Tokens", "Tool Calls", "Last Agent Message"],
+                diagnostic_rows(timed_ttft, "ttft_ms"),
+            ))
+        else:
+            lines.append("Turn timing telemetry is unavailable.")
+        lines.extend(["", "### Longest Turn Duration"])
+        if timed_duration:
+            lines.extend(report_table(
+                ["Turn", "Date", "Duration ms", "Total Tokens", "Tool Calls", "Last Agent Message"],
+                diagnostic_rows(timed_duration, "duration_ms"),
+            ))
+        else:
+            lines.append("Turn timing telemetry is unavailable.")
+        lines.extend(["", "### Lowest Cache Ratio Turns"])
+        if low_cache:
+            cache_rows: list[list[str]] = []
+            for item in low_cache:
+                turn = turn_by_index.get(item["turn"], {})
+                cache_rows.append([
+                    f'T{item["turn"]}',
+                    report_date(turn.get("completed_at"), started),
+                    report_percent(item["cache_ratio"]),
+                    report_number(item["uncached_input_tokens"]),
+                    report_number(item["total_tokens"]),
+                    report_number(item["tool_calls"]),
+                    report_clip(turn.get("last_agent_message")) if include_content else "redacted",
+                ])
+            lines.extend(report_table(
+                ["Turn", "Date", "Cache Ratio", "Uncached Input", "Total Tokens", "Tool Calls", "Last Agent Message"],
+                cache_rows,
+            ))
+        else:
+            lines.append("Cache telemetry is unavailable.")
+
+        if not include_content:
+            lines.extend([
+                "",
+                "> NOTE: Prompts, responses, commands, and paths are omitted from this sanitized report. Use `--include-content` only when explicitly required.",
+            ])
+        else:
+            lines.extend([
+                "",
+                "> WARNING: This report includes prompts, responses, tool-call arguments, commands, and paths by explicit request.",
+                "",
+                "## Sensitive Turn Content",
+            ])
+            for turn in turns:
+                commands = turn.get("commands") or []
+                tool_calls = turn.get("tool_calls") or []
+                paths = content_paths(
+                    turn.get("user_message"),
+                    turn.get("last_agent_message"),
+                    *commands,
+                )
+                lines.extend([
+                    "",
+                    f"### Turn {turn.get('turn_index')}",
+                    "",
+                    "**Prompt**",
+                    "",
+                    str(turn.get("user_message") or "<none>"),
+                    "",
+                    "**Response**",
+                    "",
+                    str(turn.get("last_agent_message") or "<none>"),
+                    "",
+                    "**Commands**",
+                    "",
+                    *(f"- `{command}`" for command in commands),
+                    "",
+                    "**Tool calls**",
+                    "",
+                    *(
+                        f"- `{item.get('name') or 'tool'}`: `{item.get('arguments') or '<none>'}`"
+                        for item in tool_calls
+                        if isinstance(item, dict)
+                    ),
+                    "",
+                    "**Paths**",
+                    "",
+                    *(f"- `{value}`" for value in paths),
+                ])
+        started_stamp = re.sub(r"[^0-9]", "", str(started or ""))[:8] or "unknown-date"
+        identity = re.sub(r"[^A-Za-z0-9_-]", "_", session_id)[:80]
+        filename = f"token-usage-{started_stamp}-{identity}.md"
+        if include_content:
+            filename = filename.removesuffix(".md") + "-sensitive.md"
+        return {
+            "scope": "current",
+            "include_content": include_content,
+            "filename": filename,
+            "content": "\n".join(lines) + "\n",
+        }
 
 
 def child_activity(root: Path, parent_id: str, since: datetime | None) -> dict[str, Any]:
