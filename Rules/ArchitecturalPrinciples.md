@@ -7,26 +7,26 @@
 
 ---
 
-## S — Single Responsibility
+## S — Single Responsibility [SRP]
 
 - One class = one reason to change.
 - If a class name needs "And" or "Manager" to describe two unrelated things, split it.
 - Prefer small, focused classes over large orchestrators.
 - A class that mixes flow control, state tracking, and completion signalling is violating SRP. → See [[MultyStepOperationsRules]].
 
-## O — Open / Closed
+## O — Open / Closed [OCP]
 
 - Extend behavior via new subclasses or strategy injection, not by editing existing logic.
 - Use virtual/abstract hooks for variation points; seal stable paths.
 - Adding a feature must not require modifying a tested class.
 
-## L — Liskov Substitution
+## L — Liskov Substitution [LSP]
 
 - Every subclass must be usable wherever the base type is expected, with no surprises.
 - Do not override a method to throw `NotImplementedException` or silently no-op.
 - If a subclass cannot honor the base contract, prefer composition over inheritance.
 
-## I — Interface Segregation
+## I — Interface Segregation [ISP]
 
 - Interfaces must be narrow; callers depend only on what they use.
 - Split a fat interface the moment a mock or stub would need to leave methods empty.
@@ -48,12 +48,12 @@ public interface ITimer : IReadonlyTimer
 
 Pass the readonly interface to UI, analytics, and logging. Pass the full interface only to the owner that drives the object.
 
-## D — Dependency Inversion
+## D — Dependency Inversion [DIP]
 
 - High-level modules depend on abstractions, not concrete types.
 - Inject dependencies via constructor (managers) or `LazyService<T>` (everything else).
-- ❌ Never resolve via `ServiceLocator.Instance` or `new ConcreteService()` inside a class.
-- ❌ A cast to a concrete type is proof the interface contract is insufficient — widen the interface instead.
+- [DI]
+- [IFACE]
 
 ```csharp
 // ❌ Breaks the abstraction boundary
@@ -62,6 +62,53 @@ Pass the readonly interface to UI, analytics, and logging. Pass the full interfa
 // ✅ Add the operation to the interface
 stageController.ForceComplete();
 ```
+
+### Create interfaces only as needed
+
+An interface is a decoupling tool, not a default wrapper around every class. One interface per class inflates the API surface, doubles the files a developer must open to answer a single question, and forces a jump through an indirection that has exactly one implementation on the other side.
+
+**Default to the concrete type.** Introduce an interface when one of the two triggers below applies — then it is mandatory, not optional.
+
+#### Trigger 1 — Polymorphism
+
+The high-level system must interact with the contract only and stay agnostic of implementation details.
+
+```yaml
+signals:
+  - Two or more implementations exist, or the next one is already scoped.
+  - The concrete type is selected at runtime (config, factory, platform, event category).
+  - A test double is substituted into a production system.
+```
+
+`IGemUserEventPointer<TConfig, TUserData>` qualifies: the event system drives the pointer contract and never learns whether it holds the live GEM-backed pointer or `DummyGemEventPointer<TConfig, TUserData>` from the test assembly.
+
+#### Trigger 2 — Reducing exposure
+
+The owner needs the full type; the outside world must see less. The field keeps the mutable type, the property hands out the narrow contract.
+
+```csharp
+// ✅ Owner mutates the list; callers can only read it
+private readonly List<GemEvent> _activeEvents = new List<GemEvent>();
+public IReadOnlyList<GemEvent> ActiveEvents => _activeEvents;
+```
+
+The same reasoning applies to a class's own surface: when only part of its members are safe for callers, declare that subset as an interface and hand out the interface — this is the read-state / mutation split under [ISP] above.
+
+#### Not a reason to add an interface
+
+```yaml
+insufficient_reasons:
+  - "It might get a second implementation someday." → add the interface when that implementation arrives.
+  - "Every other class in the folder has one."
+  - "To make it mockable." → a concrete instance or a Dummy subclass is enough unless Trigger 1 applies.
+  - "It looks more decoupled." → IFoo sitting next to a lone Foo is indirection, not decoupling.
+```
+
+#### The test
+
+> Would a caller ever hold a *different* implementation, or need to see *fewer* members than the concrete type exposes?
+
+No to both → no interface. Yes to either → the interface is required, and the public surface must expose it rather than the concrete type.
 
 ---
 
@@ -105,9 +152,11 @@ assembly_rules:
 ```yaml
 hard_rules:
   - Do not add a dependency unless its interface is in scope — request the source if missing.
-  - Do not merge two responsibilities into one class to save files.
+  - "[SRP] Do not merge two responsibilities into one class to save files."
   - New behavior requires a new class or override — not a flag on an existing method.
-  - Every public surface must be an interface, not a concrete type.
+  - "[DIP] Add an interface only for polymorphism or to reduce exposure — never one interface per class by default."
+  - "[DIP] When either trigger applies, the public surface must expose the interface, never the concrete type."
+  - Never expose a mutable collection field — the property returns the readonly contract.
   - Split any interface mixing read-state and mutation into readonly + functional contracts.
   - Avoid concrete inheritance chains deeper than one level — compose instead.
   - "Multi-step/multi-frame sequences use an async loop, not a callback pump. → [[MultyStepOperationsRules]]"

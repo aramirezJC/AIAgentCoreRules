@@ -6,7 +6,7 @@
 
 ---
 
-## Symmetry Principle
+## Symmetry Principle [RES]
 
 Every resource acquisition must have an equivalent release in the same logical scope. No exceptions without explicit justification.
 
@@ -88,7 +88,7 @@ boolean_flag_acceptable_when:
 
 ---
 
-## Event Subscriptions
+## Event Subscriptions [SYM]
 
 Subscribe and unsubscribe must be in the same logical scope — the same method pair (Setup/Cleanup, Enable/Disable, SetupEvent/CleanupEvent) or the same `using` block.
 

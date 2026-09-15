@@ -12,7 +12,7 @@ Goal: Wire the feature into all systems identified in Phase 2. Report each step 
 integration_checklist:
   - Registered in all required factories, registries, and manifests.
   - Required code-generation tools executed (parsers, compilers, publishers, conflict resolvers).
-  - No manual edits to any auto-generated file.
+  - "[GEN]"
   - Existing callers or dependent systems updated if a public contract changed.
 ```
 

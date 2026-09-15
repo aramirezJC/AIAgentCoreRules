@@ -98,7 +98,7 @@ public bool isSeen
 
 ## 4. Method Design
 
-### Single responsibility
+### Single responsibility [SRP]
 
 One method = one verb = one reason to change. If a method name needs "And", split it.
 
@@ -160,7 +160,7 @@ float total = weights.Sum();
 if (total <= 0f) { return defaultValue; }
 ```
 
-### Async from synchronous overrides
+### Async from synchronous overrides [ASYNC]
 
 When an interface or base class override is synchronous but the implementation needs async work, use `async void` with a full try/catch — never the discard pattern (`_ = Task`):
 
@@ -210,7 +210,34 @@ Do not use when the operation must always succeed — a failing Try there hides 
 
 ---
 
-## 5. Quick-Reference
+## 5. Auto-Generated Files [GEN]
+
+Any file that is fully or partially produced by a tool (code generators, editor scripts, build steps) must carry a header comment **outside** the generated region. The header must answer three questions:
+
+```csharp
+// AUTO-GENERATED — do not edit manually.
+//
+// Regenerate: <tool name and exact path or menu step>
+//             e.g. Window > PDT Tools > EventGeneratorTools → CompileEventPublishers
+//
+// Warning: editing this file manually will be overwritten on the next generation run
+//          and may produce silent runtime errors or missing registrations.
+```
+
+```yaml
+required:
+  - "AUTO-GENERATED" marker — visible without reading past the first few lines
+  - how_to_regenerate: exact tool name, menu path, or command
+  - consequence_of_wrong_edit: what breaks if the process is bypassed
+placement:    top of file, before any using directives or namespace declarations
+scope:        any file touched by a code generator, scaffolder, or editor script
+```
+
+If the file has a designated hand-edited region (e.g. partial additions below a generated block), the boundary must be clearly marked with a comment that names the region and states which direction is generated vs. hand-edited.
+
+---
+
+## 6. Quick-Reference
 
 > Rules covered by [[MetaRouter]] non-negotiables are omitted. Items below are domain-specific.
 
@@ -226,12 +253,15 @@ checklist:
     - "External event handlers: HandleOn{EventName}"
     - "Internal callbacks: On{Thing}"
   method_design:
-    - One responsibility per method — no And in method names
+    - "[SRP]"
     - Composer methods sequence named sub-calls only — never touch raw data
     - Leaf methods touch data/APIs — never sequence other composers
     - "Methods >10 lines or classes >500 lines: signal to re-examine, not a hard violation"
     - Edge cases handled via early returns at the top
     - "Prefer bool Try(out T) when absence of result is a normal path"
     - "Numeric modification: clamp lower bound (>= 0); guard zero-weight/empty collections"
-    - "Async from sync override: use async void + try/catch — never discard (_ = Task) or .Wait()"
+    - "[ASYNC]"
+  auto_generated_files:
+    - Header comment at top of file: AUTO-GENERATED marker + how to regenerate + consequence of wrong edit
+    - If file has a hand-edited region, mark the boundary explicitly
 ```

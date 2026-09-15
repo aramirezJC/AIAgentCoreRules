@@ -109,7 +109,7 @@ private async Task ExecuteAction(ILevelCompleteAction action)
 ```
 
 Rules:
-- Subscribe and unsubscribe must be in the **same method**.
+- [SYM] Must be the **same method** — not just the same method pair.
 - The adapter converts the callback signal into an awaitable without leaking event state to the caller.
 - The outer loop sees a clean `await` — it has no knowledge of the callback mechanism.
 
@@ -170,7 +170,7 @@ checklist:
   - Sequence is an explicit for/foreach loop in a single async Task — not recursive callbacks.
   - One try/catch/finally wraps the entire loop — not individual callbacks.
   - Cleanup (Clear, null-out) is in finally — not scattered across completion handlers.
-  - Callback steps wrapped in an awaitable adapter; subscribe and unsubscribe in the same method.
+  - "[SYM] Callback steps wrapped in an awaitable adapter; subscribe and unsubscribe in the same method."
   - Running state derives from the Task reference — not a separate boolean flag.
   - RunAsync guards against double-run by awaiting the existing task if one is in flight.
   - Append rejects mutations while running — never mutate the collection mid-loop.
