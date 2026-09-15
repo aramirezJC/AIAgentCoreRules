@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Rules/MetaRouter.md",
+                "file": "Rules/CoreTags.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MetaRouter"
+              "title": "CoreTags"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Rules/MetaRouter.md",
+                "file": "Skills/token-usage-reports/README.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Rules/MetaRouter.md",
+                "file": "Skills/token-usage-reports/README.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Rules/MetaRouter.md",
+                "file": "Skills/token-usage-reports/README.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,9 +190,22 @@
   },
   "active": "5643385930e48e37",
   "lastOpenFiles": [
+    "Skills/token-usage-reports/README.md",
+    "Rules/MetaRouter.md",
+    "Tools/session-support/tests/test_session_monitor.py",
+    "Tools/session-support/web/index.html",
+    "Tools/session-support/web",
+    "Tools/session-support/tests",
+    "Tools/session-support/session_workflow_support.py",
+    "Tools/session-support/session_monitor.py",
+    "Tools/session-support/session-support",
+    "Tools/session-support/provenance.json",
+    "Tools/session-support/project.example.json",
+    "Tools/session-support/categories.example.json",
+    "Tools/session-support/README.md",
+    "Skills/token-usage-reports/SKILL.md",
     "Rules/InvestigationMode.md",
     "Processes/CreateFeature/index.md",
-    "Rules/MetaRouter.md",
     "Rules/StopAndVerify.md",
     "Rules/ArchitecturalPrinciples.md",
     "Rules/CoreTags.md",
@@ -210,14 +223,7 @@
     "Processes/CreateFeature/Phase8_Retrospective.md",
     "Rules/TestingRules.md",
     "Processes/CreateFeature/Phase5_UnitTests.md",
-    "Processes/Templates",
     "Processes/CreateFeature/Phase1_Intake.md",
-    "Processes/CreateFeature/Phase6_Verification.md",
-    "Processes/CreateFeature/Phase5_Integration.md",
-    "Processes/CreateFeature",
-    "Processes/CreateFeature.md",
-    "Processes",
-    "README.md",
-    "Rules"
+    "Processes/CreateFeature/Phase6_Verification.md"
   ]
 }
