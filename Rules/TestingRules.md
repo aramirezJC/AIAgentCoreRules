@@ -61,7 +61,7 @@ teardown_requirements:
   - Every SetUp must have a matching TearDown.
   - Recreate or reset all mocks and test doubles per test — never share state between tests.
   - ScriptableObject instances: destroy via Object.DestroyImmediate().
-  - DI containers: dispose in TearDown.
+  - "[RES] DI containers: dispose in TearDown."
 ```
 
 ---

@@ -11,10 +11,14 @@
             "id": "5643385930e48e37",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Rules/MetaRouter.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "MetaRouter"
             }
           }
         ]
@@ -95,6 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Rules/MetaRouter.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -113,6 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Rules/MetaRouter.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -155,6 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Rules/MetaRouter.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -183,29 +190,31 @@
   },
   "active": "5643385930e48e37",
   "lastOpenFiles": [
+    "Rules/InvestigationMode.md",
+    "Processes/CreateFeature/index.md",
+    "Rules/MetaRouter.md",
     "Rules/StopAndVerify.md",
+    "Rules/ArchitecturalPrinciples.md",
+    "Rules/CoreTags.md",
+    "Rules/ResourceManagementRules.md",
+    "Rules/CodingStandards.md",
+    "Processes/CreateFeature/Phase7_Verification.md",
+    "Processes/CreateFeature/Phase6_Integration.md",
+    "Processes/CreateFeature/Phase3_Design.md",
+    "Processes/CreateFeature/Phase2_Discovery.md",
+    "Processes/CreateFeature/Phase4_Implementation.md",
+    "Rules/MultyStepOperationsRules.md",
+    "Processes/Templates/TDD_Template.md",
     "Processes/CreateFeature/EventChecklist.md",
     "Rules/RSSSystemPrompt.md",
     "Processes/CreateFeature/Phase8_Retrospective.md",
-    "Rules/MetaRouter.md",
-    "Rules/MultyStepOperationsRules.md",
-    "Rules/ArchitecturalPrinciples.md",
-    "Rules/CodingStandards.md",
     "Rules/TestingRules.md",
-    "Processes/CreateFeature/Phase7_Verification.md",
-    "Processes/CreateFeature/Phase6_Integration.md",
     "Processes/CreateFeature/Phase5_UnitTests.md",
-    "Processes/Templates/TDD_Template.md",
     "Processes/Templates",
-    "Processes/CreateFeature/index.md",
     "Processes/CreateFeature/Phase1_Intake.md",
     "Processes/CreateFeature/Phase6_Verification.md",
     "Processes/CreateFeature/Phase5_Integration.md",
-    "Processes/CreateFeature/Phase2_Discovery.md",
-    "Processes/CreateFeature/Phase4_Implementation.md",
-    "Processes/CreateFeature/Phase3_Design.md",
     "Processes/CreateFeature",
-    "Rules/ResourceManagementRules.md",
     "Processes/CreateFeature.md",
     "Processes",
     "README.md",

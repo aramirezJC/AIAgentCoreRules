@@ -38,8 +38,8 @@ Before writing any test class, establish the DI container following `TestingRule
 test_setup:
   create:    "Services.CreateNewService(null)"
   bind_real: "MessageManager for IMessageBus, IMessageDispatcher, IBlackboard, IMessageManager"
-  doubles:   "Use project Dummy implementations before Substitute.For<T>()"
-  teardown:  "Dispose container in TearDown. Reset all test doubles per test."
+  doubles:   Use project Dummy implementations before Substitute.For<T>()
+  teardown:  "[RES] Dispose container in TearDown. Destroy ScriptableObject instances via Object.DestroyImmediate(). Reset all test doubles per test."
 ```
 
 ---

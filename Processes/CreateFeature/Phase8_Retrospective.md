@@ -83,7 +83,24 @@ questions:
 
 ---
 
-## Step 6 — Retrospective Report
+## Step 6 — Session Benchmarks
+
+Before producing the report, compile the session metrics.
+
+```yaml
+steps:
+  - Ask the engineer to run `/cost` now if they have not already, and paste the total token count.
+  - Read .claude/session_metrics.md.
+  - Count inaccuracy_count and iteration_count.
+  - List the 5 heaviest operations this session (agent's best estimate based on context: large file reads, multi-file generations, long research phases).
+  - Calculate quality rating per phase: smooth | required_correction | required_redesign.
+```
+
+If `.claude/session_metrics.md` does not exist, note it in the report and estimate from conversation history.
+
+---
+
+## Step 7 — Retrospective Report
 
 Produce a summary of proposed changes before writing anything:
 
@@ -98,6 +115,21 @@ retrospective_report:
     rules_additions:  []   # file: rule text
     process_updates:  []   # file: change
   deferred:           []   # items that need more data before acting
+  benchmarks:
+    session_tokens:     ""   # paste /cost output here
+    estimated_top_costs:     # agent's best estimate of 5 heaviest operations
+      - operation: ""
+        reason:    ""
+    inaccuracy_count:   0    # from session_metrics.md
+    iteration_count:    0    # from session_metrics.md
+    phase_quality:           # smooth | required_correction | required_redesign
+      phase_1_intake:         ""
+      phase_2_discovery:      ""
+      phase_3_design:         ""
+      phase_4_impl:           ""
+      phase_5_tests:          ""
+      phase_6_integration:    ""
+      phase_7_verification:   ""
 ```
 
 Present the report to the engineer. Do not write any file until the report is confirmed.
