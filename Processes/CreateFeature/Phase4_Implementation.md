@@ -6,6 +6,10 @@ Goal: Write code file-by-file following the approved design. Present each file t
 
 Implement in this order: **interfaces → concrete classes → integration glue.**
 
+Before the first file: re-read `../../Rules/CodingStandards.md` and `../../Rules/ArchitecturalPrinciples.md`
+(and ResourceManagementRules / MultyStepOperationsRules if Phase 2 loaded them). Phase 2 may be
+several sessions or a context summary ago.
+
 ---
 
 ## Per-File Checklist
@@ -23,7 +27,7 @@ per_file_checks:
   method_design:     "No method named with And. Composers sequence only. Leaves touch data only."
 ```
 
-Present each file to the engineer after writing it. Do not move to the next file until the current one is acknowledged.
+Run `/audit <file>` — it covers the checklist above. Present each file to the engineer after writing it. Do not move to the next file until the current one is acknowledged.
 
 ---
 

@@ -11,7 +11,7 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 
 | Tag | Rule |
 |---|---|
-| **[CTX]** | All required dependencies must be confirmed in context before generating. If anything is missing: STOP — do not generate, request the file. |
+| **[CTX]** | All required dependencies must be confirmed in context before generating. If anything is missing: look it up; if it cannot be found, STOP — do not generate, request the file. |
 | **[SIG]** | No signature guessing. Every property, method, and field must be physically located in provided source text before use. |
 | **[PRES]** | Preserve all existing comments, XML summaries, regions, and TODOs unchanged. |
 | **[SURG]** | Surgical edits only — change only the required lines; surrounding code must be character-perfect. |

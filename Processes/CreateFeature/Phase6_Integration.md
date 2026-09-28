@@ -20,4 +20,6 @@ integration_checklist:
 
 ## Gate 6 — Integration Verified
 
+Run the host compile check (TripleMatch: `typecheck.py`) and report its result. Editor-only
+generators (e.g. ParserGeneratorWindow) are run by the engineer — list them with exact menu paths.
 Confirm with the engineer that all integration steps are complete and the project compiles without errors.

@@ -25,7 +25,7 @@ investigation_mode:
     - "I want to understand X before deciding"
   output:   "a document, a comparison, or a recommendation — NOT code"
   gates:    none
-  metrics:  not initialized — session_metrics.md belongs to feature work
+  metrics:  "session metrics as every lane — record lane: investigation"
 
 feature_development_mode:
   triggers:
@@ -35,7 +35,7 @@ feature_development_mode:
     - "/feature <Name>"
   output:   "working code, tests, integration"
   gates:    "all 8 CreateFeature gates, engineer-confirmed"
-  process:  [../Processes/CreateFeature/index]
+  process:  [../Processes/CreateFeature/index.md]
 ```
 
 **Do not silently escalate.** An investigation that produces a design document is complete. Offer

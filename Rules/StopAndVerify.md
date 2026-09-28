@@ -2,7 +2,7 @@
 
 # Stop and Verify Protocol
 
-Run before generating any code. If any check fails, stop and request the missing information before continuing.
+Run before generating any code. If a check fails, look the missing piece up yourself first (Read, codeindex, /discover). Stop and ask only when it cannot be found.
 Tag definitions: [[CoreTags]]
 
 ---
@@ -36,9 +36,11 @@ pre_generation:
 
 ## Stop Output Format
 
-When a dependency is missing, output this before any code:
+When a dependency is missing, first search for it (codeindex.py where, Read, /discover). Only if
+it is not in the repository — an external package, an unmerged branch, a server contract —
+output this before any code:
 
-> I cannot implement `[Class]` because I have not seen the definition for `[Dependency]`. Please provide `[Dependency.cs]`.
+> I cannot implement `[Class]` because `[Dependency]` is not in the repository (searched: `[queries run]`). Please provide `[Dependency.cs]` or point me to it.
 
 Do not generate partial code while waiting. Do not guess.
 

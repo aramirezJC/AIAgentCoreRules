@@ -2,8 +2,23 @@
 This project contains general rules that can be used by AI agents to better
 help with the development of other projects.
 
+## Session Lifecycle
+
+`Tools/session-lifecycle/session_lifecycle.py` tracks every Claude Code session in the host
+project's `GitIgnoreReports/Sessions/<date>_<lane>_<id>/` folder: tokens (via
+`Tools/session-support`), logged inaccuracies and iterations, and a router trace of which rule
+files were actually loaded, read from the session transcript. A SessionStart hook starts it, a
+SessionEnd hook compiles it, and `/end-session` adds a retrospective. Hook setup is in
+`Tools/session-lifecycle/README.md`.
+
 ## Skills
 
+Install into a host project by symlinking each folder into `<project>/.claude/skills/`.
+
+- `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
+- `feature` — enters `Processes/CreateFeature`.
+- `discover` — subagent survey that returns a compact map.
+- `audit` — rules compliance report for C# files.
 - `Skills/token-usage-reports/` packages the portable session-report workflow
   for sanitized Codex, Claude Code, Gemini CLI, and Junie token reports. It
   delegates to `Tools/session-support/` so report parsing has one implementation

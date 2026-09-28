@@ -4,6 +4,14 @@
 
 Interactive wizard for designing and implementing a new feature. Load one phase file at a time. Do not advance past any gate without explicit engineer confirmation.
 
+```yaml
+working_folder: "Assets/GitIgnoreAssets/Features/<FeatureName>/   # GDD, TDD, TaskList, UseCases, Architecture docs"
+session_metrics: "per session, in the Session tracking folder — see MetaRouter Session Lifecycle"
+```
+
+A feature usually spans several sessions. Each session gets its own metrics; the Phase 8
+retrospective reads all of them (their folders carry the `feature` lane in the name).
+
 ---
 
 ## Phases
@@ -36,7 +44,7 @@ phases:
     goal: Write code file-by-file with per-file engineer acknowledgment
     gate: All files written and engineer-reviewed
     recommended_agent: general-purpose
-    recommended_model: sonnet         # run /audit before starting each file
+    recommended_model: sonnet         # run /audit on each file before presenting it
 
   5_unit_tests:
     file: ./Phase5_UnitTests.md
@@ -63,7 +71,7 @@ phases:
     file: ./Phase8_Retrospective.md
     goal: Identify discovery gaps, missing patterns, gotchas, and process improvements; write approved changes to metadata files
     gate: All approved changes written and confirmed by engineer
-    recommended_agent: general-purpose  # use /retro skill
+    recommended_agent: general-purpose  # run via /end-session
     recommended_model: sonnet
 ```
 

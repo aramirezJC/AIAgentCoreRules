@@ -7,7 +7,7 @@ Goal: Convert the GDD into a complete TDD and supporting documents. Work section
 Output files produced by this phase:
 ```yaml
 outputs:
-  - "[FeatureName]_TDD.md        — filled from Templates/TDD_Template.md"
+  - "[FeatureName]_TDD.md        — filled from ../Templates/TDD_Template.md"
   - "[FeatureName]_TaskList.md   — ordered actionable items from the Development Plan"
   - "[FeatureName]_UseCases.md   — use cases and edge cases table"
   - "[FeatureName]_GDD.md        — AI-friendly version of the source GDD (if provided)"
@@ -213,27 +213,19 @@ Present findings as a numbered list. Discuss each gap with the engineer until re
 
 ---
 
-## Sub-phase 1d — Metrics Initialization
+## Sub-phase 1d — Metrics
 
-Create `.claude/session_metrics.md` in the project root before producing any output documents. Use the feature name from the TDD Objective section.
+Session metrics are already running (SessionStart hook — see MetaRouter Session Lifecycle).
+Make sure the lane and title are recorded:
 
-```markdown
-# Session Metrics — [FeatureName]
-
-Started: [YYYY-MM-DD]
-
-inaccuracy_count: 0
-iteration_count:  0
-
-## Inaccuracies
-
-## Iterations
+```bash
+python3 <lifecycle script> set --lane feature --title "<FeatureName>"
 ```
 
-Remind the engineer:
-- Run `/inaccuracy <reason>` immediately after correcting an agent mistake.
-- Run `/iteration <description>` when deliberately changing direction or refining scope.
-- Run `/cost` before starting Phase 8 and paste the total into the Phase 8 benchmarks step.
+Remind the engineer once:
+- `/inaccuracy <reason>` immediately after correcting an agent mistake.
+- `/iteration <description>` when deliberately changing direction or refining scope.
+- `/end-session` at the end of every working session — each session of this feature gets its own metrics.
 
 ---
 
@@ -241,7 +233,7 @@ Remind the engineer:
 
 With all TDD sections complete and reviewed, produce the output documents:
 
-**`[FeatureName]_TDD.md`** — fill `Templates/TDD_Template.md` with all gathered content. Set version to `1.0.0`.
+**`[FeatureName]_TDD.md`** — fill `../Templates/TDD_Template.md` with all gathered content. Set version to `1.0.0`.
 
 **`[FeatureName]_TaskList.md`** — extract all tasks from all Development Plan stages in order:
 

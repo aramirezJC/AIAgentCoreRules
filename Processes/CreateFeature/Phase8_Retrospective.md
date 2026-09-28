@@ -1,4 +1,4 @@
-## apply: on-demand — loaded by [[MetaRouter]]
+## apply: on-demand — loaded by [[CreateFeature/index]]
 
 # Phase 8 — Retrospective
 
@@ -89,14 +89,15 @@ Before producing the report, compile the session metrics.
 
 ```yaml
 steps:
-  - Ask the engineer to run `/cost` now if they have not already, and paste the total token count.
-  - Read .claude/session_metrics.md.
-  - Count inaccuracy_count and iteration_count.
-  - List the 5 heaviest operations this session (agent's best estimate based on context: large file reads, multi-file generations, long research phases).
+  - Run the lifecycle script `compile --final` for this session (done by /end-session).
+  - Read metrics.md of this session AND of every earlier session folder whose name carries the `feature` lane and this feature's title.
+  - Sum tokens, inaccuracies and iterations across those sessions.
+  - Use each session's router trace to answer Steps 1 and 5 (what was loaded late, what was never loaded).
+  - List the 5 heaviest operations (from the token reports' highest-cost turns, else best estimate).
   - Calculate quality rating per phase: smooth | required_correction | required_redesign.
 ```
 
-If `.claude/session_metrics.md` does not exist, note it in the report and estimate from conversation history.
+If a session has no metrics.md, note it in the report and estimate from conversation history.
 
 ---
 
@@ -116,12 +117,12 @@ retrospective_report:
     process_updates:  []   # file: change
   deferred:           []   # items that need more data before acting
   benchmarks:
-    session_tokens:     ""   # paste /cost output here
+    session_tokens:     ""   # summed from metrics.md of every session of this feature
     estimated_top_costs:     # agent's best estimate of 5 heaviest operations
       - operation: ""
         reason:    ""
-    inaccuracy_count:   0    # from session_metrics.md
-    iteration_count:    0    # from session_metrics.md
+    inaccuracy_count:   0    # summed from metrics.md
+    iteration_count:    0    # summed from metrics.md
     phase_quality:           # smooth | required_correction | required_redesign
       phase_1_intake:         ""
       phase_2_discovery:      ""

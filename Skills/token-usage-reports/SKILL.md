@@ -20,7 +20,7 @@ bash <skill-directory>/scripts/generate_token_report.sh \
 
 Supported options:
 
-- `--agent codex|claude|gemini|junie`; default comes from project configuration or `codex`.
+- `--agent codex|claude|gemini|junie`; default comes from project configuration or `codex`. **Under Claude Code, always pass `--agent claude`.** The per-session numbers for the running session are already compiled by `/end-session`; use this skill for cross-session reports.
 - `--scope current|last-30|all`; default is `last-30`.
 - `--format markdown|json`; default is `markdown`.
 - `--output <file-or-directory>`; omit to print the report.
@@ -29,7 +29,7 @@ Supported options:
 - `--include-content` only for Markdown reports when the user explicitly requests prompts, responses, commands, or paths.
 - `--per-session` for Markdown output writes the aggregate report plus one file per selected session; it requires `--output` to name a directory.
 
-On macOS, prefer the bundled `report-current.sh`,
+On macOS with Codex, prefer the bundled `report-current.sh`,
 `report-recent-summary.sh`, `report-recent-detailed.sh`, or
 `report-all-detailed.sh` presets for common Codex reports. Within a Git repository,
 presets write beneath its root-level `Reports` directory; otherwise they use the
