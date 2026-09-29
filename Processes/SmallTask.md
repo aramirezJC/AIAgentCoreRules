@@ -30,6 +30,7 @@ steps:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
     - "Anything broader than one targeted query → /discover, not inline search."
+    - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
   3_rules:   # routing table, by what the change touches
     always:                    [../Rules/CodingStandards.md]
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]

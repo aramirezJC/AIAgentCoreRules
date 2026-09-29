@@ -90,7 +90,7 @@ Before producing the report, compile the session metrics.
 ```yaml
 steps:
   - Run the lifecycle script `compile --final` for this session (done by /end-session).
-  - Read metrics.md of this session AND of every earlier session folder whose name carries the `feature` lane and this feature's title.
+  - Read metrics.md of this session AND of every session folder listed under `sessions` in [FeatureName]_Progress.md. If the file or list is missing, fall back to folders whose name carries the `feature` lane and this feature's title.
   - Sum tokens, inaccuracies and iterations across those sessions.
   - Use each session's router trace to answer Steps 1 and 5 (what was loaded late, what was never loaded).
   - List the 5 heaviest operations (from the token reports' highest-cost turns, else best estimate).

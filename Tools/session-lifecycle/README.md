@@ -43,12 +43,20 @@ python3 session_lifecycle.py open
 python3 session_lifecycle.py path
 ```
 
-`--session-id` defaults to the running session (the newest transcript for the project).
+`--session-id` defaults to `$CLAUDE_CODE_SESSION_ID` (set by Claude Code in the Bash tool), else the
+newest transcript for the project. An ID with no folder is an error — the script never falls
+back to another session's folder.
 Hook subcommands always exit 0 so a failure never blocks a session.
 
 ## Limits
 
 - Router-trace rows from `Read` are exact; rows from shell commands are inferred from paths in
   the command text, so a `grep` counts as a load and a path held in a shell variable is missed.
-- Token numbers come from `session-support --scope current`; they are marked unavailable when the
-  project's newest session is not this one (e.g. two sessions running at once).
+- Token numbers come from `Tools/session-support`, driven through its Python API with this session's
+  transcript as an explicit rollout — so they are exact even when other sessions are running. The
+  vendored package is not modified; if an upstream update renames `load_monitor`,
+  `support_report`, `generated_session_reports` or `SessionMonitor.explicit_rollout`, tokens show as
+  "unavailable (report failed: …)" until this script is updated. Upstream `engineering-support-kit`
+  should still gain a `report --session-id` flag so other consumers get the same.
+- `Started` is the transcript's first entry; `Tracking since` is when the hook first ran (they differ
+  for sessions resumed from before the hooks were installed).

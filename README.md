@@ -17,6 +17,8 @@ Install into a host project by symlinking each folder into `<project>/.claude/sk
 
 - `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
 - `feature` — enters `Processes/CreateFeature`.
+- `checkpoint`, `resume` — save and restore feature progress across sessions via
+  `<FeatureName>_Progress.md` in the feature's working folder.
 - `discover` — subagent survey that returns a compact map.
 - `audit` — rules compliance report for C# files.
 - `Skills/token-usage-reports/` packages the portable session-report workflow

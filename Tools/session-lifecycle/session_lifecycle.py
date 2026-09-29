@@ -79,9 +79,13 @@ def save_state(folder, state):
 
 
 def current_transcript(project_dir):
-    """Newest Claude Code transcript for this project: the running session."""
+    """The running session: CLAUDE_CODE_SESSION_ID when set (exact, safe with concurrent
+    sessions), else the newest Claude Code transcript for this project (a guess)."""
     encoded = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(project_dir))
     sessions_dir = os.path.join(os.path.expanduser("~"), ".claude", "projects", encoded)
+    env_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if env_id:
+        return env_id, os.path.join(sessions_dir, env_id + ".jsonl")
     if not os.path.isdir(sessions_dir):
         return None, None
     names = [n for n in os.listdir(sessions_dir) if n.endswith(".jsonl")]
@@ -94,7 +98,11 @@ def current_transcript(project_dir):
 def resolve(args):
     root = reports_root(args)
     session_id = getattr(args, "session_id", None) or current_transcript(os.getcwd())[0]
-    folder = find_folder(root, session_id) or find_folder(root, None)
+    folder = find_folder(root, session_id)
+    if folder is None and session_id:
+        # Never fall back to another session's folder: with concurrent sessions that edits the wrong one.
+        sys.exit("No session folder for %s under %s. Run /start-session (hook-start) first." % (session_id, root))
+    folder = folder or find_folder(root, None)
     if folder is None:
         sys.exit("No session folder found under %s. Was the SessionStart hook installed?" % root)
     return folder, load_state(folder)
@@ -110,6 +118,22 @@ def folder_name(state):
 
 
 # ---------------------------------------------------------------- router trace
+
+def transcript_started_at(transcript_path):
+    """Local ISO time of the transcript's first timestamped entry, or None."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return None
+    with open(transcript_path) as handle:
+        for line in handle:
+            try:
+                stamp = json.loads(line).get("timestamp")
+            except ValueError:
+                continue
+            if stamp:
+                moment = datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+                return moment.astimezone().isoformat(timespec="seconds")
+    return None
+
 
 def import_roots(project_dir):
     """Directories imported by CLAUDE.md, plus their real paths (they are often symlinks)."""
@@ -206,22 +230,46 @@ def router_trace(state, project_dir):
 
 # ---------------------------------------------------------------- tokens
 
+def load_session_support():
+    """Import the vendored session-support CLI as a module (it is a script without .py)."""
+    import importlib.machinery
+    import importlib.util
+    loader = importlib.machinery.SourceFileLoader("session_support_cli", SESSION_SUPPORT)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
 def token_report(folder, state):
-    """Token telemetry from session-support, only if its 'current' session is this one."""
+    """Token telemetry for exactly this session.
+
+    The CLI's `report --scope current` means "newest session", which is wrong with concurrent
+    sessions. The package's SessionMonitor accepts an explicit rollout file, so we drive the
+    same report functions with this session's transcript instead of editing the vendored code.
+    """
+    transcript = state.get("transcript_path")
     if not os.path.isfile(SESSION_SUPPORT):
         return {"available": False, "reason": "session-support not found at %s" % SESSION_SUPPORT}
-    base = [sys.executable, SESSION_SUPPORT, "--agent", "claude", "report", "--scope", "current"]
+    if not transcript or not os.path.isfile(transcript):
+        return {"available": False, "reason": "transcript not found"}
     try:
-        result = subprocess.run(base + ["--format", "json"], capture_output=True, text=True, timeout=40)
-        data = json.loads(result.stdout)
-    except (subprocess.SubprocessError, ValueError) as error:
+        from pathlib import Path
+        cli = load_session_support()
+        args = argparse.Namespace(project_config=Path(os.path.dirname(SESSION_SUPPORT)) / "project.example.json",
+                                  agent="claude", sessions_root=Path(os.path.dirname(transcript)), since=None)
+        monitor = cli.load_monitor(args)
+        monitor.explicit_rollout = Path(transcript)
+        session = cli.support_report(monitor, "current")["sessions"][0]
+        tokens_dir = os.path.join(folder, "tokens")
+        os.makedirs(tokens_dir, exist_ok=True)
+        for report in monitor.generated_session_reports("current", False):
+            with open(os.path.join(tokens_dir, report["filename"]), "w") as handle:
+                handle.write(report["content"])
+    except Exception as error:  # telemetry is best-effort; never fail the compile
         return {"available": False, "reason": "report failed: %s" % error}
-    sessions = data.get("sessions") or []
-    if not sessions or sessions[0].get("id") != state["session_id"]:
-        return {"available": False, "reason": "latest session in the project is not this one"}
-    subprocess.run(base + ["--format", "markdown", "--per-session", "--output", os.path.join(folder, "tokens")],
-                   capture_output=True, text=True, timeout=40)
-    session = sessions[0]
+    if session.get("id") != state["session_id"]:
+        return {"available": False, "reason": "report described session %s" % session.get("id")}
     return {"available": True, "total_tokens": session.get("total_tokens"),
             "turns": session.get("completed_turns"), "subagents": session.get("subagents"),
             "categories": session.get("categories"), "warning": session.get("warning")}
@@ -240,6 +288,7 @@ def render(folder, state, project_dir):
         "| Session | `%s` |" % state["session_id"],
         "| Lane | %s |" % (state.get("lane") or "**not set**"),
         "| Started | %s |" % state["started_at"],
+        "| Tracking since | %s |" % state.get("tracking_started_at", state["started_at"]),
         "| Ended | %s |" % (state.get("ended_at") or "in progress"),
         "| /end-session run | %s |" % ("yes" if state.get("end_session_run") else "no"),
         "| Inaccuracies | %d |" % len(state["inaccuracies"]),
@@ -268,6 +317,8 @@ def render(folder, state, project_dir):
 
 
 def compile_folder(folder, state, project_dir):
+    # A resumed session's transcript may predate tracking; report the real start.
+    state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
     state["tokens"] = token_report(folder, state)
     save_state(folder, state)
     render(folder, state, project_dir)
@@ -293,7 +344,9 @@ def cmd_hook_start(args):
         resumed = folder is not None
         if folder is None:
             state = {"session_id": session_id, "transcript_path": hook.get("transcript_path"),
-                     "project_dir": os.getcwd(), "started_at": now_iso(), "lane": None, "title": None,
+                     "project_dir": os.getcwd(), "tracking_started_at": now_iso(),
+                     "started_at": transcript_started_at(hook.get("transcript_path")) or now_iso(),
+                     "lane": None, "title": None,
                      "inaccuracies": [], "iterations": [], "end_session_run": False}
             folder = os.path.join(root, folder_name(state))
             os.makedirs(folder, exist_ok=True)
@@ -390,7 +443,7 @@ def main():
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path)):
         command = sub.add_parser(name)
-        command.add_argument("--session-id", help="defaults to the running session (newest transcript)")
+        command.add_argument("--session-id", help="defaults to $CLAUDE_CODE_SESSION_ID, else the newest transcript")
         command.set_defaults(func=func)
         if name == "set":
             command.add_argument("--lane", choices=LANES)

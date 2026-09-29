@@ -28,7 +28,9 @@ steps:
   5_fix:
     - "Load rules by what the fix touches: CodingStandards always; ResourceManagementRules for subscriptions/timers/loads; MultyStepOperationsRules for async ordering."
     - "Smallest change that removes the cause. [SURG] — no drive-by refactors; list them as follow-ups instead."
-    - "Run /audit on the changed files."
+  5b_audit:   # checkpoint — do not start step 6 until it has run
+    - "Run /audit on every changed file (fix, repro/debug tooling, and later the test file). Fix or report each violation."
+    - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
   6_test:
     - "Load TestingRules.md and the host project's testing setup."
     - "Write one regression test that fails without the fix and passes with it. If the bug cannot be unit-tested (timing, platform, Editor-only), write the manual repro steps instead and say why."
@@ -42,6 +44,11 @@ steps:
 Rule for step 3: if verification reverses an earlier hypothesis, lead with the correction
 (InvestigationMode IV). A wrong root cause that reaches the fix is the most expensive failure here.
 
+Detours: when the engineer asks for side work mid-bug (for example a repro tool or debug
+command), record the lane change with the lifecycle `set --lane small_task` command before
+starting it, then `set --lane bug_fix` when you return. That keeps metrics and the router check
+accurate. Follow SmallTask.md for the detour, including its own /audit.
+
 ## Router check (used by /end-session)
 
 ```yaml
@@ -50,5 +57,5 @@ expected_loads:
   - "Rules/CodingStandards.md"
   - "Rules/TestingRules.md + host testing setup"
   - "plus ResourceManagementRules / MultyStepOperationsRules if the fix touched them"
-expected_tools: [usages.py or codeindex.py, typecheck.py]
+expected_tools: [usages.py or codeindex.py, typecheck.py, /audit]
 ```

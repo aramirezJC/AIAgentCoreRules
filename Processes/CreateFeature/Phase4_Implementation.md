@@ -29,6 +29,10 @@ per_file_checks:
 
 Run `/audit <file>` — it covers the checklist above. Present each file to the engineer after writing it. Do not move to the next file until the current one is acknowledged.
 
+After each acknowledgment, update the progress file's Checkpoint: add the file to `done` and set
+`next` to the following file from the design. Implementation is where a session most often
+ends mid-phase.
+
 ---
 
 ## Gate 4 — Implementation Complete

@@ -148,6 +148,8 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /inaccuracy:     "engineer logs a corrected agent mistake"
   /iteration:      "engineer logs a deliberate change of direction"
   /feature <Name>: "enter the CreateFeature process"
+  /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
+  /resume <Name>:  "pick up a feature from its progress file in a fresh session"
   /discover <area>: "subagent survey, returns a compact map"
   /audit [files]:  "rules compliance check, report only"
   /uses <Type>:    "who uses a type / calls its members (host project tool)"

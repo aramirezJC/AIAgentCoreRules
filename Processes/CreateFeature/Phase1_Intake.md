@@ -11,7 +11,11 @@ outputs:
   - "[FeatureName]_TaskList.md   — ordered actionable items from the Development Plan"
   - "[FeatureName]_UseCases.md   — use cases and edge cases table"
   - "[FeatureName]_GDD.md        — AI-friendly version of the source GDD (if provided)"
+  - "[FeatureName]_Progress.md   — created first, from ../Templates/Progress_Template.md (see index.md 'Progress File')"
 ```
+
+Intake is the longest phase and often spans sessions. After each TDD section is agreed, suggest
+`/checkpoint` if the session is getting long.
 
 ---
 

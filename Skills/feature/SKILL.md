@@ -13,7 +13,10 @@ MetaRouter.md).
 steps:
   - "Run: python3 <lifecycle script> set --lane feature --title \"$ARGUMENTS\""
   - "Read: Processes/CreateFeature/index.md"
+  - "If <working_folder>/<FeatureName>_Progress.md already exists: show its current_phase and updated_at, offer /resume <FeatureName>, and stop — do not restart Phase 1 over existing work."
+  - "Create <FeatureName>_Progress.md from Processes/Templates/Progress_Template.md and add the current session folder to `sessions`."
   - "Read: Processes/CreateFeature/Phase1_Intake.md and start it. If a GDD path was given, begin with Sub-phase 1a."
 ```
 
-Load one phase file at a time. Never pass a gate without explicit engineer confirmation.
+Load one phase file at a time. Never pass a gate without explicit engineer confirmation, and
+write each gate's handoff to the progress file before loading the next phase.

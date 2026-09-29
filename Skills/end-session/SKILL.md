@@ -18,6 +18,7 @@ folder that holds MetaRouter.md).
 ```yaml
 steps:
   - "If the lane is not set: classify it now and run: python3 <script> set --lane <lane> --title \"<title>\""
+  - "Feature lane, feature not complete: if work stopped partway through a phase, run /checkpoint first; if it stopped at a gate, confirm the gate block is in <FeatureName>_Progress.md."
   - "Run: python3 <script> compile --final     # prints the metrics.md path"
   - "Read metrics.md. It has tokens, inaccuracies, iterations, the router trace and Runnable tool counts."
 ```
@@ -63,7 +64,9 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 <concrete, minimal edits. Not applied.>
 
 ## Cost
-<total tokens, turns, subagents from metrics.md; the 3 heaviest operations and whether each was necessary>
+<total tokens, turns, subagents from metrics.md; the 3 heaviest operations and whether each was necessary.
+ Take the heaviest turns from the "Highest-Cost Turns" table in tokens/*.md and name what each turn did.
+ If tokens/ is missing or metrics.md marks tokens unavailable, label the list "estimated" and say why.>
 ```
 
 Keep it evidence-based: every claim points at a trace row, a logged note, or `file:line`.

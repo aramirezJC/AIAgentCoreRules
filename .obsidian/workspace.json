@@ -186,6 +186,11 @@
   },
   "active": "5643385930e48e37",
   "lastOpenFiles": [
+    "Skills/resume/SKILL.md",
+    "Skills/resume",
+    "Skills/checkpoint/SKILL.md",
+    "Skills/checkpoint",
+    "Processes/Templates/Progress_Template.md",
     "Tools/session-lifecycle/README.md",
     "Processes/BugFix.md",
     "Processes/SmallTask.md",
@@ -204,7 +209,6 @@
     "Skills/start-session/SKILL.md",
     "Skills/start-session",
     "Tools/session-lifecycle/session_lifecycle.py",
-    "Tools/session-lifecycle",
     "Processes/Templates/TDD_Template.md",
     "Processes/CreateFeature/Phase8_Retrospective.md",
     "Processes/CreateFeature/Phase7_Verification.md",
@@ -217,10 +221,6 @@
     "Rules/CoreTags.md",
     "Skills/token-usage-reports/README.md",
     "Rules/MetaRouter.md",
-    "Tools/session-support/tests/test_session_monitor.py",
-    "Tools/session-support/README.md",
-    "Skills/token-usage-reports/SKILL.md",
-    "Rules/InvestigationMode.md",
-    "Rules/StopAndVerify.md"
+    "Tools/session-support/README.md"
   ]
 }
