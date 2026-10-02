@@ -143,4 +143,11 @@ Once the engineer approves the report, execute the proposed changes file by file
 
 Confirm each write with the engineer before advancing to the next.
 
+When an approved change edits a rule, process, skill, tool, Systems or SystemPatterns file,
+update the matching `Documentation/` page in the same repository as part of the same change.
+
+Record the outcome in retro.md as an `## Applied` section: one line per proposed change,
+`- #N applied: <file> — <what changed>` or `- #N skipped: <reason>` (same format as
+`/end-session`, which the session meta-analysis reads).
+
 **The retrospective is complete when all approved changes are written and the engineer confirms.**

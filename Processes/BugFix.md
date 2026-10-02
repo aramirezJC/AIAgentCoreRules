@@ -18,6 +18,7 @@ steps:
   2_context:
     - "SystemIndex: Read the Systems/ entry for the suspected system — its common_gotchas first."
     - "Locate the flow: codeindex.py where/members, usages.py for callers (/uses). Breadth → /discover."
+    - "Recent history: git log --since=<first-seen build date> -- <files on the failing path>. A sibling fix may already explain the bug, or be missing from the reported build."
   3_hypotheses:
     - "Read the method bodies on the failing path. Every claim carries file:line."
     - "Rank 1–3 hypotheses by evidence. For each: the evidence, what would confirm it, what would rule it out."

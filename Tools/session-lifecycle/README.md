@@ -6,12 +6,16 @@ trace (which rule and process files were loaded, in order, read from the session
 ## Output
 
 ```
-<project>/GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<id8>/
+<project>/GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   # lane and name once set
   session.json   state
   metrics.md     rendered report
   retro.md       written by /end-session
   tokens/        session-support per-session token report
 ```
+
+`<root>/hooks.log` gets one line per hook run (event, session, cwd, outcome) — the first place to
+look when a session's metrics were not updated on exit. Hooks resolve the project from the
+payload's `cwd`, not the process working directory.
 
 Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
@@ -36,16 +40,32 @@ Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 ## Commands
 
 ```bash
-python3 session_lifecycle.py set --lane bug_fix --title "Crash on HUD open"
+python3 session_lifecycle.py set --name "HUD crash" --lane bug_fix --work-type bug_fix --title "Crash on HUD open"
 python3 session_lifecycle.py note --kind inaccuracy "Guessed PrizeManager signature"
 python3 session_lifecycle.py compile [--final]
 python3 session_lifecycle.py open
 python3 session_lifecycle.py path
 ```
 
+`set --lane` on a session that already has a different lane appends `{at, from, to}` to
+`lane_history` in session.json; metrics.md lists it under *Lane changes*.
+
+`--name` is the engineer-given session name (`/start-session <name>`). It is slugged into the
+folder name, which `set` renames, and heads metrics.md.
+
+`--work-type` (`bug_fix | small_feature | feature | question | other`) records what the work is,
+separately from the lane that ran it, so the meta-analysis can compare cost by kind of work. Until
+it is passed explicitly it follows the lane (`small_task → small_feature`, `investigation →
+question`, others map to themselves) and `work_type_source` is `"lane"`; once explicit, later lane
+changes no longer touch it. Changes are kept in `work_type_history` and listed under *Work type
+changes*.
+
 `--session-id` defaults to `$CLAUDE_CODE_SESSION_ID` (set by Claude Code in the Bash tool), else the
 newest transcript for the project. An ID with no folder is an error — the script never falls
 back to another session's folder.
+A session launched from a subdirectory has its transcript filed under that directory's
+`~/.claude/projects/<encoded-dir>/`, not the project root's. When the expected path is missing,
+the script finds `<session_id>.jsonl` under any project folder, at hook-start and again at compile.
 Hook subcommands always exit 0 so a failure never blocks a session.
 
 ## Limits

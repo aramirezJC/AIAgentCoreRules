@@ -5,11 +5,23 @@ help with the development of other projects.
 ## Session Lifecycle
 
 `Tools/session-lifecycle/session_lifecycle.py` tracks every Claude Code session in the host
-project's `GitIgnoreReports/Sessions/<date>_<lane>_<id>/` folder: tokens (via
+project's `GitIgnoreReports/Sessions/<date>_<lane>_<name>_<id>/` folder: lane, work type, tokens (via
 `Tools/session-support`), logged inaccuracies and iterations, and a router trace of which rule
 files were actually loaded, read from the session transcript. A SessionStart hook starts it, a
 SessionEnd hook compiles it, and `/end-session` adds a retrospective. Hook setup is in
 `Tools/session-lifecycle/README.md`.
+
+`Tools/session-analysis/session_meta_report.py` reads all of those session folders and writes
+`GitIgnoreReports/SessionAnalysis.html`: a token bell curve, issue heat maps, proposed changes
+with their status, and what to improve next. See `Tools/session-analysis/README.md`.
+
+## Documentation
+
+`Documentation/` holds Confluence-ready pages describing the framework (overview, setup, work
+modes, each process, session tracking, commands, rules, host project layer, contributing).
+File-name numbers give the page order. Update the matching page when a rule or process changes.
+Pages use Obsidian wikilinks; `python3 Tools/docs-export/export_confluence.py Documentation`
+writes a Confluence-ready copy to `GitIgnoreConfluenceExport/`.
 
 ## Skills
 

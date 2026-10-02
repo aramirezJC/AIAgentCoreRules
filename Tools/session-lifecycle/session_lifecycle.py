@@ -3,7 +3,7 @@
 
 One folder per session under the reports root (default: <cwd>/GitIgnoreReports/Sessions):
 
-    <YYYY-MM-DD_HHMM>_<lane>_<id8>/
+    <YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   (lane and name only once set)
         session.json   state (source of truth)
         metrics.md     rendered from session.json + token report + router trace
         retro.md       written by /end-session
@@ -12,7 +12,7 @@ One folder per session under the reports root (default: <cwd>/GitIgnoreReports/S
 Subcommands:
     hook-start   SessionStart hook. Reads hook JSON on stdin, prints context for the agent.
     hook-end     SessionEnd hook. Compiles metrics even when /end-session was not run.
-    set          Record lane and title.
+    set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
     open         Open metrics.md and retro.md in the default viewer.
@@ -32,6 +32,10 @@ import sys
 SCRIPT_PATH = os.path.abspath(__file__)
 SESSION_SUPPORT = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "session-support", "session-support")
 LANES = ["small_task", "bug_fix", "investigation", "feature", "other"]
+# Work type is what the work is; lane is which process ran it. Kept separate for the meta-analysis.
+WORK_TYPES = ["bug_fix", "small_feature", "feature", "question", "other"]
+LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
+                  "feature": "feature", "other": "other"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
 
 
@@ -78,6 +82,21 @@ def save_state(folder, state):
         json.dump(state, handle, indent=2)
 
 
+def locate_transcript(session_id, guess):
+    """The guessed transcript path when it exists, else <session_id>.jsonl under any project
+    folder. Claude Code files a transcript under the directory it was launched from, which is
+    not the project root when a session starts in a subdirectory."""
+    if (guess and os.path.isfile(guess)) or not session_id:
+        return guess
+    projects_root = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+    if os.path.isdir(projects_root):
+        for name in sorted(os.listdir(projects_root)):
+            candidate = os.path.join(projects_root, name, session_id + ".jsonl")
+            if os.path.isfile(candidate):
+                return candidate
+    return guess
+
+
 def current_transcript(project_dir):
     """The running session: CLAUDE_CODE_SESSION_ID when set (exact, safe with concurrent
     sessions), else the newest Claude Code transcript for this project (a guess)."""
@@ -85,7 +104,7 @@ def current_transcript(project_dir):
     sessions_dir = os.path.join(os.path.expanduser("~"), ".claude", "projects", encoded)
     env_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
     if env_id:
-        return env_id, os.path.join(sessions_dir, env_id + ".jsonl")
+        return env_id, locate_transcript(env_id, os.path.join(sessions_dir, env_id + ".jsonl"))
     if not os.path.isdir(sessions_dir):
         return None, None
     names = [n for n in os.listdir(sessions_dir) if n.endswith(".jsonl")]
@@ -108,11 +127,17 @@ def resolve(args):
     return folder, load_state(folder)
 
 
+def slug(text, limit=40):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:limit].strip("-")
+
+
 def folder_name(state):
     started = datetime.datetime.fromisoformat(state["started_at"])
     parts = [started.strftime("%Y-%m-%d_%H%M")]
     if state.get("lane"):
         parts.append(state["lane"].replace("_", "-"))
+    if state.get("name") and slug(state["name"]):
+        parts.append(slug(state["name"]))
     parts.append(state["session_id"][:8])
     return "_".join(parts)
 
@@ -281,12 +306,16 @@ def render(folder, state, project_dir):
     imports, loads, tools = router_trace(state, project_dir)
     tokens = state.get("tokens") or {}
     lines = [
-        "# Session Metrics — %s" % (state.get("title") or "untitled"),
+        "# Session Metrics — %s" % (state.get("name") or state.get("title") or "untitled"),
         "",
         "| Field | Value |",
         "| --- | --- |",
         "| Session | `%s` |" % state["session_id"],
+        "| Name | %s |" % (state.get("name") or "–"),
+        "| Title | %s |" % (state.get("title") or "–"),
         "| Lane | %s |" % (state.get("lane") or "**not set**"),
+        "| Work type | %s |" % ((state["work_type"] + (" (from lane)" if state.get("work_type_source") == "lane" else ""))
+                                if state.get("work_type") else "**not set**"),
         "| Started | %s |" % state["started_at"],
         "| Tracking since | %s |" % state.get("tracking_started_at", state["started_at"]),
         "| Ended | %s |" % (state.get("ended_at") or "in progress"),
@@ -304,6 +333,12 @@ def render(folder, state, project_dir):
     for kind in ("inaccuracies", "iterations"):
         lines += ["", "## %s" % kind.capitalize(), ""]
         lines += ["- `%s` %s" % (item["at"][11:19], item["text"]) for item in state[kind]] or ["- none"]
+    lines += ["", "## Lane changes", ""]
+    lines += ["- `%s` %s → %s" % (item["at"][11:19], item["from"], item["to"])
+              for item in state.get("lane_history", [])] or ["- none"]
+    lines += ["", "## Work type changes", ""]
+    lines += ["- `%s` %s → %s" % (item["at"][11:19], item["from"], item["to"])
+              for item in state.get("work_type_history", [])] or ["- none"]
     lines += ["", "## Router trace", "", "Always loaded via CLAUDE.md:", ""]
     lines += ["- `%s`" % item for item in imports] or ["- none"]
     lines += ["", "Loaded on demand, in order:", "", "| # | Time | File | Via (Bash rows are heuristic) |", "| ---: | --- | --- | --- |"]
@@ -317,6 +352,8 @@ def render(folder, state, project_dir):
 
 
 def compile_folder(folder, state, project_dir):
+    # The hook payload's path can be wrong for a session launched from a subdirectory.
+    state["transcript_path"] = locate_transcript(state["session_id"], state.get("transcript_path"))
     # A resumed session's transcript may predate tracking; report the real start.
     state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
     state["tokens"] = token_report(folder, state)
@@ -333,9 +370,30 @@ def read_hook_input():
         return {}
 
 
+def hook_project_dir(hook):
+    """Hooks may not run in the project dir; the hook payload's cwd is authoritative."""
+    project_dir = hook.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    os.chdir(project_dir)
+    return project_dir
+
+
+def hook_log(args, event, hook, outcome):
+    """One line per hook run, so a hook that fires but finds nothing leaves evidence."""
+    try:
+        root = reports_root(args)
+        os.makedirs(root, exist_ok=True)
+        with open(os.path.join(root, "hooks.log"), "a") as handle:
+            handle.write("%s %s session=%s source=%s reason=%s cwd=%s -> %s\n" % (
+                now_iso(), event, (hook.get("session_id") or "?")[:8], hook.get("source"),
+                hook.get("reason"), os.getcwd(), outcome))
+    except Exception:
+        pass
+
+
 def cmd_hook_start(args):
     try:
         hook = {} if sys.stdin.isatty() else read_hook_input()
+        hook_project_dir(hook)
         inferred_id, inferred_transcript = current_transcript(os.getcwd())
         session_id = hook.get("session_id") or inferred_id or "unknown"
         hook.setdefault("transcript_path", inferred_transcript)
@@ -346,7 +404,7 @@ def cmd_hook_start(args):
             state = {"session_id": session_id, "transcript_path": hook.get("transcript_path"),
                      "project_dir": os.getcwd(), "tracking_started_at": now_iso(),
                      "started_at": transcript_started_at(hook.get("transcript_path")) or now_iso(),
-                     "lane": None, "title": None,
+                     "name": None, "lane": None, "work_type": None, "title": None,
                      "inaccuracies": [], "iterations": [], "end_session_run": False}
             folder = os.path.join(root, folder_name(state))
             os.makedirs(folder, exist_ok=True)
@@ -359,37 +417,64 @@ def cmd_hook_start(args):
             "- session_id: %s" % session_id,
             "- folder: %s" % folder,
             "- lifecycle script: %s" % SCRIPT_PATH,
+            "- name: %s" % (state.get("name") or "not set"),
             "- lane: %s" % (state.get("lane") or "not set"),
+            "- work type: %s" % (state.get("work_type") or "not set"),
             "",
-            "Required: once the MetaRouter mode is classified, record it:",
-            "  python3 \"%s\" set --session-id %s --lane <%s> --title \"<short title>\""
-            % (SCRIPT_PATH, session_id, "|".join(LANES)),
+            "Required: once the MetaRouter mode is classified, record it and the work type:",
+            "  python3 \"%s\" set --session-id %s --lane <%s> --work-type <%s> --title \"<short title>\""
+            % (SCRIPT_PATH, session_id, "|".join(LANES), "|".join(WORK_TYPES)),
+            "If the engineer named the session (/start-session <name>), also pass --name \"<name>\".",
             "Log agent corrections with /inaccuracy and deliberate direction changes with /iteration.",
             "Close the session with /end-session (metrics + retrospective).",
         ]))
+        hook_log(args, "start", hook, ("resumed " if resumed else "created ") + folder)
     except Exception as error:  # a hook must never block the session
         print("Session tracking failed to start: %s" % error)
+        hook_log(args, "start", locals().get("hook") or {}, "ERROR %s" % error)
     return 0
 
 
 def cmd_hook_end(args):
+    hook = {}
     try:
         hook = read_hook_input()
+        hook_project_dir(hook)
         folder = find_folder(reports_root(args), hook.get("session_id"))
         if folder:
             state = load_state(folder)
-            state["ended_at"] = state.get("ended_at") or now_iso()
+            state["ended_at"] = now_iso()   # latest exit; a resumed session ends again
             state["end_reason"] = hook.get("reason")
             compile_folder(folder, state, state.get("project_dir") or os.getcwd())
-    except Exception:
-        pass
+            hook_log(args, "end", hook, "compiled " + folder)
+        else:
+            hook_log(args, "end", hook, "no folder for this session")
+    except Exception as error:
+        hook_log(args, "end", hook, "ERROR %s" % error)
     return 0
+
+
+def set_work_type(state, work_type, source):
+    if state.get("work_type") and state["work_type"] != work_type:
+        state.setdefault("work_type_history", []).append({"at": now_iso(), "from": state["work_type"], "to": work_type})
+    state["work_type"] = work_type
+    state["work_type_source"] = source
 
 
 def cmd_set(args):
     folder, state = resolve(args)
     if args.lane:
+        # Keep earlier lanes: a mid-session change (e.g. a BugFix detour) must stay auditable.
+        if state.get("lane") and state["lane"] != args.lane:
+            state.setdefault("lane_history", []).append({"at": now_iso(), "from": state["lane"], "to": args.lane})
         state["lane"] = args.lane
+    if args.work_type:
+        set_work_type(state, args.work_type, "explicit")
+    elif args.lane and state.get("work_type_source") != "explicit":
+        # Until a work type is given, follow the lane, so every session gets one.
+        set_work_type(state, LANE_WORK_TYPE[args.lane], "lane")
+    if args.name:
+        state["name"] = args.name
     if args.title:
         state["title"] = args.title
     save_state(folder, state)
@@ -446,7 +531,10 @@ def main():
         command.add_argument("--session-id", help="defaults to $CLAUDE_CODE_SESSION_ID, else the newest transcript")
         command.set_defaults(func=func)
         if name == "set":
+            command.add_argument("--name", help="engineer-given session name; also names the folder")
             command.add_argument("--lane", choices=LANES)
+            command.add_argument("--work-type", choices=WORK_TYPES,
+                                 help="defaults to the lane's work type until set explicitly")
             command.add_argument("--title")
         if name == "note":
             command.add_argument("--kind", choices=["inaccuracy", "iteration"], required=True)

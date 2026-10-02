@@ -38,6 +38,10 @@ depth:
   other:          short
 ```
 
+If metrics.md lists **Lane changes**, the session ran in more than one lane: run the Router check
+once per lane segment, splitting the router trace at each change's timestamp. The retrospective
+depth follows the lane with the heaviest work.
+
 Short retrospective — write `retro.md` in the session folder with exactly these sections:
 
 ```markdown
@@ -64,8 +68,12 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 <concrete, minimal edits. Not applied.>
 
 ## Cost
-<total tokens, turns, subagents from metrics.md; the 3 heaviest operations and whether each was necessary.
- Take the heaviest turns from the "Highest-Cost Turns" table in tokens/*.md and name what each turn did.
+<total tokens, turns, subagents from metrics.md; the 3 heaviest turns and whether each was necessary.
+ Rank turns by FRESH tokens (Uncached In + Output in the "Highest-Cost Turns" table of tokens/*.md),
+ not Total Tokens, which is mostly cache reads. If the heaviest turn by Total is not already in the
+ list, add it as a 4th. One numbered line per turn, in this shape, so the meta-analysis can read it:
+   1. **T<n>, <fresh> fresh / <total> total, <k> tool calls:** <what the turn did>. **Necessary.** |
+      **Partly necessary** — <what was avoidable>. | **Avoidable** — <why>.
  If tokens/ is missing or metrics.md marks tokens unavailable, label the list "estimated" and say why.>
 ```
 
@@ -85,3 +93,18 @@ steps:
 
 Apply only the changes the engineer approves, one file at a time. Rule and index files are
 shared across sessions; an unreviewed edit there changes every future session.
+
+Once the engineer has decided, append an `## Applied` section to retro.md with one line per
+proposal, in this exact shape (the meta-analysis report reads it):
+
+```markdown
+## Applied
+- #1 applied: <file> — <what changed>
+- #2 skipped: <reason, or "by engineer">
+```
+
+Every proposal gets a line, including skipped ones. Write "- none proposed" when the table was
+empty.
+
+When an approved change edits a rule, process, skill or tool, update the matching
+`Documentation/` page in the same repository as part of the same change.

@@ -19,7 +19,9 @@ All `load` and `routing` paths below are relative to the directory containing th
 ```yaml
 session_lifecycle:
   start:   "Automatic (SessionStart hook) — a 'Session tracking' block appears in context. If it is missing, run /start-session."
-  record:  "Right after classifying the mode below, record the lane with the `set` command shown in the Session tracking block."
+  record:  "Right after classifying the mode below, record the lane and work type with the `set` command shown in the Session tracking block."
+  work_type: "bug_fix | small_feature | feature | question | other — what the work is, not which lane ran it (definitions in ../Skills/start-session). Defaults to the lane's; pass --work-type when they differ."
+  name:    "/start-session <name> names the session (folder + metrics heading). Optional."
   during:  "The engineer logs /inaccuracy <reason> after correcting you, and /iteration <change> on a deliberate change of direction."
   end:     "/end-session — compiles metrics + router trace, writes a lane-scaled retrospective, opens both files."
   backstop: "If /end-session is skipped, the SessionEnd hook still compiles metrics.md (no retrospective)."
@@ -49,6 +51,13 @@ mode_fork:
     looks_like: "how feasible / how does X compare / where does X happen / hypothetical refactor / compile a list"
     output:     "a document or recommendation — NOT code"
     load:       [./InvestigationMode.md]
+  code_review:
+    looks_like: "review PR X / does this satisfy our rules / evaluate my review comments"
+    output:     "findings with file:line — NOT code"
+    load:       [./CodingStandards.md, ./ArchitecturalPrinciples.md, ./MultyStepOperationsRules.md]
+    also_load:  "the host SystemIndex entry for every system the diff touches, before reading its source"
+    first_step: "Find the real base: a stacked PR targets a feature branch, not the default branch — use git merge-base. Check whether downstream stacked branches contain the PR tip before comparing against them."
+    record_as:  "lane other, work type question — session tracking has no code_review lane"
   feature:
     looks_like: "implement / build / add feature X / here is the GDD / /feature <Name>"
     output:     "code, tests, integration — with all 8 gates"
@@ -137,6 +146,9 @@ Read each path from the tables above exactly as written. Do not generate code un
 Rule files loaded early can be summarised away in a long session. When a process step says to
 re-read a rule file, re-read it — do not rely on memory of it.
 
+Read any file you are about to edit with the **Read** tool first. A shell `cat`, `sed` or `grep`
+does not count: the edit is rejected, and the router trace can only guess at shell loads.
+
 ---
 
 ## Commands
@@ -154,3 +166,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /audit [files]:  "rules compliance check, report only"
   /uses <Type>:    "who uses a type / calls its members (host project tool)"
 ```
+
+`Documentation/` (in this repo and in the host metadata repo) is the human-facing copy of the
+Rules, Processes, Skills and Tools. Never load it for routing — load the source files above.
+When you change one of those source files, update the matching `Documentation/` page with it.
