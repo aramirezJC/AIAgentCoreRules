@@ -22,9 +22,12 @@ Proposal status, in order of trust:
 
 Usage:
     python3 session_meta_report.py [--sessions DIR] [--repo DIR ...] [--out FILE]
+                                   [--since YYYY-MM-DD] [--until YYYY-MM-DD]
 
 Defaults: --sessions <cwd>/GitIgnoreReports/Sessions, --repo every directory under
-<cwd>/GitIgnoredExternals, --out <sessions>/../SessionAnalysis.html. Stock python3 only; never
+<cwd>/GitIgnoredExternals, --out <sessions>/../SessionAnalysis.html. With --since/--until only
+sessions started in that window (inclusive) are analysed, and --out defaults to
+<sessions>/../MetaReviews/<until or today>_SessionAnalysis.html. Stock python3 only; never
 writes anywhere except --out.
 """
 
@@ -842,12 +845,47 @@ document.getElementById("src").textContent="Sources: "+D.sources.sessions+" · r
 """
 
 
+def in_window(sessions, since, until):
+    """Sessions whose start date falls in [since, until]; either bound may be None. Sessions with
+    no recorded start are dropped only when a window is given."""
+    if not since and not until:
+        return sessions
+    kept = []
+    for s in sessions:
+        try:
+            started = datetime.date.fromisoformat(s["started"][:10])
+        except ValueError:
+            continue
+        if (since and started < since) or (until and started > until):
+            continue
+        kept.append(s)
+    return kept
+
+
+def window_label(since, until):
+    return "%s → %s" % (since.isoformat() if since else "start", until.isoformat() if until else "today")
+
+
+def default_out(sessions_dir, since, until):
+    """All history: <reports>/SessionAnalysis.html. A window (MetaReview): next to that review's
+    tickets, <reports>/MetaReviews/<end date>_SessionAnalysis.html."""
+    reports = os.path.dirname(sessions_dir)
+    if not since and not until:
+        return os.path.join(reports, "SessionAnalysis.html")
+    end = (until or datetime.date.today()).isoformat()
+    return os.path.join(reports, "MetaReviews", "%s_SessionAnalysis.html" % end)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--sessions", default=os.path.join(os.getcwd(), "GitIgnoreReports", "Sessions"))
     parser.add_argument("--repo", action="append", help="repository to search for proposal evidence (repeatable)")
     parser.add_argument("--out")
     parser.add_argument("--assumptions", help="JSON file overriding savings-model assumptions")
+    parser.add_argument("--since", type=datetime.date.fromisoformat,
+                        help="only sessions started on or after this date (YYYY-MM-DD)")
+    parser.add_argument("--until", type=datetime.date.fromisoformat,
+                        help="only sessions started on or before this date (YYYY-MM-DD)")
     args = parser.parse_args()
     if args.assumptions:
         ASSUMPTIONS_OVERRIDE.update(json.load(open(args.assumptions, encoding="utf-8")))
@@ -857,11 +895,16 @@ def main():
         return 1
     repos = [os.path.realpath(r) for r in (args.repo or sorted(glob.glob(os.path.join(os.getcwd(), "GitIgnoredExternals", "*"))))
              if os.path.isdir(os.path.join(os.path.realpath(r), ".git"))]
-    out = os.path.abspath(args.out or os.path.join(os.path.dirname(sessions_dir), "SessionAnalysis.html"))
-    sessions = load(sessions_dir, repos)
+    out = os.path.abspath(args.out or default_out(sessions_dir, args.since, args.until))
+    sessions = in_window(load(sessions_dir, repos), args.since, args.until)
+    if not sessions:
+        print("No sessions started in the window %s." % window_label(args.since, args.until))
+        return 1
     result = analyse(sessions)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    source_label = sessions_dir + ("" if not (args.since or args.until) else " · window " + window_label(args.since, args.until))
     with open(out, "w", encoding="utf-8") as handle:
-        handle.write(render(sessions, result, {"sessions": sessions_dir, "repos": [os.path.basename(r) for r in repos]}))
+        handle.write(render(sessions, result, {"sessions": source_label, "repos": [os.path.basename(r) for r in repos]}))
     counts = {}
     for p in result["proposals"]:
         counts[p["status"]] = counts.get(p["status"], 0) + 1

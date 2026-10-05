@@ -42,8 +42,8 @@ steps:
     - "Estimate from the transcript only when compile fails, and label every such number 'est.' with the method."
 
   3_quantitative:
-    - "Run session_meta_report.py. Take token distributions, heaviest turns and heat maps from it; do not recompute them inline."
-    - "It covers all history, not the window: filter its rankings to the window when quoting them."
+    - "Run session_meta_report.py --since <window start> --until <window end>. It writes <reports root>/MetaReviews/<end>_SessionAnalysis.html next to the tickets."
+    - "Take token distributions, heaviest turns and heat maps from it; do not recompute them inline. Link it from the report header."
 
   4_read:
     - "Read every retro.md in the window. Above ~8 retros, fan out the extraction to subagents ([DELEGATE]) and keep the synthesis inline."

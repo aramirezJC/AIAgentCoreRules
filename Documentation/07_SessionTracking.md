@@ -117,7 +117,9 @@ python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-analysis/session_meta
 ```
 
 It writes `GitIgnoreReports/SessionAnalysis.html`, a single page to open in a browser (print it
-to PDF if needed), with:
+to PDF if needed). Add `--since YYYY-MM-DD` / `--until YYYY-MM-DD` to cover one window only, by
+session start date. The page then goes to `GitIgnoreReports/MetaReviews/<end>_SessionAnalysis.html`,
+next to that window's meta review. The report has:
 
 - **Token expenditure:** a bell curve of tokens per turn (normal fit on a log scale, ±1σ/±2σ
   bands), switchable between fresh and total tokens, plus the total for each session.

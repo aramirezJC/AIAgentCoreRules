@@ -13,6 +13,19 @@ python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-analysis/session_meta
 Options: `--sessions <dir>` (default `GitIgnoreReports/Sessions`), `--repo <dir>` repeatable
 (default every git repo under `GitIgnoredExternals/`), `--out <file>`.
 
+**One window** (for a [[Processes/MetaReview|meta review]]): `--since YYYY-MM-DD` and/or
+`--until YYYY-MM-DD` keep only sessions whose start date (`started_at`, from the transcript) is
+in that range, both ends inclusive. Every section then covers just that window, and the
+Sources line names it. The output defaults to
+`GitIgnoreReports/MetaReviews/<until or today>_SessionAnalysis.html`, next to that review's
+tickets. A session resumed from before `--since` is left out even if its folder was created
+later. The review names it as straddling the window.
+
+```bash
+python3 .../session_meta_report.py --since 2026-09-25 --until 2026-10-02
+# -> GitIgnoreReports/MetaReviews/2026-10-02_SessionAnalysis.html
+```
+
 ## What it shows
 
 1. **Token expenditure.** A histogram of tokens per turn, with a normal curve fitted to
