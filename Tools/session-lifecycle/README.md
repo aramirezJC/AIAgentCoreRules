@@ -19,6 +19,12 @@ payload's `cwd`, not the process working directory.
 
 Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
+Folders are created only when there is something to record: on the first `set`, `note` or
+`compile`, or by `hook-stop` / `hook-end` once the transcript has a typed prompt. `hook-start`
+creates nothing. `hook-end` deletes a folder that is still empty: no lane, title, name or notes,
+no tokens, no retro, and no typed prompt. `prune-empty [--dry-run]` applies the same test to
+every folder, for one-off cleanup.
+
 ## Install in a host project
 
 1. Hooks in `<project>/.claude/settings.json`:

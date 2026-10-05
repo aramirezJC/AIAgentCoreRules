@@ -37,7 +37,7 @@ steps:
   2_compile:
     - "List every session folder in the window and sort each into one of three groups:"
     - "  real: has a lane or a title, or has tokens."
-    - "  stub: no lane, no title, no tokens. Count stubs; never analyse them."
+    - "  stub: no lane, no title, no tokens. Count stubs; never analyse them. New sessions no longer create stubs; run `session_lifecycle.py prune-empty --dry-run` and offer the cleanup if any appear."
     - "  uncompiled: real, but tokens missing. Run `session_lifecycle.py compile --session-id <id>` (never --final) before estimating."
     - "Estimate from the transcript only when compile fails, and label every such number 'est.' with the method."
 

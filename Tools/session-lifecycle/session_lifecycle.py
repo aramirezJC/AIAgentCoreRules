@@ -19,6 +19,10 @@ Subcommands:
     open         Open metrics.md and retro.md in the default viewer.
     path         Print the session folder.
     features     List CreateFeature features that are not complete (/active-features).
+    prune-empty  Delete session folders with nothing worth keeping (--dry-run to preview).
+
+A session's folder is created on first record (set, note, compile, or after the first reply),
+never at session start, so sessions opened and closed without work leave nothing behind.
 
 Hooks must never break a session: hook-* subcommands always exit 0.
 """
@@ -28,6 +32,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -124,16 +129,69 @@ def current_transcript(project_dir):
     return newest[:-len(".jsonl")], os.path.join(sessions_dir, newest)
 
 
+def user_turns(transcript_path):
+    """Prompts the engineer actually typed (tool results and meta entries excluded)."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return 0
+    count = 0
+    with open(transcript_path, errors="replace") as handle:
+        for line in handle:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if entry.get("type") != "user" or entry.get("isMeta"):
+                continue
+            content = (entry.get("message") or {}).get("content")
+            if isinstance(content, str) and content.strip():
+                count += 1
+            elif isinstance(content, list) and any(isinstance(c, dict) and c.get("type") == "text" for c in content):
+                count += 1
+    return count
+
+
+def ensure_folder(root, session_id, transcript_path=None, project_dir=None):
+    """The session's folder, created on first use. Folders are only made when there is
+    something to record (a set/note/compile, or a hook after a real exchange), never at
+    session start, so sessions opened and closed without work leave nothing behind.
+    Returns None when the session has no transcript to attach a folder to."""
+    folder = find_folder(root, session_id)
+    if folder:
+        return folder
+    transcript_path = locate_transcript(session_id, transcript_path)
+    if not session_id or not transcript_path or not os.path.isfile(transcript_path):
+        return None
+    state = {"session_id": session_id, "transcript_path": transcript_path,
+             "project_dir": project_dir or os.getcwd(), "tracking_started_at": now_iso(),
+             "started_at": transcript_started_at(transcript_path) or now_iso(),
+             "name": None, "lane": None, "work_type": None, "title": None,
+             "inaccuracies": [], "iterations": [], "end_session_run": False}
+    folder = os.path.join(root, folder_name(state))
+    os.makedirs(folder, exist_ok=True)
+    save_state(folder, state)
+    render(folder, state, state["project_dir"])
+    return folder
+
+
+def is_empty_folder(folder, state):
+    """Nothing worth keeping: no lane, title, name or notes, no tokens, and no typed prompt."""
+    tokens = state.get("tokens") or {}
+    return (not state.get("lane") and not state.get("title") and not state.get("name")
+            and not state.get("inaccuracies") and not state.get("iterations")
+            and not (tokens.get("available") and tokens.get("total_tokens"))
+            and not os.path.isfile(os.path.join(folder, "retro.md"))
+            and user_turns(locate_transcript(state.get("session_id"), state.get("transcript_path"))) == 0)
+
+
 def resolve(args):
     root = reports_root(args)
     session_id = getattr(args, "session_id", None) or current_transcript(os.getcwd())[0]
-    folder = find_folder(root, session_id)
-    if folder is None and session_id:
-        # Never fall back to another session's folder: with concurrent sessions that edits the wrong one.
-        sys.exit("No session folder for %s under %s. Run /start-session (hook-start) first." % (session_id, root))
-    folder = folder or find_folder(root, None)
+    if not session_id:
+        sys.exit("No session id: pass --session-id, or run inside a Claude Code session.")
+    # Never fall back to another session's folder: with concurrent sessions that edits the wrong one.
+    folder = ensure_folder(root, session_id, project_dir=os.getcwd())
     if folder is None:
-        sys.exit("No session folder found under %s. Was the SessionStart hook installed?" % root)
+        sys.exit("No transcript found for session %s, so there is nothing to record." % session_id)
     return folder, load_state(folder)
 
 
@@ -426,24 +484,15 @@ def cmd_hook_start(args):
         session_id = hook.get("session_id") or inferred_id or "unknown"
         hook.setdefault("transcript_path", inferred_transcript)
         root = reports_root(args)
+        # No folder yet: it is created on the first set/note/compile or after the first real
+        # exchange (hook-stop), so sessions opened and closed without work leave nothing behind.
         folder = find_folder(root, session_id)
         resumed = folder is not None
-        if folder is None:
-            state = {"session_id": session_id, "transcript_path": hook.get("transcript_path"),
-                     "project_dir": os.getcwd(), "tracking_started_at": now_iso(),
-                     "started_at": transcript_started_at(hook.get("transcript_path")) or now_iso(),
-                     "name": None, "lane": None, "work_type": None, "title": None,
-                     "inaccuracies": [], "iterations": [], "end_session_run": False}
-            folder = os.path.join(root, folder_name(state))
-            os.makedirs(folder, exist_ok=True)
-            save_state(folder, state)
-            render(folder, state, os.getcwd())
-        else:
-            state = load_state(folder)
+        state = load_state(folder) if folder else {}
         print("\n".join([
             "## Session tracking (%s)" % ("resumed" if resumed else "started"),
             "- session_id: %s" % session_id,
-            "- folder: %s" % folder,
+            "- folder: %s" % (folder or "created on first record (set, note, or after the first reply)"),
             "- lifecycle script: %s" % SCRIPT_PATH,
             "- name: %s" % (state.get("name") or "not set"),
             "- lane: %s" % (state.get("lane") or "not set"),
@@ -459,7 +508,7 @@ def cmd_hook_start(args):
             % (SCRIPT_PATH, session_id),
             "Close the session with /end-session (metrics + retrospective).",
         ] + feature_hint(os.getcwd(), state)))
-        hook_log(args, "start", hook, ("resumed " if resumed else "created ") + folder)
+        hook_log(args, "start", hook, ("resumed " + folder) if resumed else "folder deferred until there is something to record")
     except Exception as error:  # a hook must never block the session
         print("Session tracking failed to start: %s" % error)
         hook_log(args, "start", locals().get("hook") or {}, "ERROR %s" % error)
@@ -471,7 +520,15 @@ def cmd_hook_end(args):
     try:
         hook = read_hook_input()
         hook_project_dir(hook)
-        folder = find_folder(reports_root(args), hook.get("session_id"))
+        root = reports_root(args)
+        session_id = hook.get("session_id")
+        folder = find_folder(root, session_id)
+        if folder and is_empty_folder(folder, load_state(folder)):
+            shutil.rmtree(folder)
+            hook_log(args, "end", hook, "removed empty folder " + folder)
+            return 0
+        if not folder and user_turns(locate_transcript(session_id, hook.get("transcript_path"))):
+            folder = ensure_folder(root, session_id, hook.get("transcript_path"), os.getcwd())
         if folder:
             state = load_state(folder)
             state["ended_at"] = now_iso()   # latest exit; a resumed session ends again
@@ -479,7 +536,7 @@ def cmd_hook_end(args):
             compile_folder(folder, state, state.get("project_dir") or os.getcwd())
             hook_log(args, "end", hook, "compiled " + folder)
         else:
-            hook_log(args, "end", hook, "no folder for this session")
+            hook_log(args, "end", hook, "nothing to save, no folder")
     except Exception as error:
         hook_log(args, "end", hook, "ERROR %s" % error)
     return 0
@@ -580,6 +637,32 @@ def feature_hint(project_dir, state):
     return lines
 
 
+def cmd_prune_empty(args):
+    """Delete session folders with nothing worth keeping (see is_empty_folder)."""
+    root = reports_root(args)
+    if not os.path.isdir(root):
+        print("No sessions folder at %s." % root)
+        return 0
+    removed = kept = 0
+    for name in sorted(os.listdir(root)):
+        folder = os.path.join(root, name)
+        if not os.path.isfile(os.path.join(folder, "session.json")):
+            continue
+        try:
+            state = load_state(folder)
+        except (OSError, ValueError):
+            continue
+        if is_empty_folder(folder, state):
+            removed += 1
+            print("%s %s" % ("would remove" if args.dry_run else "removed", name))
+            if not args.dry_run:
+                shutil.rmtree(folder)
+        else:
+            kept += 1
+    print("%d empty folder(s) %s, %d kept." % (removed, "found" if args.dry_run else "removed", kept))
+    return 0
+
+
 def cmd_hook_stop(args):
     """Stop hook: recompile after a reply, so metrics exist even for a session that never
     exits (the app marks idle sessions completed without firing SessionEnd). Never marks
@@ -588,9 +671,15 @@ def cmd_hook_stop(args):
     try:
         hook = read_hook_input()
         hook_project_dir(hook)
-        folder = find_folder(reports_root(args), hook.get("session_id"))
+        root = reports_root(args)
+        folder = find_folder(root, hook.get("session_id"))
         if not folder:
-            return 0
+            # First reply of a session: now there is something to record.
+            if not user_turns(locate_transcript(hook.get("session_id"), hook.get("transcript_path"))):
+                return 0
+            folder = ensure_folder(root, hook.get("session_id"), hook.get("transcript_path"), os.getcwd())
+            if not folder:
+                return 0
         state = load_state(folder)
         last = state.get("compiled_at")
         if last:
@@ -688,6 +777,9 @@ def main():
     features.add_argument("--features-root", help="default <cwd>/%s, or $SESSION_FEATURES_ROOT" % DEFAULT_FEATURES_DIR)
     features.add_argument("--json", action="store_true")
     features.set_defaults(func=cmd_features)
+    prune = sub.add_parser("prune-empty", help="delete session folders with no lane, notes, tokens or typed prompt")
+    prune.add_argument("--dry-run", action="store_true")
+    prune.set_defaults(func=cmd_prune_empty)
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path)):
         command = sub.add_parser(name)

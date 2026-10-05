@@ -8,7 +8,8 @@ engineer's part is logging corrections and running `/end-session`.
 
 | Moment | What happens | Who |
 |---|---|---|
-| Session start | The SessionStart hook creates the session folder and puts a **Session tracking** block in the agent's context | Automatic |
+| Session start | The SessionStart hook puts a **Session tracking** block in the agent's context. No folder is created yet | Automatic |
+| First thing worth saving | The session folder is created on the first `set`, `note` or `compile`, or after the first reply. Sessions opened and closed without work leave no folder | Automatic |
 | Naming (optional) | `/start-session <name>` names the session; the name goes into the folder and the metrics heading | Engineer |
 | Mode classified | The agent records the lane (feature, bug_fix, small_task, investigation, other), the work type (bug_fix, small_feature, feature, question, other) and a short title | Agent |
 | Agent makes a mistake you correct | `/inaccuracy <what was wrong>` | Engineer |
@@ -40,7 +41,9 @@ shows up as "not logged live".
 
 ## Output
 
-One folder per session:
+One folder per session that did something. If a folder still ends up empty (no lane, notes,
+tokens or typed prompt), the SessionEnd hook removes it, and `session_lifecycle.py prune-empty
+[--dry-run]` clears any left over:
 
 ```
 GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/

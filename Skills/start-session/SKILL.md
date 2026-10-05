@@ -15,7 +15,7 @@ Lifecycle script (use the path from the Session tracking block if present):
 
 ```yaml
 steps:
-  - "Run: python3 <script> hook-start   # creates the folder, or reports it as resumed"
+  - "Run: python3 <script> hook-start   # prints the tracking block; the folder is created by the set below"
   - "Classify the lane per MetaRouter 'First: Classify the Mode': small_task | bug_fix | investigation | feature | other"
   - "Classify the work type (below). If there is no request yet, record only the name and classify on the first request."
   - "Run: python3 <script> set --name \"<name>\" --lane <lane> --work-type <work_type> --title \"<short title>\""
