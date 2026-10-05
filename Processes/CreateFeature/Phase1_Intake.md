@@ -17,6 +17,10 @@ outputs:
 Intake is the longest phase and often spans sessions. After each TDD section is agreed, suggest
 `/checkpoint` if the session is getting long.
 
+If the TDD is also published for review outside the repository (e.g. Confluence), load
+[[ExternalDocPass]] (`../ExternalDocPass.md`) before the first publish and run every round of
+review comments as one pass. Review round trips were the largest cost of an Intake phase.
+
 ---
 
 ## Sub-phase 1a — GDD Conversion
@@ -277,5 +281,5 @@ gate_1_summary:
   open_items:            []   # unresolved gaps from 1c
 ```
 
-**Wait for engineer confirmation before loading Phase 2.**
+**Wait for engineer confirmation, then close the phase session (index.md "One Session per Phase") — do not load Phase 2 here.**
 All `tbd_items` must have an owner before the gate is cleared — unowned TBDs block progression.
