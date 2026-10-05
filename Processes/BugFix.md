@@ -27,6 +27,11 @@ steps:
   4_gate_diagnosis:
     - "Present: root cause (or top hypothesis + confidence), the proposed fix, blast radius (callers affected), and the regression test."
     - "Wait for engineer confirmation. No code before this gate."
+  4b_fresh_session:   # offer, never force
+    - "If metrics.md shows more than ~8 turns (the Stop hook keeps it current), offer to do the fix in a fresh session: every tool call in a long session re-reads the whole diagnosis, and fix turns were the costliest of the week."
+    - "If the engineer accepts: write bugfix_handoff.md in this session's folder (format below), run /end-session for the diagnosis, then print the command and stop."
+    - "  claude \"Continue the bug fix from <path to bugfix_handoff.md>: load Processes/BugFix.md and start at step 5.\""
+    - "The new session reads the handoff, records lane bug_fix with the same title, and loads the step-5 rules. It does not re-diagnose."
   5_fix:
     - "Load rules by what the fix touches: CodingStandards always; ResourceManagementRules for subscriptions/timers/loads; MultyStepOperationsRules for async ordering."
     - "Smallest change that removes the cause. [SURG] — no drive-by refactors; list them as follow-ups instead."
@@ -41,6 +46,20 @@ steps:
     - "Ask the engineer to run the test(s) in the Unity Test Runner and the repro steps; report results as given."
   8_close:
     - "Summarise: cause · fix · test · follow-ups. Offer /end-session."
+```
+
+Handoff for a fresh fix session (step 4b), written to `<session folder>/bugfix_handoff.md`:
+
+```yaml
+bugfix_handoff:
+  ticket:          ""   # id and one-line symptom
+  root_cause:      ""   # confirmed at the gate, with file:line
+  approved_fix:    ""   # exactly what the engineer approved
+  files:           []   # files to change, with the method or line range
+  blast_radius:    []   # callers affected
+  regression_test: ""   # planned test, or why manual repro steps instead
+  systems_loaded:  []   # Systems/ entries already read, to reload rather than re-survey
+  rejected:        []   # hypotheses ruled out, with the evidence, so they are not reopened
 ```
 
 Rule for step 3: if verification reverses an earlier hypothesis, lead with the correction
