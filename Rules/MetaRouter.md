@@ -121,6 +121,7 @@ routing:
   create_new_feature:             [../Processes/CreateFeature/index.md]
   small_bounded_change:           [../Processes/SmallTask.md]
   diagnose_and_fix_bug:           [../Processes/BugFix.md]
+  meta_review_of_sessions:        [../Processes/MetaReview.md]   # review past sessions · meta-analysis · weekly retro of retros
 
   # Modes — decide this first, see "Classify the Mode" above
   investigate_or_preplan:         [./InvestigationMode.md]

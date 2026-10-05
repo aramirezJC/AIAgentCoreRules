@@ -128,7 +128,24 @@ to PDF if needed), with:
 *Likely applied* is inferred from commits made after the session, so check the evidence column.
 The more consistently retros record an `## Applied` section, the more exact the report is.
 
-**Source files:** [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]]
+## Meta review
+
+The report above is the quantitative half. A **meta review** ([[Processes/MetaReview|MetaReview process]])
+wraps it in a repeatable review of one time window, by default since the previous review:
+
+1. Sort the window's session folders into real sessions, stubs and uncompiled sessions, and
+   compile the uncompiled ones (`session_lifecycle.py compile --session-id <id>`).
+2. Run the report, then read every retro in the window for router misses, skipped steps,
+   unlogged corrections, discovery gaps and cost.
+3. Keep only findings that recur in two or more sessions, or the window's largest cost driver.
+4. Check every proposal against the current file contents, plus the previous review's open
+   tickets. Proposals the engineer skipped are never raised again.
+5. Check the metadata and tools repos for uncommitted or unpushed work.
+6. Write `GitIgnoreReports/MetaReviews/<date>_MetaReview.html` (fixed layout) and
+   `<date>_Tickets.md`, which lists tickets by priority: P1 for work or data at risk, P2 for
+   recurring misses or the top cost driver, P3 for polish. Then work through the tickets one at a time.
+
+**Source files:** [[Processes/MetaReview|MetaReview process]] · [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]]
 
 ---
 
