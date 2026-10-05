@@ -15,6 +15,28 @@ retrospective reads all of them, using the `sessions` list in the progress file.
 
 ---
 
+## One Session per Phase
+
+Each phase runs in its own session, so context stays small (a long session re-reads all of
+it on every turn), metrics show what each phase cost, and each phase can start on its
+`recommended_model`. A phase may take several sittings: end each one with `/checkpoint`, and
+the next sitting is another session for the same phase.
+
+```yaml
+on_gate_confirmed:   # in this order, then stop
+  1_record:  "Write the phase_handoff block and update the progress file (on_gate below)."
+  2_close:   "Run /end-session. Mid-feature it writes a short phase retro (see end-session depth)."
+  3_handoff: "Print the command for the next phase's fresh session and stop. Do NOT load the next phase file here."
+handoff_command: |
+  Next: Phase <N> — <Name>. In a new session from the project root:
+    claude --model <next phase's recommended_model> "/resume <FeatureName>"
+exceptions:
+  - "The engineer asks to continue in this session: continue, and record the reason in the gate block's open_items."
+  - "Phase 8 runs in the session that confirms Gate 7 only if the engineer asks; otherwise it is its own session too."
+```
+
+---
+
 ## Progress File — resuming across sessions
 
 Chat context does not survive a session end or a summary. The progress file does.
@@ -28,7 +50,7 @@ progress_file:
   on_resume:  "/resume <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
 ```
 
-Write the gate block **before** loading the next phase file. A gate that is confirmed in chat
+Write the gate block **before** closing the session. A gate that is confirmed in chat
 but not written to the progress file is lost to the next session.
 
 ---

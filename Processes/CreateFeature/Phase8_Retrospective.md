@@ -91,7 +91,8 @@ Before producing the report, compile the session metrics.
 steps:
   - Run the lifecycle script `compile --final` for this session (done by /end-session).
   - Read metrics.md of this session AND of every session folder listed under `sessions` in [FeatureName]_Progress.md. If the file or list is missing, fall back to folders whose name carries the `feature` lane and this feature's title.
-  - Sum tokens, inaccuracies and iterations across those sessions.
+  - Sum tokens, inaccuracies and iterations across those sessions, and report them per phase as well (one session per phase; several sittings of one phase add up).
+  - Read each earlier phase session's retro.md (the short phase retros). Their Corrections, Discovery gaps and Proposed changes feed Steps 1–5; carry over proposals not yet applied instead of re-deriving them.
   - Use each session's router trace to answer Steps 1 and 5 (what was loaded late, what was never loaded).
   - List the 5 heaviest operations (from the token reports' highest-cost turns, else best estimate).
   - Calculate quality rating per phase: smooth | required_correction | required_redesign.

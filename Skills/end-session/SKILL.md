@@ -31,7 +31,7 @@ rows marked `Read` are certain.
 
 ```yaml
 depth:
-  feature:        "Load ../Processes/CreateFeature/Phase8_Retrospective.md and follow it. Its report is retro.md. Its benchmarks come from metrics.md — do not ask for /cost."
+  feature:        "Only when the progress file's current_phase is 8_retrospective: load ../Processes/CreateFeature/Phase8_Retrospective.md and follow it; its report is retro.md and its benchmarks come from metrics.md — do not ask for /cost. Any earlier phase: a short retro titled '<FeatureName> — Phase <N> <Name>', with the phase file as the Router check's expected load. Phase 8 reads these."
   small_task:     short
   bug_fix:        short
   investigation:  short

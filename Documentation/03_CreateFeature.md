@@ -113,7 +113,22 @@ phase_handoff:
   open_items:        []   # deferred or unresolved
 ```
 
-This block is appended to the feature's progress file **before** the next phase is loaded.
+This block is appended to the feature's progress file **before** the session closes.
+
+## One session per phase
+
+Each phase runs in its own session. Context stays small, metrics show what each phase cost,
+and each phase can start on its recommended model. When the engineer confirms a gate, the agent:
+
+1. writes the handoff block and advances the progress file,
+2. runs `/end-session`, which writes a short retro for the phase (the full retrospective is
+   Phase 8, which reads all of them),
+3. prints the command for the next phase and stops, for example
+   `claude --model haiku "/resume MyFeature"`.
+
+A phase that takes several sittings ends each one with `/checkpoint`; the next sitting is a new
+session for the same phase. To keep going in the same session anyway, say so at the gate, and
+the reason is recorded in the gate block.
 
 ## Working across sessions — checkpoint and resume
 
@@ -123,7 +138,7 @@ being summarised. The progress file (`<FeatureName>_Progress.md`) does.
 | Event | What is written to the progress file |
 |---|---|
 | `/feature <Name>` | File created from the template; the session is added to its session list |
-| Every gate | The handoff block is appended; the current phase advances; the checkpoint is cleared |
+| Every gate | The handoff block is appended; the current phase advances; the checkpoint is cleared; the session closes with a phase retro |
 | Each approved file in Phase 4 | The file is added to the checkpoint's `done` list and `next` is set |
 | `/checkpoint` | The checkpoint is replaced: done, in flight, next action, pending decisions, notes |
 | `/end-session` mid-phase | `/checkpoint` runs automatically first |
