@@ -134,6 +134,22 @@ phase_handoff:
 
 ---
 
+## Router check (used by /end-session phase retros)
+
+```yaml
+expected_loads:
+  - "this index and the phase file for the session's phase"
+  - "the rule files the phase names (Phase 4 re-reads CodingStandards and ArchitecturalPrinciples)"
+expected_tools:
+  4_implementation: ["/audit per file, before it is presented", typecheck.py]
+  5_unit_tests:     ["/audit on test files", typecheck.py]
+  6_integration:    ["/audit on changed files", typecheck.py]
+  7_verification:   ["/audit over all created and modified files"]
+missed_audit: "A file written in phases 4–6 without an /audit run, or a Gate 7 without the full run, is a router miss."
+```
+
+---
+
 ## Templates
 
 ```yaml

@@ -8,6 +8,11 @@ Goal: Final rules compliance pass across all files before declaring the feature 
 
 ## Verification Checklist
 
+Run `/audit` over every file the feature created or modified (production, tests and tooling;
+generated files excluded). It fans out to subagents above 5 files. Its report is the evidence
+for the checklist below, so do not tick an item from memory. Fix or report each violation
+before the gate.
+
 ```yaml
 final_verification:
   coding_standards:
@@ -36,7 +41,8 @@ completion_summary:
   built:          ""
   files_created:  []
   files_modified: []
-  tools_run:      []
+  tools_run:      []   # must include the full /audit run and typecheck.py
+  audit_result:   ""   # files audited · violations fixed · violations deferred (with follow-up)
   deferred:       []
 ```
 

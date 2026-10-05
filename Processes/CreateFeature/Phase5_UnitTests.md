@@ -119,5 +119,8 @@ coverage_summary:
 
 ## Gate 5 — Tests Passing
 
+Before the gate: run `/audit` on every test file written this phase and fix or report each
+violation. Test code follows the same rules as production code.
+
 All tests passing. `failing_tests` must be empty. Engineer confirms coverage is acceptable.
 Any skipped TBD cases must be logged as follow-up tasks before the gate clears.

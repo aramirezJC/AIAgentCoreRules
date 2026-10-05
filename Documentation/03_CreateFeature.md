@@ -73,8 +73,8 @@ diagram. The engineer reviews and edits both before approving.
 
 Order: interfaces → concrete classes → integration glue. Before the first file the agent
 re-reads the rule files, because Phase 2 may be several sessions ago. Every file runs through
-`/audit` and is presented to the engineer; the next file is not started until the current one
-is acknowledged.
+`/audit` **before** it is presented to the engineer (required, recorded as `(audited)` in the
+checkpoint); the next file is not started until the current one is acknowledged.
 
 ### Phase 5 — Unit Tests
 
@@ -85,19 +85,25 @@ Three categories, each traced to a document from an earlier phase — no specula
 - one boundary test per edge case.
 
 The agent runs the host project's compile check (`typecheck.py`); the engineer runs the tests in the Unity Test Runner and
-reports the result. The agent never claims a pass it has not seen.
+reports the result. The agent never claims a pass it has not seen. Test files are run through
+`/audit` before the gate.
 
 ### Phase 6 — Integration
 
 Registration in factories, registries and manifests, and running code generators. Editor-only
 generators (for example a JSON parser generator window) are listed with exact menu paths for
-the engineer to run.
+the engineer to run. Changed C# files (not generated ones) are run through `/audit` before the
+gate.
 
 ### Phase 7 — Verification
 
-Final check of naming, file organization, accessibility, interface boundaries, resource
-symmetry and tests, closing with a completion summary of what was built, files created and
-modified, tools run and anything deferred.
+One full `/audit` over every file the feature created or modified. Its report is the evidence
+for the final check of naming, file organization, accessibility, interface boundaries, resource
+symmetry and tests. It closes with a completion summary of what was built, the files created and
+modified, the tools run, the audit result and anything deferred.
+
+A phase retro flags any file from phases 4–6 written without an `/audit` run, or a Gate 7
+without the full run.
 
 ### Phase 8 — Retrospective
 

@@ -41,7 +41,9 @@ steps:
     - "Before writing: list files to create/modify, one line each. Wait for OK only if more than 2 files or any public contract changes."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
-    - "Run /audit on the changed files."
+  5b_audit:   # checkpoint — do not start step 6 until it has run
+    - "Run /audit on every changed file, including debug tooling and tests. Fix or report each violation."
+    - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
   6_verify:
     - "Run typecheck.py. Report its result verbatim if it fails."
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
@@ -56,5 +58,5 @@ expected_loads:
   - "Systems/<owning system>.md (if it exists)"
   - "Rules/CodingStandards.md"
   - "plus each 3_rules row the change matched"
-expected_tools: [codeindex.py, typecheck.py]
+expected_tools: [codeindex.py, typecheck.py, /audit]
 ```
