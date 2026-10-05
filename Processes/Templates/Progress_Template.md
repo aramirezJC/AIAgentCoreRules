@@ -10,6 +10,9 @@ status:         "in_progress"       # in_progress | at_gate | complete
 updated_at:     ""                  # ISO timestamp of the last write
 artifacts:      []                  # files in this folder the next phase needs, e.g. [FeatureName]_TDD.md
 sessions:       []                  # session folder names that worked on this feature — Phase 8 reads these
+sources_of_truth: []                # documents edited outside this folder, with the version last read, e.g.
+                                    #   - {kind: confluence, id: "4787830785", title: "<Feature> TDD", version: 14}
+                                    # /resume compares versions; update the version at every /checkpoint and gate
 ```
 
 ---

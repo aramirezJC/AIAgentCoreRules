@@ -18,6 +18,7 @@ Subcommands:
     compile      Refresh token report, router trace and metrics.md.
     open         Open metrics.md and retro.md in the default viewer.
     path         Print the session folder.
+    features     List CreateFeature features that are not complete (/active-features).
 
 Hooks must never break a session: hook-* subcommands always exit 0.
 """
@@ -38,6 +39,10 @@ WORK_TYPES = ["bug_fix", "small_feature", "feature", "question", "other"]
 LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
                   "feature": "feature", "other": "other"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
+# CreateFeature working folders, relative to the project root (Processes/CreateFeature/index.md
+# working_folder). Override with SESSION_FEATURES_ROOT or --features-root.
+DEFAULT_FEATURES_DIR = os.path.join("Assets", "GitIgnoreAssets", "Features")
+CREATE_FEATURE_INDEX = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "..", "Processes", "CreateFeature", "index.md")
 # hook-stop recompiles at most this often; the Stop hook fires after every reply.
 STOP_COMPILE_INTERVAL_SECONDS = 120
 # Who logged a note. Entries written before sources existed have none and count as engineer.
@@ -331,6 +336,11 @@ def render(folder, state, project_dir):
         "| Lane | %s |" % (state.get("lane") or "**not set**"),
         "| Work type | %s |" % ((state["work_type"] + (" (from lane)" if state.get("work_type_source") == "lane" else ""))
                                 if state.get("work_type") else "**not set**"),
+    ]
+    if state.get("feature"):
+        lines += ["| Feature | %s |" % state["feature"],
+                  "| Phase | %s |" % (phase_label(state["phase"]) if state.get("phase") else "**not set**")]
+    lines += [
         "| Started | %s |" % state["started_at"],
         "| Tracking since | %s |" % state.get("tracking_started_at", state["started_at"]),
         "| Ended | %s |" % (state.get("ended_at") or "in progress"),
@@ -448,7 +458,7 @@ def cmd_hook_start(args):
             "  python3 \"%s\" note --session-id %s --kind inaccuracy --source agent \"<what was wrong>\""
             % (SCRIPT_PATH, session_id),
             "Close the session with /end-session (metrics + retrospective).",
-        ]))
+        ] + feature_hint(os.getcwd(), state)))
         hook_log(args, "start", hook, ("resumed " if resumed else "created ") + folder)
     except Exception as error:  # a hook must never block the session
         print("Session tracking failed to start: %s" % error)
@@ -473,6 +483,101 @@ def cmd_hook_end(args):
     except Exception as error:
         hook_log(args, "end", hook, "ERROR %s" % error)
     return 0
+
+
+# ---------------------------------------------------------------- features
+
+def phase_label(key):
+    """'2_discovery' -> 'Phase 2 — Discovery'."""
+    number, _, name = (key or "").partition("_")
+    return "Phase %s — %s" % (number, name.replace("_", " ").title()) if name else (key or "unknown phase")
+
+
+def phase_models():
+    """phase key -> recommended_model, read from CreateFeature/index.md."""
+    models, current = {}, None
+    try:
+        with open(CREATE_FEATURE_INDEX) as handle:
+            for line in handle:
+                key = re.match(r"^  (\d+_\w+):\s*$", line)
+                if key:
+                    current = key.group(1)
+                model = re.match(r"^\s+recommended_model:\s*(\w+)", line)
+                if model and current:
+                    models[current] = model.group(1)
+    except OSError:
+        pass
+    return models
+
+
+def yaml_value(text, field):
+    match = re.search(r"^\s*%s:\s*\"([^\"]*)\"" % field, text, re.MULTILINE)
+    return match.group(1) if match else ""
+
+
+def active_features(project_dir, features_root=None):
+    """Every CreateFeature progress file whose status is not complete, newest first."""
+    root = features_root or os.environ.get("SESSION_FEATURES_ROOT") or os.path.join(project_dir, DEFAULT_FEATURES_DIR)
+    models = phase_models()
+    found = []
+    if not os.path.isdir(root):
+        return found
+    for name in sorted(os.listdir(root)):
+        path = os.path.join(root, name, "%s_Progress.md" % name)
+        if not os.path.isfile(path):
+            continue
+        with open(path, errors="replace") as handle:
+            text = handle.read()
+        status = yaml_value(text, "status") or "unknown"
+        if status == "complete":
+            continue
+        phase = yaml_value(text, "current_phase")
+        found.append({"feature": yaml_value(text, "feature") or name, "phase": phase, "phase_label": phase_label(phase),
+                      "status": status, "updated_at": yaml_value(text, "updated_at"),
+                      "in_flight": yaml_value(text, "in_flight"), "next": yaml_value(text, "next"),
+                      "model": models.get(phase), "progress_file": path})
+    return sorted(found, key=lambda f: f["updated_at"], reverse=True)
+
+
+def resume_command(feature):
+    model = " --model %s" % feature["model"] if feature.get("model") else ""
+    return "claude%s \"/resume %s\"" % (model, feature["feature"])
+
+
+def cmd_features(args):
+    features = active_features(os.getcwd(), args.features_root)
+    if args.json:
+        print(json.dumps(features, indent=2))
+        return 0
+    if not features:
+        print("No features in progress.")
+        return 0
+    print("In-progress features (%d):" % len(features))
+    for f in features:
+        print("- %s · %s · %s · updated %s" % (f["feature"], f["phase_label"], f["status"], f["updated_at"][:10] or "?"))
+        if f["in_flight"]:
+            print("  in flight: %s" % f["in_flight"])
+        if f["next"]:
+            print("  next: %s" % f["next"])
+        print("  resume: %s" % resume_command(f))
+    return 0
+
+
+def feature_hint(project_dir, state):
+    """Start-context lines naming in-progress features, so a new session can offer /resume."""
+    if state.get("feature"):
+        return []   # this session already belongs to a feature
+    try:
+        features = active_features(project_dir)
+    except Exception:
+        return []
+    if not features:
+        return []
+    lines = ["", "In-progress features (one session per phase; /active-features for details):"]
+    lines += ["  - %s · %s · next: %s" % (f["feature"], f["phase_label"], (f["next"] or "see progress file")[:120])
+              for f in features[:5]]
+    lines.append("If the engineer's first message is not about something else, offer /resume <FeatureName>.")
+    return lines
 
 
 def cmd_hook_stop(args):
@@ -519,6 +624,13 @@ def cmd_set(args):
         set_work_type(state, LANE_WORK_TYPE[args.lane], "lane")
     if args.name:
         state["name"] = args.name
+    if args.feature:
+        state["feature"] = args.feature
+    if args.phase:
+        # One session per phase; a phase change mid-session stays auditable like a lane change.
+        if state.get("phase") and state["phase"] != args.phase:
+            state.setdefault("phase_history", []).append({"at": now_iso(), "from": state["phase"], "to": args.phase})
+        state["phase"] = args.phase
     if args.title:
         state["title"] = args.title
     save_state(folder, state)
@@ -572,6 +684,10 @@ def main():
     sub.add_parser("hook-start", help="also safe to run by hand (/start-session)").set_defaults(func=cmd_hook_start)
     sub.add_parser("hook-end").set_defaults(func=cmd_hook_end)
     sub.add_parser("hook-stop").set_defaults(func=cmd_hook_stop)
+    features = sub.add_parser("features", help="list CreateFeature features that are not complete (/active-features)")
+    features.add_argument("--features-root", help="default <cwd>/%s, or $SESSION_FEATURES_ROOT" % DEFAULT_FEATURES_DIR)
+    features.add_argument("--json", action="store_true")
+    features.set_defaults(func=cmd_features)
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path)):
         command = sub.add_parser(name)
@@ -583,6 +699,8 @@ def main():
             command.add_argument("--work-type", choices=WORK_TYPES,
                                  help="defaults to the lane's work type until set explicitly")
             command.add_argument("--title")
+            command.add_argument("--feature", help="CreateFeature name this session works on (set by /feature, /resume)")
+            command.add_argument("--phase", help="CreateFeature phase key, e.g. 2_discovery")
         if name == "note":
             command.add_argument("--kind", choices=["inaccuracy", "iteration"], required=True)
             command.add_argument("--source", choices=NOTE_SOURCES, default="engineer",

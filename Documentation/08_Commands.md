@@ -19,7 +19,8 @@ commands — see the host project's documentation.
 |---|---|
 | `/feature <Name> [GDD path]` | Starts the 8-phase Create Feature process. If the feature already has a progress file, offers `/resume` instead. |
 | `/checkpoint [Name] [note]` | Saves where work stopped inside the current phase to `<Name>_Progress.md`: done, in flight, next action, pending decisions, notes. |
-| `/resume [Name]` | Picks a feature up in a fresh session: reloads the current phase, its rules and documents, reports drift, and waits for confirmation. With no name, lists unfinished features. |
+| `/resume [Name]` | Picks a feature up in a fresh session: tags the session with the feature and phase, reloads the current phase, its rules and documents, reports drift (including a newer Confluence version), and waits for confirmation. With no name, lists unfinished features. |
+| `/active-features` | Lists every feature that is not complete: phase, status, last update, next step, and the command that resumes it with the phase's recommended model. New sessions show a short version of this list at start. |
 
 ## Analysis and review
 
@@ -34,7 +35,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 

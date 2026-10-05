@@ -459,6 +459,9 @@ def load(sessions_dir, repos):
         session = {"folder": os.path.basename(folder), "id": state.get("session_id", "")[:8],
                    "lane": state.get("lane") or "unset",
                    "work_type": state.get("work_type") or LANE_WORK_TYPE.get(state.get("lane"), "unset"),
+                   # Set by /feature and /resume. Older feature-lane sessions only carry the title.
+                   "feature": state.get("feature") or (state.get("title") if state.get("lane") == "feature" else None),
+                   "phase": state.get("phase"),
                    "title": state.get("name") or state.get("title") or "",
                    "started": state.get("started_at") or "", "ended": state.get("ended_at") or "",
                    "end_session_run": bool(state.get("end_session_run")),
@@ -523,7 +526,10 @@ def analyse(sessions):
         cost = (s["retro"] or {}).get("cost", {})
         for t in s["turns"]:
             judged = cost.get(t["turn"], {"verdict": "no verdict", "note": ""})
-            turns.append(dict(t, session=s["id"], lane=s["lane"], work_type=s["work_type"], title=s["title"], date=s["started"][:10], **judged))
+            turns.append(dict(t, session=s["id"], lane=s["lane"], work_type=s["work_type"], title=s["title"], date=s["started"][:10],
+                              feature=s["feature"],
+                              feature_phase=("%s · %s" % (s["feature"], s["phase"] or "phase not recorded")) if s["feature"] else None,
+                              **judged))
     retros = [s for s in sessions if s["retro"]]
 
     heat, kinds = {}, {}
@@ -574,6 +580,8 @@ def worst(sessions, turns):
     def group(key):
         out = {}
         for t in turns:
+            if key in ("feature", "feature_phase") and not t[key]:
+                continue   # only sessions that belong to a feature
             g = out.setdefault(t[key] or "unknown", {"name": t[key] or "unknown", "turns": 0, "fresh": 0, "total": 0, "max": 0, "tools": 0})
             g["turns"] += 1
             g["fresh"] += t["fresh"]
@@ -588,6 +596,7 @@ def worst(sessions, turns):
 
     return {"sessions": per_session, "categories": group("category"), "lanes": group("lane"),
             "work_types": group("work_type"),
+            "features": group("feature"), "feature_phases": group("feature_phase"),
             "avoidable": sum(t["fresh"] for t in turns if t["verdict"] in AVOIDABLE),
             "judged": sum(1 for t in turns if t["verdict"] != "no verdict")}
 
@@ -714,6 +723,8 @@ ol li{margin-bottom:6px}.note{font-size:12px}
 <h3>By turn category</h3><div id="worstcats"></div>
 <h3>By lane</h3><div id="worstlanes"></div>
 <h3>By work type</h3><div id="worstworktypes"></div>
+<h3>By feature</h3><div id="worstfeatures"></div>
+<h3>By feature phase</h3><div id="worstfeaturephases"></div>
 </section>
 
 <section class="panel"><h2>3 · What saved us</h2>
@@ -783,6 +794,8 @@ function worst(metric){
   document.getElementById("worstcats").innerHTML=grp(R.worst.categories);
   document.getElementById("worstlanes").innerHTML=grp(R.worst.lanes);
   document.getElementById("worstworktypes").innerHTML=grp(R.worst.work_types);
+  document.getElementById("worstfeatures").innerHTML=R.worst.features.length?grp(R.worst.features):'<p class="muted">No feature sessions.</p>';
+  document.getElementById("worstfeaturephases").innerHTML=R.worst.feature_phases.length?grp(R.worst.feature_phases):'<p class="muted">No feature sessions.</p>';
 }
 document.querySelectorAll("button[data-m]").forEach(b=>b.onclick=()=>{document.querySelectorAll("button[data-m]").forEach(x=>x.classList.toggle("on",x===b));bell(b.dataset.m);worst(b.dataset.m)});
 bell("fresh");worst("fresh");

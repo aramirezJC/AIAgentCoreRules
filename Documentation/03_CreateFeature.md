@@ -152,8 +152,15 @@ To continue in a new session, run **`/resume <FeatureName>`**. The agent:
 4. presents a summary — phase, gates passed, what is done, what is next, pending decisions —
    and **waits for confirmation** before continuing.
 
-`/resume` with no name lists every feature that is not complete. Running `/feature` on a
-feature that already has a progress file offers `/resume` instead of restarting Phase 1.
+`/resume` with no name lists every feature that is not complete, as does `/active-features`,
+which also prints each feature's resume command. A new session that isn't already working on a
+feature shows the same list at start and offers to resume. Running `/feature` on a feature that
+already has a progress file offers `/resume` instead of restarting Phase 1.
+
+The session is tagged with the feature and phase, so the meta-analysis report can show cost
+**per feature** and **per phase**. Documents edited outside the feature folder, such as the
+Confluence TDD, are listed under `sources_of_truth` in the progress file with the version last
+read. `/resume` reports a newer version as drift.
 
 Why not just reopen the old conversation? Reopening brings back the whole previous context,
 including rule files that may already have been summarised away. A resume starts clean and

@@ -14,9 +14,10 @@ MetaRouter.md). Load files with Read, not shell `cat`, so the router trace recor
 ```yaml
 steps:
   - "If $ARGUMENTS names a feature: progress file is <working_folder>/<FeatureName>_Progress.md (working_folder from Processes/CreateFeature/index.md)."
-  - "If no name was given: list every *_Progress.md under the Features folder whose status is not complete, with current_phase and updated_at, ask which one, and stop."
+  - "If no name was given: run `python3 <lifecycle script> features` (same list as /active-features), ask which one, and stop."
   - "If the file does not exist: say so and offer /feature <FeatureName> to start it. Stop."
-  - "Run: python3 <lifecycle script> set --lane feature --title \"<FeatureName>\""
+  - "Run: python3 <lifecycle script> set --lane feature --title \"<FeatureName>\" --feature \"<FeatureName>\" --phase <current_phase>"
+  - "This session is for current_phase only (one session per phase, see CreateFeature/index.md). If the session already holds work for another feature or phase, suggest starting a fresh one."
   - "Add the current session folder name to `sessions` in the progress file."
 ```
 
@@ -30,6 +31,7 @@ reload:
   - "Read: the rule files that phase depends on — for Phase 2 and later, the load_rules list in Phase2_Discovery.md, using [FeatureName]_Discovery.md to decide the conditional ones."
   - "Read: the artifacts the current phase works from (e.g. TDD and TaskList for Phase 1–3, Architecture and Discovery for Phase 4, UseCases for Phase 5). Skip ones it does not use."
   - "Checkpoint lists files in `done`: confirm they exist on disk (one ls / codeindex query). Do not re-read their bodies unless the next step needs them."
+  - "For each entry in `sources_of_truth` (e.g. the Confluence TDD), fetch only its current version number. A version newer than the recorded one is drift: say what changed before continuing, and read the new version if the current phase works from it."
 ```
 
 ## Step 3 — Restate and confirm
@@ -45,7 +47,7 @@ resume_summary:
   in_flight:         ""
   next:              ""
   pending_decisions: []
-  drift:             []      # anything on disk that disagrees with the progress file (missing file, extra file, git changes since updated_at)
+  drift:             []      # anything that disagrees with the progress file: missing or extra files, git changes since updated_at, a source_of_truth at a newer version
 ```
 
 **Do not continue until the engineer confirms.** If they correct the summary, update the

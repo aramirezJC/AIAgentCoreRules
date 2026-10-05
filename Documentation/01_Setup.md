@@ -60,7 +60,7 @@ are written to `GitIgnoreReports/Sessions/`; override with `SESSION_REPORTS_ROOT
 
 ```bash
 mkdir -p .claude/skills && cd .claude/skills
-for s in audit checkpoint discover end-session feature inaccuracy iteration resume start-session token-usage-reports; do
+for s in active-features audit checkpoint discover end-session feature inaccuracy iteration resume start-session token-usage-reports; do
   ln -s ../../GitIgnoredExternals/AIAgentCoreRules/Skills/$s $s
 done
 ```
