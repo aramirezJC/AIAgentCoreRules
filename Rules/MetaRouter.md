@@ -168,6 +168,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /active-features: "list features not yet complete: phase, status, next step, resume command"
   /discover <area>: "subagent survey, returns a compact map"
   /audit [files]:  "rules compliance check, report only"
+  /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"
   /uses <Type>:    "who uses a type / calls its members (host project tool)"
 ```
 

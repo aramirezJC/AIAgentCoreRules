@@ -25,7 +25,9 @@ writes a Confluence-ready copy to `GitIgnoreConfluenceExport/`.
 
 ## Skills
 
-Install into a host project by symlinking each folder into `<project>/.claude/skills/`.
+Install into a host project with `python3 Tools/setup/install.py` (run from the project; see
+`Tools/setup/README.md`). It links each folder into `<project>/.claude/skills/`, merges the
+session hooks and worktree settings into `.claude/settings.json`, and is safe to re-run.
 
 - `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
 - `feature` — enters `Processes/CreateFeature`.
@@ -33,6 +35,8 @@ Install into a host project by symlinking each folder into `<project>/.claude/sk
   `<FeatureName>_Progress.md` in the feature's working folder.
 - `discover` — subagent survey that returns a compact map.
 - `audit` — rules compliance report for C# files.
+- `land-worktree` — merge an agent worktree's branch into the current branch, test, then
+  remove the worktree and branch (or roll back).
 - `Skills/token-usage-reports/` packages the portable session-report workflow
   for sanitized Codex, Claude Code, Gemini CLI, and Junie token reports. It
   delegates to `Tools/session-support/` so report parsing has one implementation
