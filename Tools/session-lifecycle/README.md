@@ -9,7 +9,8 @@ trace (which rule and process files were loaded, in order, read from the session
 <project>/GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   # lane and name once set
   session.json   state
   metrics.md     rendered report
-  retro.md       written by /end-session
+  retro.md       written by /end-session; "## Applied" tracks each proposal's status
+  retro.html     rendered from retro.md by retro_page.py (`retro`, `open`)
   tokens/        session-support per-session token report
 ```
 
@@ -59,7 +60,21 @@ python3 session_lifecycle.py note --kind inaccuracy --source agent "Diffed branc
 python3 session_lifecycle.py compile [--final]
 python3 session_lifecycle.py open
 python3 session_lifecycle.py path
+python3 session_lifecycle.py retro [--folder <id8>] [--open]
+python3 session_lifecycle.py retro [--folder <id8>] --mark 2 --status applied --note "<file> — <what changed>"
 ```
+
+`retro` renders `retro.html` (a standalone page, no external assets, light and dark) from
+`retro.md` and prints each proposal's status. `--mark N --status applied|skipped|pending` first
+rewrites proposal N's line in the `## Applied` section, creating the section with every other
+proposal `pending` when it is missing. Without `--note`, the old note is kept only if the status
+is unchanged. The line shape is the one `session_meta_report.py` reads. `--folder` targets
+another session's retro: a path, a folder name, or a unique part of one such as the session id's
+first 8 characters, so a proposal resolved in a later session can be marked where it was raised.
+`open` re-renders the page and opens it with metrics.md.
+
+retro.md stays the source of truth. A page opened from disk cannot write back, so each open
+proposal has a button that copies its `retro --mark … --status applied` command.
 
 `note --source` records who logged the entry: `engineer` (default, the `/inaccuracy` and
 `/iteration` skills), `agent` (the agent's own self-correction) or `retro` (back-filled by

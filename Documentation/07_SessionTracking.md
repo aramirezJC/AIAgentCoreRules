@@ -50,6 +50,7 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
   session.json   state (source of truth)
   metrics.md     rendered report
   retro.md       written by /end-session
+  retro.html     the retro as a page: progress bar and a status badge per proposal
   tokens/        per-session token report
 ```
 
@@ -90,8 +91,20 @@ resume.
 | Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable |
 
 After the engineer decides on the proposals, the retro gets an `## Applied` section with one line
-per proposal (`- #N applied: …` or `- #N skipped: …`). The meta-analysis report reads it to know
-which solutions were actually implemented.
+per proposal (`- #N applied: …`, `- #N skipped: …`, or `- #N pending: …` while deferred). The
+meta-analysis report reads it to know which solutions were actually implemented.
+
+### Tracking proposals in retro.html
+
+`/end-session` opens `retro.html` next to `retro.md`: the same retro as a page, with a progress
+bar ("2 of 3 proposals resolved") and the proposals as cards right after the Outcome, each
+badged open, applied or skipped. A "Show open only" toggle hides resolved ones.
+
+Decisions are recorded with `session_lifecycle.py retro --mark <N> --status applied|skipped|pending
+--note "…"`, which updates the Applied line and re-renders the page. A proposal resolved in a later
+session is marked in its original retro with `--folder <id8>`, so the page stays current as items
+are worked through. The page cannot write to disk itself; each open card has a button that copies
+the command that marks it applied — run it, or ask Claude to.
 
 Every claim points at a trace row, a logged note or a `file:line`.
 

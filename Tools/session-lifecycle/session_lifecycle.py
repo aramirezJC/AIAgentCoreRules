@@ -6,7 +6,8 @@ One folder per session under the reports root (default: <cwd>/GitIgnoreReports/S
     <YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   (lane and name only once set)
         session.json   state (source of truth)
         metrics.md     rendered from session.json + token report + router trace
-        retro.md       written by /end-session
+        retro.md       written by /end-session; its "## Applied" section tracks each proposal
+        retro.html     rendered from retro.md (retro_page.py) — progress and per-proposal status
         tokens/        session-support per-session Markdown report
 
 Subcommands:
@@ -16,7 +17,8 @@ Subcommands:
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
-    open         Open metrics.md and retro.md in the default viewer.
+    open         Open metrics.md and retro.html (rendered from retro.md) in the default viewer.
+    retro        Render retro.html, list proposal statuses, or mark one proposal applied/skipped/pending.
     path         Print the session folder.
     features     List CreateFeature features that are not complete (/active-features).
     prune-empty  Delete session folders with nothing worth keeping (--dry-run to preview).
@@ -35,6 +37,8 @@ import re
 import shutil
 import subprocess
 import sys
+
+import retro_page
 
 SCRIPT_PATH = os.path.abspath(__file__)
 SESSION_SUPPORT = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "session-support", "session-support")
@@ -753,12 +757,60 @@ def cmd_compile(args):
 
 def cmd_open(args):
     folder, _state = resolve(args)
-    paths = [os.path.join(folder, name) for name in ("metrics.md", "retro.md")
+    if os.path.isfile(os.path.join(folder, "retro.md")):
+        retro_page.render(os.path.join(folder, "retro.md"), SCRIPT_PATH)
+    paths = [os.path.join(folder, name) for name in ("metrics.md", "retro.html")
              if os.path.isfile(os.path.join(folder, name))]
     opener = "open" if sys.platform == "darwin" else "xdg-open"
     for path in paths:
         subprocess.run([opener, path])
         print(path)
+
+
+def retro_folder(args):
+    """--folder (a path, a folder name under the reports root, or a unique part of one such as
+    the session id's first 8 characters), else the current session. Proposals are often resolved
+    in a later session, so marking must reach any session's retro."""
+    if not args.folder:
+        return resolve(args)[0]
+    if os.path.isdir(args.folder):
+        return os.path.abspath(args.folder)
+    root = reports_root(args)
+    names = sorted(name for name in os.listdir(root) if os.path.isdir(os.path.join(root, name))) \
+        if os.path.isdir(root) else []
+    if args.folder in names:
+        return os.path.join(root, args.folder)
+    matches = [name for name in names if args.folder in name]
+    if len(matches) != 1:
+        sys.exit("--folder %s matches %d session folders under %s%s" % (
+            args.folder, len(matches), root, (": " + ", ".join(matches)) if matches else ""))
+    return os.path.join(root, matches[0])
+
+
+def cmd_retro(args):
+    folder = retro_folder(args)
+    retro_path = os.path.join(folder, "retro.md")
+    if not os.path.isfile(retro_path):
+        sys.exit("No retro.md in %s — /end-session writes it." % folder)
+    if args.mark is not None:
+        if not args.status:
+            sys.exit("--mark needs --status (%s)." % "|".join(retro_page.STATUSES))
+        with open(retro_path) as handle:
+            text = handle.read()
+        try:
+            text = retro_page.mark(text, args.mark, args.status, args.note)
+        except ValueError as error:
+            sys.exit(str(error))
+        with open(retro_path, "w") as handle:
+            handle.write(text)
+    html_path = retro_page.render(retro_path, SCRIPT_PATH)
+    with open(retro_path) as handle:
+        for item in retro_page.statuses(handle.read()):
+            print("#%d %-8s %s%s" % (item["n"], item["status"], item["file"],
+                                    (" — " + item["detail"]) if item["detail"] else ""))
+    print(html_path)
+    if args.open:
+        subprocess.run(["open" if sys.platform == "darwin" else "xdg-open", html_path])
 
 
 def cmd_path(args):
@@ -781,7 +833,7 @@ def main():
     prune.add_argument("--dry-run", action="store_true")
     prune.set_defaults(func=cmd_prune_empty)
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
-                       ("open", cmd_open), ("path", cmd_path)):
+                       ("open", cmd_open), ("path", cmd_path), ("retro", cmd_retro)):
         command = sub.add_parser(name)
         command.add_argument("--session-id", help="defaults to $CLAUDE_CODE_SESSION_ID, else the newest transcript")
         command.set_defaults(func=func)
@@ -800,6 +852,14 @@ def main():
             command.add_argument("text")
         if name == "compile":
             command.add_argument("--final", action="store_true", help="mark /end-session as run")
+        if name == "retro":
+            command.add_argument("--folder", help="another session's folder: path, folder name, or a unique part "
+                                                  "such as the session id's first 8 characters")
+            command.add_argument("--mark", type=int, metavar="N", help="proposal number to update")
+            command.add_argument("--status", choices=retro_page.STATUSES)
+            command.add_argument("--note", help="Applied-line detail, e.g. '<file> — <what changed>'; "
+                                                "omitted keeps the existing note")
+            command.add_argument("--open", action="store_true", help="open retro.html afterwards")
     args = parser.parse_args()
     sys.exit(args.func(args) or 0)
 

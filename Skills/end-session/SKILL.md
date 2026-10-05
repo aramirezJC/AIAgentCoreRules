@@ -94,7 +94,7 @@ the session.
 
 ```yaml
 steps:
-  - "Run: python3 <script> open        # opens metrics.md and retro.md"
+  - "Run: python3 <script> open        # renders retro.html from retro.md, opens it and metrics.md"
   - "In chat: 3–5 lines — outcome, cost, top router finding — then the Proposed changes table."
   - "Ask which proposed changes to apply."
 ```
@@ -104,17 +104,23 @@ steps:
 Apply only the changes the engineer approves, one file at a time. Rule and index files are
 shared across sessions; an unreviewed edit there changes every future session.
 
-Once the engineer has decided, append an `## Applied` section to retro.md with one line per
-proposal, in this exact shape (the meta-analysis report reads it):
+Record every decision with the script, never by hand-editing retro.md. It writes the
+`## Applied` line the meta-analysis reads, creates the section on first use (every other proposal
+`pending`), and re-renders retro.html so the page shows the item as done:
 
-```markdown
-## Applied
-- #1 applied: <file> — <what changed>
-- #2 skipped: <reason, or "by engineer">
+```bash
+python3 <script> retro --mark 1 --status applied --note "<file> — <what changed>"
+python3 <script> retro --mark 2 --status skipped --note "<reason, or 'by engineer'>"
+python3 <script> retro --mark 3 --status pending --note "<when it will be done>"   # deferred
 ```
 
-Every proposal gets a line, including skipped ones. Write "- none proposed" when the table was
-empty.
+Every proposal ends with a line, including skipped and deferred ones. Write "- none proposed"
+under `## Applied` when the table was empty.
+
+**Resolved later.** A proposal is often done in a later session. When work in any session
+resolves a retro proposal, mark it in that retro with `--folder <id8>` (the original session id's
+first 8 characters, or its folder name): `python3 <script> retro --folder <id8> --mark <N> --status
+applied --note "..."`. `retro --folder <id8>` alone lists the proposals and their status.
 
 When an approved change edits a rule, process, skill or tool, update the matching
 `Documentation/` page in the same repository as part of the same change.
