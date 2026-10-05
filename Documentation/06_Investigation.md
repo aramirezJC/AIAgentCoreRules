@@ -27,7 +27,11 @@ is never answered with only a document.
    leads with the correction and says what changes downstream.
 5. **Cite, don't assert.** Every factual claim carries `file:line`. Negative findings ("checked
    and not used", "already persisted elsewhere") are recorded with their evidence too.
-6. **Output is a document.**
+6. **Output is a document**, with one exception. A safety or implications check of a single
+   commit, or any question whose full cited answer fits in about one screen, is answered in chat
+   (verdict first, every claim cited), ending with a one-line offer to write the document. The
+   retrospective does not count that as a miss. Feasibility studies, comparisons, refactor plans
+   and anything heading to `/feature` always get the document.
 
 ## The output document
 

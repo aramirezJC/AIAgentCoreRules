@@ -139,6 +139,17 @@ investigation_output:
 
 Write it so a different engineer — or a fresh session — can act on it without re-deriving anything.
 
+```yaml
+chat_answer_exception:
+  applies_to:
+    - "A safety or implications check of a single commit or diff ('is this change safe?')"
+    - "Any question whose complete answer, with citations, fits in about one screen"
+  do:
+    - "Answer in chat, with the same standard: verdict first, every claim cited file:line, conditions and traps called out."
+    - "End with one line offering the document, e.g. 'Want this written up as a design doc?'"
+  not_for: "Feasibility studies, comparisons, refactor plans, or anything that leads to /feature — those always get the document."
+```
+
 ---
 
 ## Token discipline
@@ -187,4 +198,5 @@ expected_loads:
   - "Rules/InvestigationMode.md"
   - "Systems/<system>.md for every system the question touched (if it exists), loaded before that system's source was read — a late load is a miss"
 expected_tools: [codeindex.py or usages.py, /discover or an Explore agent for breadth]
+expected_output: "a document under VI, unless the chat_answer_exception applied and the document was offered. That case is not a miss."
 ```
