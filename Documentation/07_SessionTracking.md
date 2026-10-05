@@ -12,6 +12,8 @@ engineer's part is logging corrections and running `/end-session`.
 | Naming (optional) | `/start-session <name>` names the session; the name goes into the folder and the metrics heading | Engineer |
 | Mode classified | The agent records the lane (feature, bug_fix, small_task, investigation, other), the work type (bug_fix, small_feature, feature, question, other) and a short title | Agent |
 | Agent makes a mistake you correct | `/inaccuracy <what was wrong>` | Engineer |
+| Agent retracts a claim, or you reject its approach | It logs the inaccuracy itself, marked `agent` | Agent |
+| A correction was never logged | `/end-session` records it from the retro's Corrections, marked `retro` | Agent |
 | You deliberately change direction | `/iteration <what changed>` | Engineer |
 | Wrap up | `/end-session` compiles metrics, writes the retrospective and opens both files | Engineer |
 | Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit | Automatic |
@@ -29,6 +31,11 @@ show which kinds of work are most expensive.
 
 An **inaccuracy** is an agent error. An **iteration** is a decision — a scope change or a new
 direction — and is not counted against the agent.
+
+Each note records who logged it: `engineer`, `agent` or `retro`. metrics.md shows the split when
+it is not all engineer, for example `3 (engineer 1 · agent 1 · retro 1)`. The meta-analysis
+treats `retro` entries as found late, so a session whose corrections were all back-filled still
+shows up as "not logged live".
 
 ## Output
 

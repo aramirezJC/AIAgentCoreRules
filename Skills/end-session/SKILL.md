@@ -57,8 +57,11 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
  loads that were not needed.>
 
 ## Corrections
-<one row per logged inaccuracy: what went wrong → root cause, one of:
- missing-rule | missing-index-entry | rule-ignored | signature-guessed | scope-misread>
+<one row per correction: every logged inaccuracy, plus every correction visible in the conversation
+ that was not logged (the engineer redirected you or rejected an approach, or you retracted a claim).
+ Each row: what went wrong → root cause, one of:
+ missing-rule | missing-index-entry | rule-ignored | signature-guessed | scope-misread
+ and how it was recorded: engineer | agent | retro (see "Back-fill" below).>
 
 ## Discovery gaps
 <anything looked up mid-task that SystemIndex / Systems/ / SystemPatterns/ should have supplied>
@@ -79,6 +82,13 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 
 Keep it evidence-based: every claim points at a trace row, a logged note, or `file:line`.
 Write "none" for an empty section rather than padding it.
+
+**Back-fill.** For each Corrections row that metrics.md does not already list, record it so
+the metrics match the retro:
+`python3 <script> note --kind inaccuracy --source retro "<what went wrong> → <root cause>"`.
+Never back-fill a row that is already logged. The `retro` source keeps back-filled entries
+apart from ones logged live, so reports can still tell whether corrections are logged during
+the session.
 
 ## Step 3 — Open and hand off
 

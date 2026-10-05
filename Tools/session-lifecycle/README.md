@@ -42,10 +42,15 @@ Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 ```bash
 python3 session_lifecycle.py set --name "HUD crash" --lane bug_fix --work-type bug_fix --title "Crash on HUD open"
 python3 session_lifecycle.py note --kind inaccuracy "Guessed PrizeManager signature"
+python3 session_lifecycle.py note --kind inaccuracy --source agent "Diffed branch tips without the merge-base"
 python3 session_lifecycle.py compile [--final]
 python3 session_lifecycle.py open
 python3 session_lifecycle.py path
 ```
+
+`note --source` records who logged the entry: `engineer` (default, the `/inaccuracy` and
+`/iteration` skills), `agent` (the agent's own self-correction) or `retro` (back-filled by
+`/end-session` from the retro's Corrections). Older entries without a source count as `engineer`.
 
 `set --lane` on a session that already has a different lane appends `{at, from, to}` to
 `lane_history` in session.json; metrics.md lists it under *Lane changes*.

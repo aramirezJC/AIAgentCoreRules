@@ -37,6 +37,8 @@ WORK_TYPES = ["bug_fix", "small_feature", "feature", "question", "other"]
 LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
                   "feature": "feature", "other": "other"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
+# Who logged a note. Entries written before sources existed have none and count as engineer.
+NOTE_SOURCES = ["engineer", "agent", "retro"]
 
 
 def now_iso():
@@ -302,6 +304,16 @@ def token_report(folder, state):
 
 # ---------------------------------------------------------------- render
 
+def count_by_source(items):
+    """'3' when every note came from the engineer, else '3 (engineer 1 · agent 1 · retro 1)'."""
+    counts = {source: 0 for source in NOTE_SOURCES}
+    for item in items:
+        counts[item.get("source", "engineer")] = counts.get(item.get("source", "engineer"), 0) + 1
+    if counts["engineer"] == len(items):
+        return str(len(items))
+    return "%d (%s)" % (len(items), " · ".join("%s %d" % (s, n) for s, n in counts.items() if n))
+
+
 def render(folder, state, project_dir):
     imports, loads, tools = router_trace(state, project_dir)
     tokens = state.get("tokens") or {}
@@ -320,8 +332,8 @@ def render(folder, state, project_dir):
         "| Tracking since | %s |" % state.get("tracking_started_at", state["started_at"]),
         "| Ended | %s |" % (state.get("ended_at") or "in progress"),
         "| /end-session run | %s |" % ("yes" if state.get("end_session_run") else "no"),
-        "| Inaccuracies | %d |" % len(state["inaccuracies"]),
-        "| Iterations | %d |" % len(state["iterations"]),
+        "| Inaccuracies | %s |" % count_by_source(state["inaccuracies"]),
+        "| Iterations | %s |" % count_by_source(state["iterations"]),
     ]
     if tokens.get("available"):
         lines += ["| Total tokens | %s |" % "{:,}".format(tokens["total_tokens"] or 0),
@@ -332,7 +344,9 @@ def render(folder, state, project_dir):
         lines.append("| Tokens | unavailable (%s) |" % tokens.get("reason", "not compiled yet"))
     for kind in ("inaccuracies", "iterations"):
         lines += ["", "## %s" % kind.capitalize(), ""]
-        lines += ["- `%s` %s" % (item["at"][11:19], item["text"]) for item in state[kind]] or ["- none"]
+        lines += ["- `%s` %s%s" % (item["at"][11:19], item["text"],
+                                   "" if item.get("source", "engineer") == "engineer" else " _(%s)_" % item["source"])
+                  for item in state[kind]] or ["- none"]
     lines += ["", "## Lane changes", ""]
     lines += ["- `%s` %s → %s" % (item["at"][11:19], item["from"], item["to"])
               for item in state.get("lane_history", [])] or ["- none"]
@@ -425,7 +439,10 @@ def cmd_hook_start(args):
             "  python3 \"%s\" set --session-id %s --lane <%s> --work-type <%s> --title \"<short title>\""
             % (SCRIPT_PATH, session_id, "|".join(LANES), "|".join(WORK_TYPES)),
             "If the engineer named the session (/start-session <name>), also pass --name \"<name>\".",
-            "Log agent corrections with /inaccuracy and deliberate direction changes with /iteration.",
+            "The engineer logs corrections with /inaccuracy and direction changes with /iteration.",
+            "When you retract a claim or the engineer rejects your approach, log it yourself at once:",
+            "  python3 \"%s\" note --session-id %s --kind inaccuracy --source agent \"<what was wrong>\""
+            % (SCRIPT_PATH, session_id),
             "Close the session with /end-session (metrics + retrospective).",
         ]))
         hook_log(args, "start", hook, ("resumed " if resumed else "created ") + folder)
@@ -489,7 +506,9 @@ def cmd_set(args):
 def cmd_note(args):
     folder, state = resolve(args)
     key = "inaccuracies" if args.kind == "inaccuracy" else "iterations"
-    state[key].append({"at": now_iso(), "text": args.text})
+    # source: engineer (/inaccuracy, /iteration), agent (self-corrected live), or retro
+    # (found by /end-session and not logged live). Lets reports tell live logging apart.
+    state[key].append({"at": now_iso(), "text": args.text, "source": args.source})
     save_state(folder, state)
     render(folder, state, state.get("project_dir") or os.getcwd())
     print("%s #%d logged in %s" % (args.kind, len(state[key]), os.path.join(folder, "metrics.md")))
@@ -538,6 +557,8 @@ def main():
             command.add_argument("--title")
         if name == "note":
             command.add_argument("--kind", choices=["inaccuracy", "iteration"], required=True)
+            command.add_argument("--source", choices=NOTE_SOURCES, default="engineer",
+                                 help="who logged it: engineer (default), agent (self-correction), retro (/end-session)")
             command.add_argument("text")
         if name == "compile":
             command.add_argument("--final", action="store_true", help="mark /end-session as run")

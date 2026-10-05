@@ -23,6 +23,7 @@ session_lifecycle:
   work_type: "bug_fix | small_feature | feature | question | other — what the work is, not which lane ran it (definitions in ../Skills/start-session). Defaults to the lane's; pass --work-type when they differ."
   name:    "/start-session <name> names the session (folder + metrics heading). Optional."
   during:  "The engineer logs /inaccuracy <reason> after correcting you, and /iteration <change> on a deliberate change of direction."
+  self_log: "When you retract a claim, or the engineer rejects your approach, log it yourself straight away with `note --kind inaccuracy --source agent \"<what was wrong>\"` (command in the Session tracking block). Unlogged corrections are back-filled by /end-session with --source retro."
   end:     "/end-session — compiles metrics + router trace, writes a lane-scaled retrospective, opens both files."
   backstop: "If /end-session is skipped, the SessionEnd hook still compiles metrics.md (no retrospective)."
 ```

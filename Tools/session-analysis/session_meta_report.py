@@ -463,6 +463,9 @@ def load(sessions_dir, repos):
                    "started": state.get("started_at") or "", "ended": state.get("ended_at") or "",
                    "end_session_run": bool(state.get("end_session_run")),
                    "inaccuracies": len(state.get("inaccuracies", [])),
+                   # logged during the session (engineer or agent), not back-filled by /end-session
+                   "inaccuracies_live": sum(1 for i in state.get("inaccuracies", [])
+                                            if i.get("source", "engineer") != "retro"),
                    "iterations": len(state.get("iterations", [])),
                    "lane_changes": state.get("lane_history", []),
                    "tokens": tokens.get("total_tokens") if tokens.get("available") else None,
@@ -613,7 +616,7 @@ def improvements(sessions, retros, heat, proposals, turns):
     unset = [s for s in sessions if s["lane"] == "unset"]
     no_end = [s for s in sessions if s["lane"] != "unset" and not s["end_session_run"]]
     no_tokens = [s for s in sessions if s["lane"] != "unset" and s["tokens"] is None]
-    unlogged = [s for s in retros if s["retro"]["root_causes"] and s["inaccuracies"] == 0]
+    unlogged = [s for s in retros if s["retro"]["root_causes"] and s["inaccuracies_live"] == 0]
     if unset:
         items.append({"kind": "Tracking", "weight": len(unset),
                       "text": "%d of %d session folders never recorded a lane (%s). Likely short or subagent sessions — consider having hook-start skip or tag them."
@@ -627,7 +630,7 @@ def improvements(sessions, retros, heat, proposals, turns):
                       "text": "%d classified session(s) have no token data: %s." % (len(no_tokens), ", ".join(s["id"] for s in no_tokens))})
     if unlogged:
         items.append({"kind": "Tracking", "weight": len(unlogged),
-                      "text": "%d retro(s) name correction root causes but 0 /inaccuracy entries were logged (%s) — corrections are being found at retro time, not logged live."
+                      "text": "%d retro(s) name correction root causes but none were logged live by the engineer or agent (%s) — corrections are being found at retro time."
                               % (len(unlogged), ", ".join(s["id"] for s in unlogged))})
 
     flagged = sorted((t for t in turns if t["verdict"] in AVOIDABLE), key=lambda t: -t["fresh"])
