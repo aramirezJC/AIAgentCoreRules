@@ -16,7 +16,8 @@ engineer's part is logging corrections and running `/end-session`.
 | A correction was never logged | `/end-session` records it from the retro's Corrections, marked `retro` | Agent |
 | You deliberately change direction | `/iteration <what changed>` | Engineer |
 | Wrap up | `/end-session` compiles metrics, writes the retrospective and opens both files | Engineer |
-| Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit | Automatic |
+| After each agent reply | The Stop hook recompiles metrics (at most every 2 minutes) without marking the session ended, so a session that is never exited still has current metrics | Automatic |
+| Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit. It fires only when the process exits, not when the app marks an idle session completed | Automatic |
 
 Every hook run appends one line to `GitIgnoreReports/Sessions/hooks.log` (event, session, working
 directory, outcome). If a session's metrics look stale, check that log first: no `end` line means the

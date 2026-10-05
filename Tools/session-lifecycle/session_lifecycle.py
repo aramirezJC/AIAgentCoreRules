@@ -12,6 +12,7 @@ One folder per session under the reports root (default: <cwd>/GitIgnoreReports/S
 Subcommands:
     hook-start   SessionStart hook. Reads hook JSON on stdin, prints context for the agent.
     hook-end     SessionEnd hook. Compiles metrics even when /end-session was not run.
+    hook-stop    Stop hook. Recompiles after a reply (throttled), for sessions that never exit.
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
@@ -37,6 +38,8 @@ WORK_TYPES = ["bug_fix", "small_feature", "feature", "question", "other"]
 LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
                   "feature": "feature", "other": "other"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
+# hook-stop recompiles at most this often; the Stop hook fires after every reply.
+STOP_COMPILE_INTERVAL_SECONDS = 120
 # Who logged a note. Entries written before sources existed have none and count as engineer.
 NOTE_SOURCES = ["engineer", "agent", "retro"]
 
@@ -371,6 +374,7 @@ def compile_folder(folder, state, project_dir):
     # A resumed session's transcript may predate tracking; report the real start.
     state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
     state["tokens"] = token_report(folder, state)
+    state["compiled_at"] = now_iso()
     save_state(folder, state)
     render(folder, state, project_dir)
 
@@ -471,6 +475,29 @@ def cmd_hook_end(args):
     return 0
 
 
+def cmd_hook_stop(args):
+    """Stop hook: recompile after a reply, so metrics exist even for a session that never
+    exits (the app marks idle sessions completed without firing SessionEnd). Never marks
+    the session ended. Throttled; a compile takes well under a second."""
+    hook = {}
+    try:
+        hook = read_hook_input()
+        hook_project_dir(hook)
+        folder = find_folder(reports_root(args), hook.get("session_id"))
+        if not folder:
+            return 0
+        state = load_state(folder)
+        last = state.get("compiled_at")
+        if last:
+            age = datetime.datetime.now().astimezone() - datetime.datetime.fromisoformat(last)
+            if age.total_seconds() < STOP_COMPILE_INTERVAL_SECONDS:
+                return 0
+        compile_folder(folder, state, state.get("project_dir") or os.getcwd())
+    except Exception as error:
+        hook_log(args, "stop", hook, "ERROR %s" % error)   # successes are not logged: one per reply is noise
+    return 0
+
+
 def set_work_type(state, work_type, source):
     if state.get("work_type") and state["work_type"] != work_type:
         state.setdefault("work_type_history", []).append({"at": now_iso(), "from": state["work_type"], "to": work_type})
@@ -544,6 +571,7 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("hook-start", help="also safe to run by hand (/start-session)").set_defaults(func=cmd_hook_start)
     sub.add_parser("hook-end").set_defaults(func=cmd_hook_end)
+    sub.add_parser("hook-stop").set_defaults(func=cmd_hook_stop)
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path)):
         command = sub.add_parser(name)

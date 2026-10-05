@@ -43,10 +43,15 @@ In `.claude/settings.json`:
     "SessionStart": [{ "hooks": [{ "type": "command", "timeout": 30,
       "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-start" }] }],
     "SessionEnd":   [{ "hooks": [{ "type": "command", "timeout": 60,
-      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-end" }] }]
+      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-end" }] }],
+    "Stop":         [{ "hooks": [{ "type": "command", "timeout": 30, "async": true,
+      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-stop" }] }]
   }
 }
 ```
+
+The `Stop` hook keeps metrics current for sessions that never exit. The app can mark an idle
+session completed without firing `SessionEnd`.
 
 The hooks never block a session — if tracking fails, Claude Code carries on. Session folders
 are written to `GitIgnoreReports/Sessions/`; override with `SESSION_REPORTS_ROOT`.

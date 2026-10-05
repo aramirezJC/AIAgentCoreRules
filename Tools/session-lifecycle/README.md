@@ -29,10 +29,17 @@ Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
     "SessionStart": [{ "hooks": [{ "type": "command",
       "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 <path-to>/Tools/session-lifecycle/session_lifecycle.py hook-start" }] }],
     "SessionEnd":   [{ "hooks": [{ "type": "command",
-      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 <path-to>/Tools/session-lifecycle/session_lifecycle.py hook-end" }] }]
+      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 <path-to>/Tools/session-lifecycle/session_lifecycle.py hook-end" }] }],
+    "Stop":         [{ "hooks": [{ "type": "command", "async": true,
+      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 <path-to>/Tools/session-lifecycle/session_lifecycle.py hook-stop" }] }]
   }
 }
 ```
+
+`SessionEnd` only fires when the Claude process exits (clear, resume, logout, exit). A session
+the app marks completed after going idle never exits, and Claude Code has no idle hook. `Stop`
+fires after every main-agent reply, and `hook-stop` recompiles then (at most every 2 minutes,
+async, never marking the session ended), so metrics stay current however the session ends.
 
 2. Symlink `Skills/start-session`, `end-session`, `inaccuracy`, `iteration` into
    `<project>/.claude/skills/`.
