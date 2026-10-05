@@ -49,6 +49,18 @@ do not block on it.
 
 ## Rules
 
+### 0. Load what the project already knows first
+
+```yaml
+system_entries:
+  - "Before the first search: read the host SystemIndex entry (Systems/, and SystemPatterns/ if one matches) for every system the question, diff or named files touch."
+  - "A system that comes up later gets its entry read at that moment, before its code."
+  - "No entry for a system is a finding: note it for the handoff instead of searching for one."
+```
+
+The index exists so investigations don't rebuild known behaviour from source. Skipping it was
+the most common router miss in retros.
+
 ### I. Delegate breadth, keep depth
 
 ```yaml
@@ -167,3 +179,12 @@ investigation_handoff:
 ```
 
 Then stop. Escalating to feature work is the engineer's call.
+
+## Router check (used by /end-session)
+
+```yaml
+expected_loads:
+  - "Rules/InvestigationMode.md"
+  - "Systems/<system>.md for every system the question touched (if it exists), loaded before that system's source was read — a late load is a miss"
+expected_tools: [codeindex.py or usages.py, /discover or an Explore agent for breadth]
+```

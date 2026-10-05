@@ -16,7 +16,8 @@ steps:
   1_symptom:
     - "Restate: expected vs actual, repro steps, frequency, build/platform, first-seen version. Ask only for what is missing."
   2_context:
-    - "SystemIndex: Read the Systems/ entry for the suspected system — its common_gotchas first."
+    - "SystemIndex: Read the Systems/ entry for every system on the failing path — common_gotchas first — before searching its source."
+    - "A system that a survey, log or hypothesis implicates later gets the same treatment at that moment: read its entry before reading its code, not at fix time."
     - "Locate the flow: codeindex.py where/members, usages.py for callers (/uses). Breadth → /discover."
     - "Recent history: git log --since=<first-seen build date> -- <files on the failing path>. A sibling fix may already explain the bug, or be missing from the reported build."
   3_hypotheses:
@@ -54,7 +55,7 @@ accurate. Follow SmallTask.md for the detour, including its own /audit.
 
 ```yaml
 expected_loads:
-  - "Systems/<suspected system>.md (if it exists)"
+  - "Systems/<system>.md for every system on the failing path (if it exists), loaded before that system's source was read — a late load is a miss"
   - "Rules/CodingStandards.md"
   - "Rules/TestingRules.md + host testing setup"
   - "plus ResourceManagementRules / MultyStepOperationsRules if the fix touched them"

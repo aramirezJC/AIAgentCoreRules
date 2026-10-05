@@ -10,6 +10,10 @@ is never answered with only a document.
 
 ## Rules
 
+0. **Load what the project already knows first.** Before the first search, the agent reads the
+   host SystemIndex entry for every system the question touches, and for a system that comes up
+   later, before reading its code. A missing entry is noted as a finding. The retrospective
+   counts a late load as a miss.
 1. **Delegate breadth, keep depth.** Surveys and "where / which files / who implements"
    questions go to subagents. The main context keeps the method bodies a conclusion depends on,
    and the reasoning.

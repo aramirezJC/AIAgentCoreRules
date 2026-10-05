@@ -8,7 +8,7 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
 | # | Step | What happens |
 |---|---|---|
 | 1 | **Symptom** | Restate expected vs actual, repro steps, frequency, build/platform and first-seen version. The agent asks only for what is missing. |
-| 2 | **Context** | Read the host project's Systems entry for the suspected system (its common gotchas first). Locate the flow with the host's code-index and usages tools (`codeindex.py`, `usages.py`); wider surveys go to `/discover`. Check recent commits on the failing path since the first-seen build: a sibling fix may already explain the bug, or be missing from the reported build. |
+| 2 | **Context** | Read the host project's Systems entry for every system on the failing path (its common gotchas first) before searching its source. A system implicated later, by a survey or a hypothesis, has its entry read at that point, not at fix time. Locate the flow with the host's code-index and usages tools (`codeindex.py`, `usages.py`); wider surveys go to `/discover`. Check recent commits on the failing path since the first-seen build: a sibling fix may already explain the bug, or be missing from the reported build. |
 | 3 | **Hypotheses** | Read the method bodies on the failing path; every claim carries `file:line`. Rank 1–3 hypotheses, each with its evidence, what would confirm it and what would rule it out. Check the cheapest confirming evidence first. |
 | 4 | **Diagnosis gate** | Present the root cause (or top hypothesis and confidence), the proposed fix, the blast radius and the planned regression test. **No code before the engineer confirms.** |
 | 5 | **Fix** | Load the rules the fix touches. Make the smallest change that removes the cause — no drive-by refactors; those are listed as follow-ups. |
@@ -28,7 +28,8 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
 
 ## What the retrospective expects to see loaded
 
-- The Systems entry for the suspected system (if one exists)
+- The Systems entry for every system on the failing path (if one exists), loaded before that
+  system's code was read. A late load counts as a miss.
 - Coding Standards
 - Testing Rules plus the host project's testing setup
 - Resource Management or Multi-Step Operations rules if the fix touched them
