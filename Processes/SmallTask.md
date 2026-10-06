@@ -46,6 +46,7 @@ steps:
     - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
   6_verify:
     - "Run typecheck.py. Report its result verbatim if it fails."
+    - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
   7_close:
     - "Offer /end-session."
@@ -58,5 +59,6 @@ expected_loads:
   - "Systems/<owning system>.md (if it exists)"
   - "Rules/CodingStandards.md"
   - "plus each 3_rules row the change matched"
-expected_tools: [codeindex.py, typecheck.py, /audit]
+expected_tools: [codeindex.py, typecheck.py, /audit]   # C# changes only
+expected_without_csharp: "a run of the changed tool against copies of real data; CodingStandards and the C# tools are not expected"
 ```
