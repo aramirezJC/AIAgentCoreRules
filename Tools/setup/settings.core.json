@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-start",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-end",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-stop",
+            "timeout": 30,
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "baseRef": "head",
+    "symlinkDirectories": [
+      "GitIgnoredExternals",
+      "GitIgnoreReports",
+      ".claude/skills"
+    ]
+  }
+}

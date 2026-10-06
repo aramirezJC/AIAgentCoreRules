@@ -33,39 +33,38 @@ always-on files:
 
 Keep this list short — every always-on file costs context in every session.
 
-## 3. Install the session hooks
-
-In `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [{ "hooks": [{ "type": "command", "timeout": 30,
-      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-start" }] }],
-    "SessionEnd":   [{ "hooks": [{ "type": "command", "timeout": 60,
-      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-end" }] }],
-    "Stop":         [{ "hooks": [{ "type": "command", "timeout": 30, "async": true,
-      "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-stop" }] }]
-  }
-}
-```
-
-The `Stop` hook keeps metrics current for sessions that never exit. The app can mark an idle
-session completed without firing `SessionEnd`.
-
-The hooks never block a session — if tracking fails, Claude Code carries on. Session folders
-are written to `GitIgnoreReports/Sessions/`; override with `SESSION_REPORTS_ROOT`.
-
-## 4. Link the core skills (slash commands)
+## 3. Run the installer
 
 ```bash
-mkdir -p .claude/skills && cd .claude/skills
-for s in active-features audit checkpoint discover end-session feature inaccuracy iteration resume start-session token-usage-reports; do
-  ln -s ../../GitIgnoredExternals/AIAgentCoreRules/Skills/$s $s
-done
+python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py check   # preview
+python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py         # apply
 ```
 
-Then link the host layer's skills the same way.
+It merges `Tools/setup/settings.core.json` into `.claude/settings.json` (session hooks and the
+worktree settings below), then each host layer's `Setup/settings.host.json`; links every layer's
+skills into `.claude/skills/`; and creates `CLAUDE.md` with the core imports if it is missing.
+It only adds or updates what the fragments define, backs `settings.json` up to
+`settings.json.bak` before changing it, and is safe to re-run — run it again after pulling
+AIAgentCoreRules or the host layer. Details: [[Tools/setup/README|setup README]].
+
+The session hooks never block a session — if tracking fails, Claude Code carries on. Session
+folders are written to `GitIgnoreReports/Sessions/`; override with `SESSION_REPORTS_ROOT`. The
+`Stop` hook keeps metrics current for sessions that never exit.
+
+## 4. Agent worktrees
+
+Background agents work in git worktrees under `.claude/worktrees/`. The installer sets:
+
+- `worktree.baseRef: "head"` — a new worktree branches from your current branch, not from the
+  default branch, so its work merges back cleanly.
+- `worktree.symlinkDirectories` — `GitIgnoredExternals`, `GitIgnoreReports`, `.claude/skills`,
+  plus whatever the host layer adds. A worktree then has the rules, tools and skills, and its
+  session reports land in the main checkout instead of being deleted with the worktree.
+
+Test agent work in the project you already have open, not by opening the worktree: run
+`/land-worktree` to merge the branch, test it, then remove the worktree and branch. For a
+worktree made by hand with `git worktree add`, run `install.py prepare-worktree <path>` to add
+the symlinks.
 
 ## 5. Verify
 
@@ -78,7 +77,7 @@ available.
 - Claude Code (CLI, desktop or IDE extension)
 - Stock `python3` — the session-lifecycle tooling needs no third-party packages
 
-**Source files:** [[Tools/session-lifecycle/README|session-lifecycle README]]
+**Source files:** [[Tools/setup/README|setup README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/land-worktree/SKILL|/land-worktree]]
 
 ---
 

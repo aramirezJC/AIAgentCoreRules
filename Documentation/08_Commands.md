@@ -29,13 +29,19 @@ commands — see the host project's documentation.
 | `/discover <area>` | Surveys a system or directory in a subagent and returns a compact map: key types, entry points, integration points, gotchas and negative findings, each with `file:line`. Uses the host's Runnable tools when available. Offers to save the map as a Systems entry if none exists. |
 | `/audit [files]` | Checks C# files (default: changed files) against the coding standards, architecture principles, resource rules, rule tags and host project rules. Reports violations with `file:line` and a minimal fix. Report only — no edits unless asked. Fans out to subagents for more than 5 files. |
 
+## Worktrees
+
+| Command | What it does |
+|---|---|
+| `/land-worktree [name] [--squash]` | Merges an agent worktree's branch into your current branch without committing, waits while you test it, then commits and removes the worktree and branch — or rolls the merge back. With no name, lists the worktrees. Warns when a worktree branched from the default branch instead of yours and offers to cherry-pick only the agent's commits. Never pushes. |
+
 ## Reporting
 
 | Command | What it does |
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 
