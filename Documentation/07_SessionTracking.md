@@ -66,6 +66,8 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
   loaded on demand, in order, with the time and how it was loaded
 - A count of each of the host project's Runnable tools the agent ran (for example `typecheck.py`,
   `codeindex.py`, `usages.py`)
+- **Token breakdown (estimated)** — tokens per category with the standardized-operations share,
+  and tokens and round-trips saved per mechanism (see *Token charts* below)
 
 The router trace is read from the session transcript, not from the agent's memory. Rows loaded
 with the Read tool are exact; rows inferred from shell commands are heuristic (a `grep` over a
@@ -105,6 +107,27 @@ Decisions are recorded with `session_lifecycle.py retro --mark <N> --status appl
 session is marked in its original retro with `--folder <id8>`, so the page stays current as items
 are worked through. The page cannot write to disk itself; each open card has a button that copies
 the command that marks it applied — run it, or ask Claude to.
+
+### Token charts
+
+`compile` also estimates where the tokens went (`token_breakdown.py`, read from the transcript)
+and stores it in session.json. metrics.md gets a **Token breakdown (estimated)** section, and
+retro.html gets a **Token charts** section just before Cost, with three charts:
+
+1. **This session vs average.** Total tokens next to the mean and median of every other session
+   in the reports root, plus the mean for the same lane.
+2. **Standardized operations.** Tokens spent on the framework's own mechanisms (Runnable tools,
+   the lifecycle script, skills, rule/process loads, subagents), as a total and a share. The
+   remainder is split into ad-hoc tool calls and conversation/base context.
+3. **What saved tokens and round-trips.** Parallel tool calls, subagent delegation, partial file
+   reads, and each Runnable tool, with tokens and round-trips saved.
+
+All of these are estimates. Each model call is counted once; the token report's Total Tokens
+counts a call once per content block, so it runs about 2–3× higher. A tool result costs its size
+(characters / 4) times every later call that re-reads it, until a compaction. The savings are
+guesstimates against a counterfactual. For example, each `codeindex.py` call is assumed to replace
+one ~3k-token exploratory read plus 2 round-trips; the assumptions are listed on the page and in
+`AVOIDED_BY_TOOL`.
 
 Every claim points at a trace row, a logged note or a `file:line`.
 

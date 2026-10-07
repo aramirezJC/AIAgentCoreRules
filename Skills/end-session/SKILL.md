@@ -77,7 +77,9 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
  list, add it as a 4th. One numbered line per turn, in this shape, so the meta-analysis can read it:
    1. **T<n>, <fresh> fresh / <total> total, <k> tool calls:** <what the turn did>. **Necessary.** |
       **Partly necessary** — <what was avoidable>. | **Avoidable** — <why>.
- If tokens/ is missing or metrics.md marks tokens unavailable, label the list "estimated" and say why.>
+ If tokens/ is missing or metrics.md marks tokens unavailable, label the list "estimated" and say why.
+ Then one line from metrics.md's "Token breakdown (estimated)": the standardized-operations share and
+ the top saving mechanism. retro.html charts these next to the session-vs-average comparison.>
 ```
 
 Keep it evidence-based: every claim points at a trace row, a logged note, or `file:line`.

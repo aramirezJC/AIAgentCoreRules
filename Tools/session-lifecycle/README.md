@@ -10,7 +10,7 @@ trace (which rule and process files were loaded, in order, read from the session
   session.json   state
   metrics.md     rendered report
   retro.md       written by /end-session; "## Applied" tracks each proposal's status
-  retro.html     rendered from retro.md by retro_page.py (`retro`, `open`)
+  retro.html     rendered from retro.md by retro_page.py (`retro`, `open`), with token charts
   tokens/        session-support per-session token report
 ```
 
@@ -72,6 +72,15 @@ is unchanged. The line shape is the one `session_meta_report.py` reads. `--folde
 another session's retro: a path, a folder name, or a unique part of one such as the session id's
 first 8 characters, so a proposal resolved in a later session can be marked where it was raised.
 `open` re-renders the page and opens it with metrics.md.
+
+`compile` also runs `token_breakdown.py` and stores `breakdown` (tokens per category, the
+standardized-operations total, and the savings per mechanism) and `comparison` (every session's
+de-duplicated total, for the average) in session.json. metrics.md renders them as *Token breakdown
+(estimated)*, and retro.html renders them as a *Token charts* section before Cost: this session vs
+the average/median/lane average, the standardized-operations share, and what saved tokens and
+round-trips. Each model call is counted once. The token report counts a call once per content
+block (~2–3× higher), so the charts use their own totals for every session. A tool result costs
+its size × every later call that re-reads it. The savings assumptions are in `AVOIDED_BY_TOOL`.
 
 retro.md stays the source of truth. A page opened from disk cannot write back, so each open
 proposal has a button that copies its `retro --mark … --status applied` command.

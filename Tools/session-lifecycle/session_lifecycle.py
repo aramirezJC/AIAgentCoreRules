@@ -7,7 +7,7 @@ One folder per session under the reports root (default: <cwd>/GitIgnoreReports/S
         session.json   state (source of truth)
         metrics.md     rendered from session.json + token report + router trace
         retro.md       written by /end-session; its "## Applied" section tracks each proposal
-        retro.html     rendered from retro.md (retro_page.py) — progress and per-proposal status
+        retro.html     rendered from retro.md (retro_page.py) — progress, per-proposal status, token charts
         tokens/        session-support per-session Markdown report
 
 Subcommands:
@@ -39,6 +39,7 @@ import subprocess
 import sys
 
 import retro_page
+import token_breakdown
 
 SCRIPT_PATH = os.path.abspath(__file__)
 SESSION_SUPPORT = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "session-support", "session-support")
@@ -436,8 +437,51 @@ def render(folder, state, project_dir):
         lines.append("| – | – | none | – |")
     lines += ["", "## Runnable tools", ""]
     lines += ["- `%s` × %d" % (tool, count) for tool, count in sorted(tools.items())] or ["- none run"]
+    lines += breakdown_lines(state)
     with open(os.path.join(folder, "metrics.md"), "w") as handle:
         handle.write("\n".join(lines) + "\n")
+
+
+def session_comparison(folder, state):
+    """[{id, lane, tokens, calls, current}] for every session under the reports root with tokens,
+    totals de-duplicated per model call (token_breakdown.session_total) so sessions compare fairly."""
+    root = os.path.dirname(folder)
+    sessions = []
+    for name in sorted(os.listdir(root)):
+        try:
+            other = state if os.path.join(root, name) == folder else load_state(os.path.join(root, name))
+        except (OSError, ValueError):
+            continue
+        transcript = locate_transcript(other.get("session_id"), other.get("transcript_path"))
+        total = token_breakdown.session_total(transcript, other.get("session_id"))
+        if total and total[0]:
+            sessions.append({"id": other["session_id"][:8], "lane": other.get("lane"), "tokens": total[0],
+                             "calls": total[1], "current": other is state})
+    return sessions
+
+
+def breakdown_lines(state):
+    """metrics.md section: where the tokens went and what saved tokens (estimates)."""
+    breakdown = state.get("breakdown") or {}
+    if not breakdown.get("total"):
+        return ["", "## Token breakdown (estimated)", "",
+                "- unavailable (%s)" % (breakdown.get("error") or "not compiled yet")]
+    total = breakdown["total"]
+    lines = ["", "## Token breakdown (estimated)", "",
+             "Total %s across %d model calls, each counted once (the token report counts a call once per "
+             "content block). A tool result costs its size × every later call that re-reads it."
+             % ("{:,}".format(total), breakdown["calls"]), "",
+             "| Category | Standardized | Tokens | Share |", "| --- | --- | ---: | ---: |"]
+    for name, tokens in breakdown["categories"].items():
+        lines.append("| %s | %s | %s | %.1f%% |" % (name, "yes" if name in token_breakdown.STANDARDIZED else "–",
+                                                   "{:,}".format(tokens), 100.0 * tokens / total))
+    lines.append("| **Standardized operations** | | **%s** | **%.1f%%** |"
+                 % ("{:,}".format(breakdown["standardized"]), 100.0 * breakdown["standardized"] / total))
+    lines += ["", "| Saving mechanism | Uses | Tokens saved | Round-trips saved |", "| --- | ---: | ---: | ---: |"]
+    for name, saving in sorted(breakdown["savings"].items(), key=lambda item: -item[1]["tokens"]):
+        lines.append("| %s | %d | %s | %d |" % (name, saving["count"], "{:,}".format(saving["tokens"]),
+                                                saving["round_trips"]))
+    return lines
 
 
 def compile_folder(folder, state, project_dir):
@@ -446,6 +490,12 @@ def compile_folder(folder, state, project_dir):
     # A resumed session's transcript may predate tracking; report the real start.
     state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
     state["tokens"] = token_report(folder, state)
+    try:   # estimates for the retro charts; best-effort like the token report
+        state["breakdown"] = token_breakdown.analyse(state.get("transcript_path"), state["session_id"],
+                                                     import_roots(project_dir)[1])
+        state["comparison"] = session_comparison(folder, state)
+    except Exception as error:
+        state["breakdown"] = {"error": str(error)}
     state["compiled_at"] = now_iso()
     save_state(folder, state)
     render(folder, state, project_dir)
