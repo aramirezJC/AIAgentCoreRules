@@ -41,15 +41,15 @@ different rules, and picking wrong wastes the whole turn. The mode is the sessio
 ```yaml
 mode_fork:
   small_task:
-    looks_like: "make a tool/utility/debug command like X that does Y / small tweak / follow this example"
+    looks_like: "make a tool/utility/debug command like X that does Y / small tweak / follow this example / /small-task"
     output:     "code for a bounded change — no TDD, one proposal checkpoint"
     load:       [../Processes/SmallTask.md]
   bug_fix:
-    looks_like: "X is broken / what could be causing / why does X happen / fix this crash"
+    looks_like: "X is broken / what could be causing / why does X happen / fix this crash / /bug-fix"
     output:     "diagnosis → approved fix → regression test"
     load:       [../Processes/BugFix.md]
   investigation:
-    looks_like: "how feasible / how does X compare / where does X happen / hypothetical refactor / compile a list"
+    looks_like: "how feasible / how does X compare / where does X happen / hypothetical refactor / compile a list / /run-investigation-mode"
     output:     "a document or recommendation — NOT code"
     load:       [./InvestigationMode.md]
   code_review:
@@ -163,6 +163,10 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /inaccuracy:     "engineer logs a corrected agent mistake"
   /iteration:      "engineer logs a deliberate change of direction"
   /feature <Name>: "enter the CreateFeature process"
+  /small-task <ask>: "enter the SmallTask process (lane small_task), skipping classification"
+  /bug-fix <symptom>: "enter the BugFix process (lane bug_fix), skipping classification"
+  /run-investigation-mode <question>: "enter Investigation Mode (lane investigation), skipping classification"
+  /generate-meta-review [time frame]: "run the MetaReview process over the sessions in the window"
   /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
   /resume <Name>:  "pick up a feature from its progress file in a fresh session"
   /active-features: "list features not yet complete: phase, status, next step, resume command"
