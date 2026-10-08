@@ -9,9 +9,9 @@ loaded. Picking the wrong mode wastes the whole turn, so this is the first step 
 | Mode | Looks like | Output | Process |
 |---|---|---|---|
 | **feature** | "implement / build / add feature X", "here is the GDD", `/feature <Name>` | Code, tests and integration, through 8 gates | [[03_CreateFeature\|Create Feature Process]] |
-| **bug_fix** | "X is broken", "why does X happen", "fix this crash" | Diagnosis → approved fix → regression test | [[04_BugFix\|Bug Fix Process]] |
-| **small_task** | "make a tool/debug command like X that does Y", small tweak, "follow this example" | A bounded code change with one proposal checkpoint | [[05_SmallTask\|Small Task Process]] |
-| **investigation** | "how feasible is", "how does X compare", "where does X happen", "compile a list" | A document or recommendation — **not code** | [[06_Investigation\|Investigation Mode]] |
+| **bug_fix** | "X is broken", "why does X happen", "fix this crash", `/bug-fix <symptom>` | Diagnosis → approved fix → regression test | [[04_BugFix\|Bug Fix Process]] |
+| **small_task** | "make a tool/debug command like X that does Y", small tweak, "follow this example", `/small-task <ask>` | A bounded code change with one proposal checkpoint | [[05_SmallTask\|Small Task Process]] |
+| **investigation** | "how feasible is", "how does X compare", "where does X happen", "compile a list", `/run-investigation-mode <question>` | A document or recommendation — **not code** | [[06_Investigation\|Investigation Mode]] |
 | **code_review** | "review PR X", "does this satisfy our rules", "evaluate my review comments" | Findings with file:line — **not code** | Coding Standards + Architectural Principles + Multi-Step Operations, plus the SystemIndex entry for each system the diff touches |
 | **other** | Questions, tooling/config, documentation | Whatever was asked | Routing table only |
 

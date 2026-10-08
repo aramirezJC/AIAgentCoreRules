@@ -18,8 +18,9 @@ python3 <core>/Tools/setup/install.py worktrees --json
 
 ```yaml
 steps:
-  - "Record the session as lane other, work type other (Session tracking block)."
+  - "Record the session as lane other, work type other (Session tracking block). Skip this when /end-session called this skill: the session keeps its lane."
   - "List worktrees with `install.py worktrees`. No argument → show the list and ask which one. A PRUNABLE row → offer `git worktree prune`."
+  - "Worktree of another repository (e.g. a rules repo linked under GitIgnoredExternals/) → pass `--project <that repo's main checkout>` to install.py and run the git commands there."
   - "Target branch = the main checkout's current branch. State it and the worktree branch in one line before doing anything."
   - "Preconditions — stop and report, do not fix silently:"
   - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash"
@@ -44,7 +45,8 @@ steps:
 
 ```yaml
 rules:
-  - "Never push the target branch, force-push, or merge into the default branch. Landing is local."
+  - "Never push the target branch or force-push. Landing is local."
+  - "Running /land-worktree (or answering yes in /end-session) is the confirmation to merge, including into the default branch. Do not ask again before merging."
   - "Never commit the merge before the engineer says keep."
   - "Removing a worktree deletes only its folder: symlinked directories (worktree.symlinkDirectories) are links, so the main checkout's copies are untouched."
   - "git refuses to remove a worktree with modified tracked files or untracked, non-ignored files; ignored folders (e.g. Unity Library/) do not block it and are deleted with it. A refusal means real unsaved work — show it before asking about --force."
