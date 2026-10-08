@@ -15,6 +15,7 @@ MetaRouter.md). Load files with Read, not shell `cat`, so the router trace recor
 
 ```yaml
 steps:
+  - "Step 0 — /start-session: if no 'Session tracking' block is in context, run: python3 Tools/session-lifecycle/session_lifecycle.py hook-start, and use the lifecycle script and session_id it prints below. If the engineer named the session, add --name \"<name>\" to the set."
   - "If $ARGUMENTS names a feature: progress file is <working_folder>/<FeatureName>_Progress.md (working_folder from Processes/CreateFeature/index.md)."
   - "If $ARGUMENTS is empty: pick one (below), then continue this step with the chosen feature — do not stop after the list."
   - "If the file does not exist: say so and offer /feature <FeatureName> to start it. Stop."

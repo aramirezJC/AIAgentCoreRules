@@ -11,6 +11,7 @@ MetaRouter.md).
 
 ```yaml
 steps:
+  - "Step 0 — /start-session: if no 'Session tracking' block is in context, run: python3 Tools/session-lifecycle/session_lifecycle.py hook-start, and use the lifecycle script and session_id it prints below. If the engineer named the session, add --name \"<name>\" to the set."
   - "Run: python3 <lifecycle script> set --lane feature --title \"$ARGUMENTS\" --feature \"$ARGUMENTS\" --phase 1_intake"
   - "Read: Processes/CreateFeature/index.md"
   - "If <working_folder>/<FeatureName>_Progress.md already exists: show its current_phase and updated_at, offer /resume-work <FeatureName>, and stop — do not restart Phase 1 over existing work."

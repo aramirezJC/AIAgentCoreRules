@@ -11,6 +11,7 @@ MetaRouter.md).
 
 ```yaml
 steps:
+  - "Step 0 — /start-session: if no 'Session tracking' block is in context, run: python3 Tools/session-lifecycle/session_lifecycle.py hook-start, and use the lifecycle script and session_id it prints below. If the engineer named the session, add --name \"<name>\" to the set."
   - "Run: python3 <lifecycle script> set --lane investigation --work-type question --title \"Meta review <start>..<end>\""
   - "Turn $ARGUMENTS into a window: start and end as YYYY-MM-DD, end defaulting to today. Relative frames ('last 2 weeks', 'this month') count back from today."
   - "No arguments → MetaReview's default window (since the previous review, else the last 7 days)."

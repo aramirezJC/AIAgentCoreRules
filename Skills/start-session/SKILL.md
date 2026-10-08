@@ -10,6 +10,10 @@ Tracking is normally started by the SessionStart hook, which puts a **Session tr
 in context with the session folder and the lifecycle script path. This skill names the session,
 covers the cases where the hook did not run, and records the lane and work type.
 
+The lane-entry skills (`/small-task`, `/bug-fix`, `/feature`, `/resume-work`,
+`/run-investigation-mode`, `/generate-meta-review`) run this skill's `hook-start` step as their
+step 0 and then their own `set` with a fixed lane — no separate `/start-session` is needed.
+
 Lifecycle script (use the path from the Session tracking block if present):
 `GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py`
 

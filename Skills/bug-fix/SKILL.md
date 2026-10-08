@@ -11,6 +11,7 @@ MetaRouter.md). The engineer chose the lane, so skip MetaRouter's "Classify the 
 
 ```yaml
 steps:
+  - "Step 0 — /start-session: if no 'Session tracking' block is in context, run: python3 Tools/session-lifecycle/session_lifecycle.py hook-start, and use the lifecycle script and session_id it prints below. If the engineer named the session, add --name \"<name>\" to the set."
   - "Run: python3 <lifecycle script> set --lane bug_fix --work-type bug_fix --title \"<short title from $ARGUMENTS>\""
   - "Read: Processes/BugFix.md and follow it from its first step with $ARGUMENTS as the symptom."
   - "No arguments → ask for the symptom, repro steps or log, then continue."
