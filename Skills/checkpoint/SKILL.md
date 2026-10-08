@@ -1,6 +1,6 @@
 ---
 name: checkpoint
-description: Save mid-phase CreateFeature progress to the feature's <FeatureName>_Progress.md so a later session can pick up with /resume. Use when the engineer runs /checkpoint, is about to stop partway through a phase, or when /end-session closes a feature session that is not at a gate.
+description: Save mid-phase CreateFeature progress to the feature's <FeatureName>_Progress.md so a later session can pick up with /resume-work. Use when the engineer runs /checkpoint, is about to stop partway through a phase, or when /end-session closes a feature session that is not at a gate.
 argument-hint: "[FeatureName] [note]"
 ---
 

@@ -31,7 +31,7 @@ session hooks and worktree settings into `.claude/settings.json`, and is safe to
 
 - `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
 - `feature` — enters `Processes/CreateFeature`.
-- `checkpoint`, `resume` — save and restore feature progress across sessions via
+- `checkpoint`, `resume-work` — save and restore feature progress across sessions via
   `<FeatureName>_Progress.md` in the feature's working folder.
 - `discover` — subagent survey that returns a compact map.
 - `audit` — rules compliance report for C# files.

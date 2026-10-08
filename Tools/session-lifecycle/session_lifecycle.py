@@ -652,13 +652,13 @@ def active_features(project_dir, features_root=None):
 
 def resume_command(feature):
     model = " --model %s" % feature["model"] if feature.get("model") else ""
-    return "claude%s \"/resume %s\"" % (model, feature["feature"])
+    return "claude%s \"/resume-work %s\"" % (model, feature["feature"])
 
 
 def cmd_features(args):
     features = active_features(os.getcwd(), args.features_root)
     if args.json:
-        print(json.dumps(features, indent=2))
+        print(json.dumps([dict(f, resume=resume_command(f)) for f in features], indent=2))
         return 0
     if not features:
         print("No features in progress.")
@@ -675,7 +675,7 @@ def cmd_features(args):
 
 
 def feature_hint(project_dir, state):
-    """Start-context lines naming in-progress features, so a new session can offer /resume."""
+    """Start-context lines naming in-progress features, so a new session can offer /resume-work."""
     if state.get("feature"):
         return []   # this session already belongs to a feature
     try:
@@ -687,7 +687,7 @@ def feature_hint(project_dir, state):
     lines = ["", "In-progress features (one session per phase; /active-features for details):"]
     lines += ["  - %s · %s · next: %s" % (f["feature"], f["phase_label"], (f["next"] or "see progress file")[:120])
               for f in features[:5]]
-    lines.append("If the engineer's first message is not about something else, offer /resume <FeatureName>.")
+    lines.append("If the engineer's first message is not about something else, offer /resume-work <FeatureName>.")
     return lines
 
 
@@ -893,7 +893,7 @@ def main():
             command.add_argument("--work-type", choices=WORK_TYPES,
                                  help="defaults to the lane's work type until set explicitly")
             command.add_argument("--title")
-            command.add_argument("--feature", help="CreateFeature name this session works on (set by /feature, /resume)")
+            command.add_argument("--feature", help="CreateFeature name this session works on (set by /feature, /resume-work)")
             command.add_argument("--phase", help="CreateFeature phase key, e.g. 2_discovery")
         if name == "note":
             command.add_argument("--kind", choices=["inaccuracy", "iteration"], required=True)

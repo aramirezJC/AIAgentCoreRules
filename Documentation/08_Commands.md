@@ -17,9 +17,9 @@ commands — see the host project's documentation.
 
 | Command | What it does |
 |---|---|
-| `/feature <Name> [GDD path]` | Starts the 8-phase Create Feature process. If the feature already has a progress file, offers `/resume` instead. |
+| `/feature <Name> [GDD path]` | Starts the 8-phase Create Feature process. If the feature already has a progress file, offers `/resume-work` instead. |
 | `/checkpoint [Name] [note]` | Saves where work stopped inside the current phase to `<Name>_Progress.md`: done, in flight, next action, pending decisions, notes. |
-| `/resume [Name]` | Picks a feature up in a fresh session: tags the session with the feature and phase, reloads the current phase, its rules and documents, reports drift (including a newer Confluence version), and waits for confirmation. With no name, lists unfinished features. |
+| `/resume-work [Name]` | Picks a feature up in a fresh session: tags the session with the feature and phase, reloads the current phase, its rules and documents, reports drift (including a newer Confluence version), and waits for confirmation. With no name, lists unfinished features and asks which one to pick up, then continues with it. |
 | `/small-task <ask>` | Starts the Small Task process directly: records the lane and loads the process without classifying the request first. |
 | `/bug-fix <symptom>` | Starts the Bug Fix process directly: diagnosis, approved fix, regression test. |
 | `/run-investigation-mode <question>` | Starts Investigation Mode directly. The output is a document or recommendation, not code. |
@@ -45,7 +45,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 

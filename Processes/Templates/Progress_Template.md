@@ -1,7 +1,7 @@
 # [FeatureName] — Progress
 
 Resume state for the CreateFeature process. Written at every gate and by `/checkpoint`; read by
-`/resume [FeatureName]`. Keep it short — it is reloaded at the start of every session.
+`/resume-work [FeatureName]`. Keep it short — it is reloaded at the start of every session.
 
 ```yaml
 feature:        "[FeatureName]"
@@ -12,7 +12,7 @@ artifacts:      []                  # files in this folder the next phase needs,
 sessions:       []                  # session folder names that worked on this feature — Phase 8 reads these
 sources_of_truth: []                # documents edited outside this folder, with the version last read, e.g.
                                     #   - {kind: confluence, id: "4787830785", title: "<Feature> TDD", version: 14}
-                                    # /resume compares versions; update the version at every /checkpoint and gate
+                                    # /resume-work compares versions; update the version at every /checkpoint and gate
 ```
 
 ---
