@@ -11,10 +11,14 @@
             "id": "5643385930e48e37",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "file:/Users/aramirez/Documents/Projects/TripleMatch3D/Assets/GitIgnoreAssets/Features/GameProgressSave/GameProgressSave_GDD.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "GameProgressSave_GDD"
             }
           }
         ]
@@ -186,14 +190,23 @@
   },
   "active": "5643385930e48e37",
   "lastOpenFiles": [
+    "Tools/session-lifecycle/token_breakdown.py",
+    "Tools/setup/settings.core.json",
+    "Tools/setup/install.py",
+    "Tools/setup/README.md",
+    "Tools/setup",
+    "Skills/land-worktree/SKILL.md",
+    "Skills/land-worktree",
+    "Tools/session-lifecycle/retro_page.py",
+    "Processes/ExternalDocPass.md",
+    "Skills/active-features/SKILL.md",
+    "Skills/active-features",
+    "Processes/MetaReview.md",
     "GitIgnoreReports/Sessions/hooks.log",
     "GitIgnoreReports/Sessions",
     "GitIgnoreReports",
     "Tools/session-analysis/README.md",
     "Tools/session-analysis/session_meta_report.py",
-    "Tools/session-analysis",
-    "Tools/docs-export/export_confluence.py",
-    "Tools/docs-export",
     "Documentation/10_HostProjectLayer.md",
     "Documentation/11_Contributing.md",
     "Documentation/10_TripleMatchProjectLayer.md",
@@ -207,20 +220,11 @@
     "Documentation/02_WorkModes.md",
     "Documentation/01_Setup.md",
     "Documentation/00_Overview.md",
-    "Documentation",
     "Skills/resume/SKILL.md",
-    "Skills/resume",
     "Skills/checkpoint/SKILL.md",
-    "Skills/checkpoint",
     "Processes/Templates/Progress_Template.md",
     "Tools/session-lifecycle/README.md",
     "Processes/BugFix.md",
-    "Processes/SmallTask.md",
-    "Skills/audit/SKILL.md",
-    "Skills/audit",
-    "Skills/discover/SKILL.md",
-    "Skills/feature/SKILL.md",
-    "Skills/iteration/SKILL.md",
-    "Skills/inaccuracy/SKILL.md"
+    "Processes/SmallTask.md"
   ]
 }
