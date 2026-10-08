@@ -14,7 +14,7 @@ steps:
   - "Show the result as a table: Feature · Phase · Status · Updated · Next. Under it, list each feature's resume command exactly as printed (it carries the phase's recommended model)."
   - "If a feature's status is at_gate, say the gate is waiting on the engineer's confirmation."
   - "If the list is empty, say no features are in progress and offer /feature <Name>."
-  - "Do not open progress files or resume anything. Resuming is the engineer's call: /resume <FeatureName>, ideally in a fresh session."
+  - "Do not open progress files or resume anything. Resuming is the engineer's call: /resume-work <FeatureName>, ideally in a fresh session."
 ```
 
 The same list, shortened, appears in the Session tracking block at the start of every session

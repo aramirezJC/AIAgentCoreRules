@@ -1,10 +1,12 @@
 ---
-name: resume
-description: Resume an in-progress CreateFeature from its <FeatureName>_Progress.md - reload the current phase file, its rules and artifacts, restate where work stopped, and continue after the engineer confirms. Use when the engineer runs /resume <FeatureName> or asks to pick up / continue a feature from a previous session.
+name: resume-work
+description: Resume an in-progress CreateFeature from its <FeatureName>_Progress.md - reload the current phase file, its rules and artifacts, restate where work stopped, and continue after the engineer confirms. With no name, lists the active features and lets the engineer pick one. Use when the engineer runs /resume-work [FeatureName] or asks to pick up / continue a feature from a previous session.
 argument-hint: "[FeatureName]"
 ---
 
-# Resume
+# Resume Work
+
+Named `resume-work`, not `resume`, so it does not collide with the built-in `/resume` command.
 
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
 MetaRouter.md). Load files with Read, not shell `cat`, so the router trace records them.
@@ -14,11 +16,23 @@ MetaRouter.md). Load files with Read, not shell `cat`, so the router trace recor
 ```yaml
 steps:
   - "If $ARGUMENTS names a feature: progress file is <working_folder>/<FeatureName>_Progress.md (working_folder from Processes/CreateFeature/index.md)."
-  - "If no name was given: run `python3 <lifecycle script> features` (same list as /active-features), ask which one, and stop."
+  - "If $ARGUMENTS is empty: pick one (below), then continue this step with the chosen feature — do not stop after the list."
   - "If the file does not exist: say so and offer /feature <FeatureName> to start it. Stop."
   - "Run: python3 <lifecycle script> set --lane feature --title \"<FeatureName>\" --feature \"<FeatureName>\" --phase <current_phase>"
   - "This session is for current_phase only (one session per phase, see CreateFeature/index.md). If the session already holds work for another feature or phase, suggest starting a fresh one."
   - "Add the current session folder name to `sessions` in the progress file."
+```
+
+### Picking a feature when no name was given
+
+```yaml
+pick:
+  - "Run: python3 <lifecycle script> features --json   # same list as /active-features, newest first"
+  - "Empty list: say no features are in progress, offer /feature <Name>, and stop."
+  - "Otherwise ask with the host's choice prompt (AskUserQuestion in Claude Code; a numbered list elsewhere). One option per feature, newest first, at most 4: label = feature, description = '<phase_label> · <status> · next: <next, shortened>'."
+  - "More than 4 features: print the full list (as /active-features shows it) above the prompt, offer the 4 newest, and say the engineer can type any other name via Other."
+  - "Wait for the choice. A typed name that matches no listed feature is handled by the 'file does not exist' step."
+  - "If the chosen phase's recommended model differs from this session's, mention its fresh-session command (the resume command from `features`) once, and continue here unless the engineer switches."
 ```
 
 ## Step 2 — Reload

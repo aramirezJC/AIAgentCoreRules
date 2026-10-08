@@ -462,7 +462,7 @@ def load(sessions_dir, repos):
         session = {"folder": os.path.basename(folder), "id": state.get("session_id", "")[:8],
                    "lane": state.get("lane") or "unset",
                    "work_type": state.get("work_type") or LANE_WORK_TYPE.get(state.get("lane"), "unset"),
-                   # Set by /feature and /resume. Older feature-lane sessions only carry the title.
+                   # Set by /feature and /resume-work. Older feature-lane sessions only carry the title.
                    "feature": state.get("feature") or (state.get("title") if state.get("lane") == "feature" else None),
                    "phase": state.get("phase"),
                    "title": state.get("name") or state.get("title") or "",

@@ -136,7 +136,7 @@ and each phase can start on its recommended model. When the engineer confirms a 
 2. runs `/end-session`, which writes a short retro for the phase (the full retrospective is
    Phase 8, which reads all of them),
 3. prints the command for the next phase and stops, for example
-   `claude --model haiku "/resume MyFeature"`.
+   `claude --model haiku "/resume-work MyFeature"`.
 
 A phase that takes several sittings ends each one with `/checkpoint`; the next sitting is a new
 session for the same phase. To keep going in the same session anyway, say so at the gate, and
@@ -155,7 +155,7 @@ being summarised. The progress file (`<FeatureName>_Progress.md`) does.
 | `/checkpoint` | The checkpoint is replaced: done, in flight, next action, pending decisions, notes |
 | `/end-session` mid-phase | `/checkpoint` runs automatically first |
 
-To continue in a new session, run **`/resume <FeatureName>`**. The agent:
+To continue in a new session, run **`/resume-work <FeatureName>`**. The agent:
 
 1. switches the session to the feature lane and adds the session to the feature's list,
 2. reloads the process index, the progress file, the current phase file, that phase's rule
@@ -164,21 +164,22 @@ To continue in a new session, run **`/resume <FeatureName>`**. The agent:
 4. presents a summary — phase, gates passed, what is done, what is next, pending decisions —
    and **waits for confirmation** before continuing.
 
-`/resume` with no name lists every feature that is not complete, as does `/active-features`,
-which also prints each feature's resume command. A new session that isn't already working on a
-feature shows the same list at start and offers to resume. Running `/feature` on a feature that
-already has a progress file offers `/resume` instead of restarting Phase 1.
+`/resume-work` with no name lists every feature that is not complete and asks which one to pick
+up, then resumes it. `/active-features` shows the same list and also prints each feature's
+resume command. A new session that isn't already working on a feature shows the same list at
+start and offers to resume. Running `/feature` on a feature that
+already has a progress file offers `/resume-work` instead of restarting Phase 1.
 
 The session is tagged with the feature and phase, so the meta-analysis report can show cost
 **per feature** and **per phase**. Documents edited outside the feature folder, such as the
 Confluence TDD, are listed under `sources_of_truth` in the progress file with the version last
-read. `/resume` reports a newer version as drift.
+read. `/resume-work` reports a newer version as drift.
 
 Why not just reopen the old conversation? Reopening brings back the whole previous context,
 including rule files that may already have been summarised away. A resume starts clean and
 loads only what the current phase needs.
 
-**Source files:** [[CreateFeature/index]] · [[Phase1_Intake]] · [[Phase2_Discovery]] · [[Phase3_Design]] · [[Phase4_Implementation]] · [[Phase5_UnitTests]] · [[Phase6_Integration]] · [[Phase7_Verification]] · [[Phase8_Retrospective]] · [[Progress_Template]] · [[TDD_Template]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume/SKILL|/resume]]
+**Source files:** [[CreateFeature/index]] · [[Phase1_Intake]] · [[Phase2_Discovery]] · [[Phase3_Design]] · [[Phase4_Implementation]] · [[Phase5_UnitTests]] · [[Phase6_Integration]] · [[Phase7_Verification]] · [[Phase8_Retrospective]] · [[Progress_Template]] · [[TDD_Template]] · [[Skills/feature/SKILL|/feature]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]]
 
 ---
 

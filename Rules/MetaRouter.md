@@ -168,7 +168,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /run-investigation-mode <question>: "enter Investigation Mode (lane investigation), skipping classification"
   /generate-meta-review [time frame]: "run the MetaReview process over the sessions in the window"
   /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
-  /resume <Name>:  "pick up a feature from its progress file in a fresh session"
+  /resume-work [Name]: "pick up a feature from its progress file in a fresh session; no name → choose from the active features"
   /active-features: "list features not yet complete: phase, status, next step, resume command"
   /discover <area>: "subagent survey, returns a compact map"
   /audit [files]:  "rules compliance check, report only"

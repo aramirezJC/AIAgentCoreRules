@@ -29,7 +29,7 @@ on_gate_confirmed:   # in this order, then stop
   3_handoff: "Print the command for the next phase's fresh session and stop. Do NOT load the next phase file here."
 handoff_command: |
   Next: Phase <N> — <Name>. In a new session from the project root:
-    claude --model <next phase's recommended_model> "/resume <FeatureName>"
+    claude --model <next phase's recommended_model> "/resume-work <FeatureName>"
 exceptions:
   - "The engineer asks to continue in this session: continue, and record the reason in the gate block's open_items."
   - "Phase 8 runs in the session that confirms Gate 7 only if the engineer asks; otherwise it is its own session too."
@@ -47,7 +47,7 @@ progress_file:
   on_session: "Add the current session folder name (from the Session tracking block) to `sessions` the first time this session writes the file."
   on_gate:    "Append the phase_handoff block (below) under 'Gates Passed', set current_phase to the next phase, clear the Checkpoint section, update artifacts and the sources_of_truth versions."
   mid_phase:  "/checkpoint replaces the Checkpoint section — where work stopped and what comes next."
-  on_resume:  "/resume <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
+  on_resume:  "/resume-work <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
 ```
 
 Write the gate block **before** closing the session. A gate that is confirmed in chat
