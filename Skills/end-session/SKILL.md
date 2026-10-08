@@ -13,6 +13,24 @@ folder that holds MetaRouter.md).
 
 ---
 
+## Step 0 — Land the worktree
+
+Runs before Step 1, so the landing turns are part of the compiled metrics and router trace.
+
+```yaml
+active_worktree:   # any one of these means the session worked in a worktree
+  - "The working directory is under .claude/worktrees/."
+  - "This session entered or created a worktree (EnterWorktree, an agent run with worktree isolation, or `git worktree add`)."
+steps:
+  - "No active worktree → skip to Step 1. Do not ask."
+  - "Run: python3 Tools/setup/install.py worktrees    # confirm it still exists; note branch, dirty, ahead"
+  - "Gone, or clean with 0 ahead → nothing to land; say so in one line and go to Step 1."
+  - "Ask the engineer: land <branch> into <main checkout branch> now? Wait for the answer."
+  - "no → go to Step 1. Leave the worktree as it is."
+  - "yes → if the session is still inside the worktree, commit or show its uncommitted work first, then leave it (ExitWorktree, action keep). Run /land-worktree <name> and follow it to the end, including the engineer's keep/reject test. Then go to Step 1."
+  - "Several active worktrees → ask once per worktree; land them one at a time."
+```
+
 ## Step 1 — Compile
 
 ```yaml
