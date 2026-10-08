@@ -33,7 +33,7 @@ commands — see the host project's documentation.
 
 | Command | What it does |
 |---|---|
-| `/land-worktree [name] [--squash]` | Merges an agent worktree's branch into your current branch without committing, waits while you test it, then commits and removes the worktree and branch — or rolls the merge back. With no name, lists the worktrees. Warns when a worktree branched from the default branch instead of yours and offers to cherry-pick only the agent's commits. Never pushes. |
+| `/land-worktree [name] [--squash]` | Merges an agent worktree's branch into your current branch without committing, waits while you test it, then commits and removes the worktree and branch — or rolls the merge back. With no name, lists the worktrees. Warns when a worktree branched from the default branch instead of yours and offers to cherry-pick only the agent's commits. Lands into the default branch (e.g. `main`) only after you confirm, and works for worktrees of other linked repos via `--project`. Never pushes. |
 
 ## Reporting
 

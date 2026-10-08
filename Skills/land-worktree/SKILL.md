@@ -20,7 +20,9 @@ python3 <core>/Tools/setup/install.py worktrees --json
 steps:
   - "Record the session as lane other, work type other (Session tracking block). Skip this when /end-session called this skill: the session keeps its lane."
   - "List worktrees with `install.py worktrees`. No argument → show the list and ask which one. A PRUNABLE row → offer `git worktree prune`."
+  - "Worktree of another repository (e.g. a rules repo linked under GitIgnoredExternals/) → pass `--project <that repo's main checkout>` to install.py and run the git commands there."
   - "Target branch = the main checkout's current branch. State it and the worktree branch in one line before doing anything."
+  - "Target is the default branch (main/master/develop, or origin/HEAD) → say so and ask for explicit confirmation to merge into it. No confirmation → stop; offer to push the worktree branch for a PR instead."
   - "Preconditions — stop and report, do not fix silently:"
   - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash"
   - "  worktree is DIRTY → the agent left uncommitted work; show `git -C <worktree> status --short` and ask"
@@ -44,7 +46,8 @@ steps:
 
 ```yaml
 rules:
-  - "Never push the target branch, force-push, or merge into the default branch. Landing is local."
+  - "Never push the target branch or force-push. Landing is local."
+  - "Merge into the default branch only after the engineer confirms it for this landing; the confirmation does not carry over to the next one."
   - "Never commit the merge before the engineer says keep."
   - "Removing a worktree deletes only its folder: symlinked directories (worktree.symlinkDirectories) are links, so the main checkout's copies are untouched."
   - "git refuses to remove a worktree with modified tracked files or untracked, non-ignored files; ignored folders (e.g. Unity Library/) do not block it and are deleted with it. A refusal means real unsaved work — show it before asking about --force."
