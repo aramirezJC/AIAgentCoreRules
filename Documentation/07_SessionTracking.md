@@ -195,7 +195,8 @@ wraps it in a repeatable review of one time window, by default since the previou
    reminder in the report, never a ticket: committing and pushing is the engineer's job.
 6. Write `GitIgnoreReports/MetaReviews/<date>_MetaReview.html` (fixed layout) and
    `<date>_Tickets.md`, which lists tickets by priority: P1 for work or data at risk, P2 for
-   recurring misses or the top cost driver, P3 for polish. Then work through the tickets one at a time.
+   recurring misses or the top cost driver, P3 for polish. A ticket that cites a code fix names the
+   branch or commit it is on. Then work through the tickets one at a time.
 
 **Source files:** [[Processes/MetaReview|MetaReview process]] · [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]]
 

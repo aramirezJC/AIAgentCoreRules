@@ -22,7 +22,8 @@ The root is `<project>/GitIgnoreReports/Sessions`, where `<project>` is the main
 by the agent). Never the shell's cwd or the payload's `cwd`: both follow the agent's `cd`, and a
 root built from them nested duplicate session folders. A cwd inside `GitIgnoredExternals/<layer>`
 (a symlinked repo of its own) resolves to the host project, not the layer. A root that contains
-`GitIgnoreReports` twice is refused. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
+`GitIgnoreReports` twice is refused. Regression tests for root resolution and closed-session
+renames: `python3 -m unittest discover -s Tools/session-lifecycle/tests -p 'test_*.py'`. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
 Folders are created only when there is something to record: on the first `set`, `note` or
 `compile`, or by `hook-stop` / `hook-end` once the transcript has a typed prompt. `hook-start`

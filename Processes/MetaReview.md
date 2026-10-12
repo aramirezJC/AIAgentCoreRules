@@ -74,6 +74,7 @@ steps:
 
   9_tickets:
     - "Turn every open item from 5–6 into a ticket in the format below, ordered by priority. Repo state (7) stays in the report."
+    - "When a ticket cites a code fix or a code fact, name the branch or commit it holds on (`git branch -a --contains <sha>`). A fix on a release branch is not yet in develop."
     - "Present the list in chat and stop. The engineer picks the order; each ticket then runs in its own lane (small_task, bug_fix, or other for rule edits)."
     - "When a ticket is done, mark it in the tickets file with the commit that closed it."
 

@@ -190,11 +190,11 @@ def ensure_folder(root, session_id, transcript_path=None, project_dir=None):
     folder = find_folder(root, session_id)
     if folder:
         return folder
+    check_not_nested(root)
     transcript_path = locate_transcript(session_id, transcript_path)
     if not session_id or not transcript_path or not os.path.isfile(transcript_path):
         return None
-    check_not_nested(root)
-    state = {"session_id": session_id, "transcript_path": transcript_path,
+    state ={"session_id": session_id, "transcript_path": transcript_path,
              "project_dir": project_dir or current_project_dir(), "tracking_started_at": now_iso(),
              "started_at": transcript_started_at(transcript_path) or now_iso(),
              "name": None, "lane": None, "work_type": None, "title": None,
