@@ -20,8 +20,9 @@ place to look when a session's metrics were not updated on exit.
 The root is `<project>/GitIgnoreReports/Sessions`, where `<project>` is the main checkout found by
 `../setup/project_root.py` from `CLAUDE_PROJECT_DIR` (hooks) or the current checkout (commands run
 by the agent). Never the shell's cwd or the payload's `cwd`: both follow the agent's `cd`, and a
-root built from them nested duplicate session folders. A root that contains `GitIgnoreReports`
-twice is refused. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
+root built from them nested duplicate session folders. A cwd inside `GitIgnoredExternals/<layer>`
+(a symlinked repo of its own) resolves to the host project, not the layer. A root that contains
+`GitIgnoreReports` twice is refused. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
 Folders are created only when there is something to record: on the first `set`, `note` or
 `compile`, or by `hook-stop` / `hook-end` once the transcript has a typed prompt. `hook-start`

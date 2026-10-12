@@ -69,12 +69,14 @@ def now_iso():
 
 
 def current_project_dir():
-    """The checkout this session works in: CLAUDE_PROJECT_DIR (set for hooks), else the checkout
-    holding the cwd. Never the bare cwd or a hook payload's cwd: both follow the agent's `cd`."""
+    """The checkout this session works in: CLAUDE_PROJECT_DIR (set for hooks), else the project
+    this script was installed into (<project>/GitIgnoredExternals/...), else the checkout holding
+    the cwd. Never the bare cwd or a hook payload's cwd: both follow the agent's `cd`."""
     env_dir = os.environ.get("CLAUDE_PROJECT_DIR")
     if env_dir:
         return os.path.abspath(env_dir)
-    return project_root.find_working_root(os.getcwd()) or os.getcwd()
+    start = project_root.host_of_layer(SCRIPT_PATH) or project_root.logical_cwd()
+    return project_root.find_working_root(start) or os.getcwd()
 
 
 def reports_root(args):

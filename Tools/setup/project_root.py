@@ -7,12 +7,17 @@ and the session tracker always agree on it. No per-project configuration: git kn
 Both fall back to the nearest ancestor holding CLAUDE.md for a project without git, and return
 None when neither is found. Never derive a root from a shell's cwd without one of these: the
 agent's `cd` moves the cwd, and a root built from it nests GitIgnoreReports inside itself.
+
+A path inside <project>/GitIgnoredExternals/<layer> resolves to <project>: each layer is a
+symlinked repo of its own, so git alone would answer with the layer. Pass logical paths
+(logical_cwd(), a script's abspath) — os.getcwd() has already resolved the symlink away.
 """
 
 import os
 import subprocess
 
 MARKER = "CLAUDE.md"
+EXTERNALS = "GitIgnoredExternals"
 
 
 def git(args, cwd):
@@ -36,10 +41,31 @@ def find_marker_root(start):
         current = parent
 
 
+def logical_cwd():
+    """The cwd as the shell spells it ($PWD), keeping symlinked layer paths; else os.getcwd()."""
+    pwd = os.environ.get("PWD")
+    try:
+        if pwd and os.path.samefile(pwd, os.getcwd()):
+            return pwd
+    except OSError:
+        pass
+    return os.getcwd()
+
+
+def host_of_layer(path):
+    """<project> when path is inside <project>/GitIgnoredExternals/, else None."""
+    parts = os.path.abspath(path).split(os.sep)
+    if EXTERNALS not in parts:
+        return None
+    return os.sep.join(parts[:parts.index(EXTERNALS)]) or os.sep
+
+
 def find_project_root(start):
+    start = host_of_layer(start) or start
     common = git(["rev-parse", "--path-format=absolute", "--git-common-dir"], start)
     return os.path.dirname(common) if common else find_marker_root(start)
 
 
 def find_working_root(start):
+    start = host_of_layer(start) or start
     return git(["rev-parse", "--show-toplevel"], start) or find_marker_root(start)

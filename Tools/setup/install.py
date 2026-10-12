@@ -320,7 +320,7 @@ def main():
     if not args.command:
         args = parser.parse_args(sys.argv[1:] + ["install"])
     try:
-        start = args.project or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+        start = args.project or os.environ.get("CLAUDE_PROJECT_DIR") or project_root.logical_cwd()
         root = os.path.realpath(args.project) if args.project else find_project_root(start)
         return args.func(args, root)
     except RuntimeError as error:
