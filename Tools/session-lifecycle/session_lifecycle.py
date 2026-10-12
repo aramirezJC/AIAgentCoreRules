@@ -787,6 +787,12 @@ def set_work_type(state, work_type, source):
 
 def cmd_set(args):
     folder, state = resolve(args)
+    closed = state.get("end_session_run")
+    if closed and args.lane and state.get("lane") and args.lane != state["lane"]:
+        # Relabelling a closed session mismatches its retro and renames the folder that progress
+        # files and Phase 8 reference (MR-20261009-04).
+        sys.exit("Session %s was closed by /end-session as lane %s; start a fresh session for the %s "
+                 "work instead of relabelling this one." % (state["session_id"][:8], state["lane"], args.lane))
     if args.lane:
         # Keep earlier lanes: a mid-session change (e.g. a BugFix detour) must stay auditable.
         if state.get("lane") and state["lane"] != args.lane:
@@ -810,7 +816,8 @@ def cmd_set(args):
         state["title"] = args.title
     save_state(folder, state)
     target = os.path.join(os.path.dirname(folder), folder_name(state))
-    if target != folder and not os.path.exists(target):
+    # A closed session's folder name is final: others may reference it by name.
+    if target != folder and not os.path.exists(target) and not closed:
         os.rename(folder, target)
         folder = target
     render(folder, state, state.get("project_dir") or current_project_dir())

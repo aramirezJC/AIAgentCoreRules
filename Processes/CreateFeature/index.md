@@ -44,7 +44,7 @@ Chat context does not survive a session end or a summary. The progress file does
 ```yaml
 progress_file:
   create:     "At the start of Phase 1, from ../Templates/Progress_Template.md, if it does not exist."
-  on_session: "Add the current session folder name (from the Session tracking block) to `sessions` the first time this session writes the file."
+  on_session: "Add the current session folder name (from the Session tracking block) to `sessions` the first time this session writes the file. Readers match entries by the id8 suffix, so a later lane rename does not break them."
   on_gate:    "Append the phase_handoff block (below) under 'Gates Passed', set current_phase to the next phase, clear the Checkpoint section, update artifacts and the sources_of_truth versions."
   mid_phase:  "/checkpoint replaces the Checkpoint section — where work stopped and what comes next."
   on_resume:  "/resume-work <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."

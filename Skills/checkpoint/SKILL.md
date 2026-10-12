@@ -14,7 +14,7 @@ MetaRouter.md). The progress file lives in the feature's working folder — see
 steps:
   - "Feature name: the first word of $ARGUMENTS, else the session title (feature lane), else ask and stop."
   - "Progress file: <working_folder>/<FeatureName>_Progress.md. If missing, create it from Processes/Templates/Progress_Template.md."
-  - "Add the current session folder name (Session tracking block) to `sessions` if it is not already listed."
+  - "Add the current session folder name (Session tracking block) to `sessions` if no entry ends in the same id8 (a lane change may have renamed it)."
   - "Replace the Checkpoint section with the state of the current phase, from this conversation only:"
   - "  done:              steps / files finished and engineer-acknowledged this phase"
   - "  in_flight:         the step or file in progress and how far it got — 'none' if between steps"
