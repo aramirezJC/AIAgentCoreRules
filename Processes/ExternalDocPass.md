@@ -2,10 +2,11 @@
 
 # External Doc Pass
 
-For documents that live outside the repository and are reviewed there, such as a feature TDD on
-Confluence. Every fetch of a large page and every update re-sends the whole page through the
-context, so the cost is set by how many round trips happen, not by how big the change is. Work
-in **passes**: read once, change locally, write once.
+For documents that live outside the repository and are reviewed there — a feature TDD on
+Confluence, or its architecture diagrams on a Miro board. Every fetch of a large page or board
+frame, and every update, re-sends the whole thing through the context (a board read also carries
+a large canvas-composer-skill payload on top), so the cost is set by how many round trips happen,
+not by how big the change is. Work in **passes**: read once, change locally, write once.
 
 The host project supplies its conventions (page template, style reference, markup, comment
 convention) in a doc-conventions rule file listed in its SystemIndex. Load it before the first
@@ -21,6 +22,7 @@ Tag definitions: [[CoreTags]]
 publish:
   - "Load the host's doc-conventions file. Read its style reference page once, for structure only."
   - "Build the complete page body locally (a scratch file next to the local source doc), including diagrams. Validate diagrams before publishing if the host names a validator."
+  - "If the document has diagrams reviewed on a board, push them in this same pass — see 'Diagrams reviewed on a board' below. Do not push a diagram ahead of the document it illustrates."
   - "Publish in one create or update call."
   - "Record the page in the progress file's sources_of_truth: kind, id, title, version returned by the call."
 ```
@@ -38,6 +40,21 @@ review_pass:
   5_write:    "One update call. If the update fails on a version conflict, re-read once and re-apply; never loop."
   6_report:   "Reply with: new version, threads addressed (the engineer resolves them; the agent cannot), threads skipped and why. Update sources_of_truth to the new version."
 budget:       "Per pass: at most 2 page reads (step 1 and one conflict retry) and 1 update. Exceeding it means the pass was split; say why in the report."
+```
+
+## Diagrams reviewed on a board (Miro)
+
+A diagram's local source (e.g. `.mmd`) is what gets iterated on — read, edit, re-read it locally
+(a local render, not a board round trip) until the content and layout are what it should say. The
+board gets pushed to on the same schedule as the document it illustrates, not on every local
+revision: a diagram does not earn its own round trip just because the text changed again.
+
+```yaml
+diagrams_on_a_board:
+  - "Iterate the local source against a local render until it is ready — never push a revision just to see how it looks on the board."
+  - "Push to the board as part of the same Publish pass as the document it illustrates (first version, or a full rewrite), per the rule above — not per local revision."
+  - "Sticky-note or comment feedback left on the board is a Review pass, exactly like Confluence inline comments: read once, batch every actionable note into one local edit, push once."
+  - "A frame already converted to hand-drawn shapes (not a source-rendered diagram widget) is out of scope for an automated push — read it to understand feedback, never overwrite it."
 ```
 
 ## Style decisions

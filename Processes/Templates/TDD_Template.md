@@ -9,6 +9,7 @@
 **Table of Contents**
 - Objective
 - Architecture
+- Best Practices
 - Related documentation
 - Development plan
   - Stage Level (ie V0, V1 …)
@@ -28,6 +29,14 @@
 
 ## Architecture
 [Insert architecture diagram and/or describe high level notes]
+
+## Best Practices
+[Rules an implementer of this feature must follow, grouped by the strongest mechanism that can
+realistically enforce each one: compile-time > generator/CI > test-time (a failing build or test)
+> runtime guard > scaffolded (a wizard/tool gets it right by default) > process (code review only,
+when nothing stronger is feasible). A rule that can't be enforced by anything stronger than
+"remember to" is a rule that gets skipped — sort for the strongest mechanism before settling for
+process.]
 
 ## Related documentation
 [Insert links to related documentation]

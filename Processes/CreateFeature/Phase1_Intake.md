@@ -17,9 +17,11 @@ outputs:
 Intake is the longest phase and often spans sessions. After each TDD section is agreed, suggest
 `/checkpoint` if the session is getting long.
 
-If the TDD is also published for review outside the repository (e.g. Confluence), load
-[[ExternalDocPass]] (`../ExternalDocPass.md`) before the first publish and run every round of
-review comments as one pass. Review round trips were the largest cost of an Intake phase.
+If the TDD is also published for review outside the repository (e.g. Confluence), or its diagrams
+are reviewed on a board (e.g. Miro), load [[ExternalDocPass]] (`../ExternalDocPass.md`) before the
+first publish and run every round of review comments as one pass. Diagrams iterate locally against
+their source file and push to the board on the same schedule as the document, not per revision.
+Review round trips were the largest cost of an Intake phase.
 
 ---
 
@@ -71,6 +73,34 @@ architecture_checks:
   - Are the data flow and ownership clear?
   - Note: detailed class design happens in Phase 3 — capture intent here, not implementation.
 ```
+
+---
+
+### Section: Best Practices
+
+Ask:
+> "What rules must whoever implements this follow — and for each one, what actually stops someone from skipping it?"
+
+Work through the hard rules and conventions the Architecture section implies (resource lifecycles,
+who may touch what, required declarations, naming/registration conventions). For each one, sort by
+the strongest mechanism that can realistically hold it, strongest first:
+
+```yaml
+enforcement_tiers:   # strongest to weakest — place each rule at the strongest tier it can reach
+  - "Compile-time: the type system makes the mistake impossible to write."
+  - "Generator / CI: a build step fails when the rule is broken."
+  - "Test-time: a reflection check or required test fixture fails the suite."
+  - "Runtime guard: the code catches/asserts the violation itself, instead of trusting the caller."
+  - "Scaffolded: a wizard/tool writes the correct boilerplate by default — not enforced, but cheap to get right."
+  - "Process: code review only. Last resort — a rule that lands here is one more thing to remember."
+best_practices_checks:
+  - Does every rule name the mechanism that holds it, not just the rule?
+  - Is anything sitting at Process that could realistically move up a tier?
+  - Where a rule is deliberately left as a case-by-case judgment call (not tooled), is that reasoning written down, not just the absence of a mechanism?
+```
+
+If the feature has nothing beyond ordinary coding standards, say so explicitly rather than leaving
+the section blank — an empty section reads as "not considered," not "not applicable."
 
 ---
 
