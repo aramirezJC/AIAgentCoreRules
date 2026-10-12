@@ -2,7 +2,9 @@
 
 `install.py` wires AIAgentCoreRules (and any host layer next to it) into a host project. Stock
 `python3`, no packages. Run it from anywhere inside the project — the project root is the main
-checkout of the git repository you are in (`--project <path>` overrides).
+checkout of the git repository you are in, or the nearest folder holding `CLAUDE.md` outside git
+(`--project <path>` overrides). `project_root.py` holds that lookup; the session tracker uses the
+same module, so a new project needs no extra configuration for its reports to land in the right place.
 
 ```bash
 S=GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py

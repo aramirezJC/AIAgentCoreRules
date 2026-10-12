@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Session lifecycle for Claude Code: start, note, compile, open.
 
-One folder per session under the reports root (default: <cwd>/GitIgnoreReports/Sessions):
+One folder per session under the reports root (default: <project>/GitIgnoreReports/Sessions, where
+<project> is the main checkout found by Tools/setup/project_root.py — never the shell's cwd):
 
     <YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   (lane and name only once set)
         session.json   state (source of truth)
@@ -41,7 +42,11 @@ import sys
 import retro_page
 import token_breakdown
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "setup"))
+import project_root  # noqa: E402  shared with install.py
+
 SCRIPT_PATH = os.path.abspath(__file__)
+REPORTS_DIR = "GitIgnoreReports"
 SESSION_SUPPORT = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "session-support", "session-support")
 LANES = ["small_task", "bug_fix", "investigation", "feature", "other"]
 # Work type is what the work is; lane is which process ran it. Kept separate for the meta-analysis.
@@ -63,9 +68,29 @@ def now_iso():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def current_project_dir():
+    """The checkout this session works in: CLAUDE_PROJECT_DIR (set for hooks), else the checkout
+    holding the cwd. Never the bare cwd or a hook payload's cwd: both follow the agent's `cd`."""
+    env_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env_dir:
+        return os.path.abspath(env_dir)
+    return project_root.find_working_root(os.getcwd()) or os.getcwd()
+
+
 def reports_root(args):
+    """Explicit override, else <main checkout>/GitIgnoreReports/Sessions — shared by worktrees."""
     root = getattr(args, "reports_root", None) or os.environ.get("SESSION_REPORTS_ROOT")
-    return os.path.abspath(root or os.path.join(os.getcwd(), "GitIgnoreReports", "Sessions"))
+    if not root:
+        base = project_root.find_project_root(current_project_dir()) or current_project_dir()
+        root = os.path.join(base, REPORTS_DIR, "Sessions")
+    return os.path.abspath(root)
+
+
+def check_not_nested(root):
+    """A root inside another reports tree means the root was built from a moved cwd; creating a
+    folder there would split the session in two."""
+    if os.path.normpath(root).split(os.sep).count(REPORTS_DIR) > 1:
+        raise RuntimeError("refusing to create a session folder under nested reports root " + root)
 
 
 # ---------------------------------------------------------------- state
@@ -166,8 +191,9 @@ def ensure_folder(root, session_id, transcript_path=None, project_dir=None):
     transcript_path = locate_transcript(session_id, transcript_path)
     if not session_id or not transcript_path or not os.path.isfile(transcript_path):
         return None
+    check_not_nested(root)
     state = {"session_id": session_id, "transcript_path": transcript_path,
-             "project_dir": project_dir or os.getcwd(), "tracking_started_at": now_iso(),
+             "project_dir": project_dir or current_project_dir(), "tracking_started_at": now_iso(),
              "started_at": transcript_started_at(transcript_path) or now_iso(),
              "name": None, "lane": None, "work_type": None, "title": None,
              "inaccuracies": [], "iterations": [], "end_session_run": False}
@@ -190,11 +216,14 @@ def is_empty_folder(folder, state):
 
 def resolve(args):
     root = reports_root(args)
-    session_id = getattr(args, "session_id", None) or current_transcript(os.getcwd())[0]
+    session_id = getattr(args, "session_id", None) or current_transcript(current_project_dir())[0]
     if not session_id:
         sys.exit("No session id: pass --session-id, or run inside a Claude Code session.")
     # Never fall back to another session's folder: with concurrent sessions that edits the wrong one.
-    folder = ensure_folder(root, session_id, project_dir=os.getcwd())
+    try:
+        folder = ensure_folder(root, session_id, project_dir=current_project_dir())
+    except RuntimeError as error:
+        sys.exit(str(error))
     if folder is None:
         sys.exit("No transcript found for session %s, so there is nothing to record." % session_id)
     return folder, load_state(folder)
@@ -511,8 +540,9 @@ def read_hook_input():
 
 
 def hook_project_dir(hook):
-    """Hooks may not run in the project dir; the hook payload's cwd is authoritative."""
-    project_dir = hook.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    """Hooks run in the project dir. Not the payload's cwd: it follows the agent's last `cd`, and a
+    root built from it nested duplicate session folders (MR-20261009-01). hooks.log records it."""
+    project_dir = current_project_dir()
     os.chdir(project_dir)
     return project_dir
 
@@ -525,7 +555,7 @@ def hook_log(args, event, hook, outcome):
         with open(os.path.join(root, "hooks.log"), "a") as handle:
             handle.write("%s %s session=%s source=%s reason=%s cwd=%s -> %s\n" % (
                 now_iso(), event, (hook.get("session_id") or "?")[:8], hook.get("source"),
-                hook.get("reason"), os.getcwd(), outcome))
+                hook.get("reason"), hook.get("cwd"), outcome))
     except Exception:
         pass
 
@@ -534,7 +564,7 @@ def cmd_hook_start(args):
     try:
         hook = {} if sys.stdin.isatty() else read_hook_input()
         hook_project_dir(hook)
-        inferred_id, inferred_transcript = current_transcript(os.getcwd())
+        inferred_id, inferred_transcript = current_transcript(current_project_dir())
         session_id = hook.get("session_id") or inferred_id or "unknown"
         hook.setdefault("transcript_path", inferred_transcript)
         root = reports_root(args)
@@ -561,7 +591,7 @@ def cmd_hook_start(args):
             "  python3 \"%s\" note --session-id %s --kind inaccuracy --source agent \"<what was wrong>\""
             % (SCRIPT_PATH, session_id),
             "Close the session with /end-session (metrics + retrospective).",
-        ] + feature_hint(os.getcwd(), state)))
+        ] + feature_hint(current_project_dir(), state)))
         hook_log(args, "start", hook, ("resumed " + folder) if resumed else "folder deferred until there is something to record")
     except Exception as error:  # a hook must never block the session
         print("Session tracking failed to start: %s" % error)
@@ -582,12 +612,12 @@ def cmd_hook_end(args):
             hook_log(args, "end", hook, "removed empty folder " + folder)
             return 0
         if not folder and user_turns(locate_transcript(session_id, hook.get("transcript_path"))):
-            folder = ensure_folder(root, session_id, hook.get("transcript_path"), os.getcwd())
+            folder = ensure_folder(root, session_id, hook.get("transcript_path"), current_project_dir())
         if folder:
             state = load_state(folder)
             state["ended_at"] = now_iso()   # latest exit; a resumed session ends again
             state["end_reason"] = hook.get("reason")
-            compile_folder(folder, state, state.get("project_dir") or os.getcwd())
+            compile_folder(folder, state, state.get("project_dir") or current_project_dir())
             hook_log(args, "end", hook, "compiled " + folder)
         else:
             hook_log(args, "end", hook, "nothing to save, no folder")
@@ -656,7 +686,7 @@ def resume_command(feature):
 
 
 def cmd_features(args):
-    features = active_features(os.getcwd(), args.features_root)
+    features = active_features(current_project_dir(), args.features_root)
     if args.json:
         print(json.dumps([dict(f, resume=resume_command(f)) for f in features], indent=2))
         return 0
@@ -731,7 +761,7 @@ def cmd_hook_stop(args):
             # First reply of a session: now there is something to record.
             if not user_turns(locate_transcript(hook.get("session_id"), hook.get("transcript_path"))):
                 return 0
-            folder = ensure_folder(root, hook.get("session_id"), hook.get("transcript_path"), os.getcwd())
+            folder = ensure_folder(root, hook.get("session_id"), hook.get("transcript_path"), current_project_dir())
             if not folder:
                 return 0
         state = load_state(folder)
@@ -740,7 +770,7 @@ def cmd_hook_stop(args):
             age = datetime.datetime.now().astimezone() - datetime.datetime.fromisoformat(last)
             if age.total_seconds() < STOP_COMPILE_INTERVAL_SECONDS:
                 return 0
-        compile_folder(folder, state, state.get("project_dir") or os.getcwd())
+        compile_folder(folder, state, state.get("project_dir") or current_project_dir())
     except Exception as error:
         hook_log(args, "stop", hook, "ERROR %s" % error)   # successes are not logged: one per reply is noise
     return 0
@@ -781,7 +811,7 @@ def cmd_set(args):
     if target != folder and not os.path.exists(target):
         os.rename(folder, target)
         folder = target
-    render(folder, state, state.get("project_dir") or os.getcwd())
+    render(folder, state, state.get("project_dir") or current_project_dir())
     print(folder)
 
 
@@ -792,7 +822,7 @@ def cmd_note(args):
     # (found by /end-session and not logged live). Lets reports tell live logging apart.
     state[key].append({"at": now_iso(), "text": args.text, "source": args.source})
     save_state(folder, state)
-    render(folder, state, state.get("project_dir") or os.getcwd())
+    render(folder, state, state.get("project_dir") or current_project_dir())
     print("%s #%d logged in %s" % (args.kind, len(state[key]), os.path.join(folder, "metrics.md")))
 
 
@@ -801,7 +831,7 @@ def cmd_compile(args):
     if args.final:
         state["end_session_run"] = True
         state["ended_at"] = now_iso()
-    compile_folder(folder, state, state.get("project_dir") or os.getcwd())
+    compile_folder(folder, state, state.get("project_dir") or current_project_dir())
     print(os.path.join(folder, "metrics.md"))
 
 

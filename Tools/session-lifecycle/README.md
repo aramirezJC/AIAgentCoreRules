@@ -14,11 +14,14 @@ trace (which rule and process files were loaded, in order, read from the session
   tokens/        session-support per-session token report
 ```
 
-`<root>/hooks.log` gets one line per hook run (event, session, cwd, outcome) — the first place to
-look when a session's metrics were not updated on exit. Hooks resolve the project from the
-payload's `cwd`, not the process working directory.
+`<root>/hooks.log` gets one line per hook run (event, session, payload cwd, outcome) — the first
+place to look when a session's metrics were not updated on exit.
 
-Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
+The root is `<project>/GitIgnoreReports/Sessions`, where `<project>` is the main checkout found by
+`../setup/project_root.py` from `CLAUDE_PROJECT_DIR` (hooks) or the current checkout (commands run
+by the agent). Never the shell's cwd or the payload's `cwd`: both follow the agent's `cd`, and a
+root built from them nested duplicate session folders. A root that contains `GitIgnoreReports`
+twice is refused. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
 Folders are created only when there is something to record: on the first `set`, `note` or
 `compile`, or by `hook-stop` / `hook-end` once the transcript has a typed prompt. `hook-start`

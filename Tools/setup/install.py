@@ -30,6 +30,8 @@ import os
 import subprocess
 import sys
 
+import project_root
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORE_ROOT = os.path.realpath(os.path.join(SCRIPT_DIR, "..", ".."))
 CORE_FRAGMENT = os.path.join(SCRIPT_DIR, "settings.core.json")
@@ -54,8 +56,10 @@ def git(args, cwd):
 
 
 def find_project_root(start):
-    common = git(["rev-parse", "--path-format=absolute", "--git-common-dir"], start)
-    return os.path.dirname(common)
+    root = project_root.find_project_root(start)
+    if not root:
+        raise RuntimeError(f"no git repository or CLAUDE.md above {start}; pass --project")
+    return root
 
 
 def find_layers(root):
