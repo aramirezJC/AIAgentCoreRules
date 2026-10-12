@@ -191,7 +191,8 @@ wraps it in a repeatable review of one time window, by default since the previou
 3. Keep only findings that recur in two or more sessions, or the window's largest cost driver.
 4. Check every proposal against the current file contents, plus the previous review's open
    tickets. Proposals the engineer skipped are never raised again.
-5. Check the metadata and tools repos for uncommitted or unpushed work.
+5. Check the metadata and tools repos for uncommitted or unpushed work. This is a one-line
+   reminder in the report, never a ticket: committing and pushing is the engineer's job.
 6. Write `GitIgnoreReports/MetaReviews/<date>_MetaReview.html` (fixed layout) and
    `<date>_Tickets.md`, which lists tickets by priority: P1 for work or data at risk, P2 for
    recurring misses or the top cost driver, P3 for polish. Then work through the tickets one at a time.

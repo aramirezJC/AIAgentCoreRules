@@ -64,7 +64,8 @@ steps:
 
   7_repo_state:
     - "For each metadata and tools repo: `git status --short` and ahead/behind its upstream."
-    - "Uncommitted or unpushed rule work is a risk item, with file counts."
+    - "List it in the report's risks_next as a one-line reminder per repo: N uncommitted · N unpushed. Never a ticket — committing and pushing is the engineer's job, not agent work."
+    - "Flag louder (still not a ticket) only when work could be lost: a repo with no upstream, or local-only commits older than the window."
     - "Re-check just before writing the report: the engineer may have committed during the review."
 
   8_report:
@@ -72,7 +73,7 @@ steps:
     - "Every number on the page traces to a file or a command run this session."
 
   9_tickets:
-    - "Turn every open item from 5–7 into a ticket in the format below, ordered by priority."
+    - "Turn every open item from 5–6 into a ticket in the format below, ordered by priority. Repo state (7) stays in the report."
     - "Present the list in chat and stop. The engineer picks the order; each ticket then runs in its own lane (small_task, bug_fix, or other for rule edits)."
     - "When a ticket is done, mark it in the tickets file with the commit that closed it."
 
@@ -108,7 +109,7 @@ sections:
 
 ```yaml
 priority:
-  P1: "Work or data at risk: uncommitted rule work, a tool that silently reports wrong results, metrics that misreport"
+  P1: "Work or data at risk: a tool that silently reports wrong results, metrics that misreport"
   P2: "Recurring miss (3+ sessions) or the top cost driver in the window"
   P3: "One-off gap, documentation or comment polish, noise reduction"
 order_within_priority: "Higher frequency first, then larger token cost"
