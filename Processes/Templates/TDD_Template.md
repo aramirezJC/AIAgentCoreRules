@@ -6,6 +6,11 @@
 
 # TDD Title
 
+**Legend:** **⚠️ DESIGN** marks items that need a design answer before they can be finalized —
+give each one an owner (due at kickoff, or sooner if it blocks a stage). **🔧 ENGINEERING** marks
+items that still need engineering alignment before they can be finalized — give each one an owner
+too. Remove either tag from this line if the document ends up not using it.
+
 **Table of Contents**
 - Objective
 - Architecture
@@ -19,6 +24,7 @@
 - Data Reconciliation Strategy
 - CS Strategy
 - Edge Cases [Optional]
+- CMS Data Pipeline [Optional — only for Airtable-driven or OTA-configurable content]
 - Other Notes [Optional]
 - Future Work
 - Versions
@@ -29,6 +35,13 @@
 
 ## Architecture
 [Insert architecture diagram and/or describe high level notes]
+
+### Architecture Diagrams (Miro) [Optional — only if the architecture includes diagrams]
+[Diagram sources live in `Diagrams/*.mmd` (classDiagram / sequenceDiagram / flowchart). Validate
+every diagram locally before embedding it here or pushing it to a board — see "Validating a local
+diagram" in [[ExternalDocPass]]. Publishing or updating a board follows the same file's "Diagrams
+reviewed on a board" section: iterate the local source against a local render, push once per
+Publish/Review pass, never per revision.]
 
 ## Best Practices
 [Rules an implementer of this feature must follow, grouped by the strongest mechanism that can
@@ -88,6 +101,31 @@ List of tools and mechanisms that the feature will need long term. Following are
 | 1 | On an event, what happens if the event is about to end and the player makes progress? | |
 | 2 | What happens if the player closes the game during a progress point for an event that is ending or just ended? | |
 | | Edge case description. | How it is handled |
+
+## CMS Data Pipeline [Optional — only for Airtable-driven or OTA-configurable content; omit entirely otherwise]
+
+### Airtable
+
+| **Airtable Name** | **Description** | **Unity Import or Export?** |
+| --- | --- | --- |
+| [Table name — note if it is a new table or an existing one being extended] | [What it holds] | [Import into Unity / Export from Unity] |
+
+### Unity Data And Serialization
+
+| **Data Type** | **Data Destination Directory** | **Root vs Event vs other** | **JSON vs ScriptableObject** |
+| --- | --- | --- | --- |
+| [Type] | [Path] | [Root player data / Event config / Asset / Installer] | [JSON / ScriptableObject] |
+
+### JCL Integration / Live ops
+
+- **Feature switch:** [How this feature is turned on/off — a config flag, GEM scheduling, etc.]
+- **Maintenance:**
+    - How is new content added? → [...]
+    - How often? → [...]
+    - Who is intended to maintain it? → [Design / Live Ops tech / TechArt, per responsibility]
+- **OTA vs. client split:**
+    - **Client (requires build):** [new C# code, new prefab wiring, anything bundled with the client]
+    - **OTA (LiveUpdate):** [config data pushed through JCL, Addressable assets, anything that ships without a build]
 
 ## Other Notes [Optional]
 [Optional, any additional information not easily captured in the standard sections]

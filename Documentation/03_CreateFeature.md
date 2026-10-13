@@ -41,9 +41,10 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   summarising.
 - **1b TDD, section by section** — objective, architecture, related docs, development plan
   (stages with T-shirt sizes and assignees), final touches, tools, risks, data reconciliation
-  strategy, CS strategy, edge cases, notes and future work. Each section is agreed with the
-  engineer before moving on. The data reconciliation strategy cannot be left blank; if it is
-  undecided it is marked TBD and logged as an open item.
+  strategy, CS strategy, edge cases, CMS data pipeline (optional — only for Airtable-driven or
+  OTA-configurable content), notes and future work. Each section is agreed with the engineer
+  before moving on. The data reconciliation strategy cannot be left blank; if it is undecided it
+  is marked TBD and logged as an open item.
 - **1c consistency and gap review**, **1d metrics**, **1e document generation**.
 - **Publishing for review** — if the TDD also goes to Confluence (or another wiki), the
   [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally and published
@@ -51,6 +52,8 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   every ready item applied together, one update, and a report of which threads can be resolved.
   The host project's conventions file sets the layout and the comment convention. Review round
   trips were the largest cost of an Intake phase (191M tokens for one feature) before passes.
+  Diagrams are validated locally (`mermaid-cli`) before they are embedded or pushed to a board —
+  see External Doc Pass's "Validating a local diagram".
 
 ### Phase 2 — Discovery
 

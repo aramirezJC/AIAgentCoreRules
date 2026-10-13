@@ -57,6 +57,43 @@ diagrams_on_a_board:
   - "A frame already converted to hand-drawn shapes (not a source-rendered diagram widget) is out of scope for an automated push — read it to understand feedback, never overwrite it."
 ```
 
+## Validating a local diagram
+
+Before any local render, round-trip publish, or board push, confirm a `.mmd` source is
+syntactically valid rather than eyeballing it:
+
+```bash
+npx --yes @mermaid-js/mermaid-cli -i <file>.mmd -o /tmp/<file>.svg
+```
+
+A clean run with no "Parse error" means it's valid. One gotcha worth knowing up front: mermaid's
+sequence-diagram grammar treats a bare `;` as a statement terminator even inside `Note` or label
+text, so a sentence like "...is skipped for this save; every other bridge still writes..." silently
+breaks the parse — use a comma or em dash instead. If `mmdc` reports a parse error whose line
+number doesn't match the raw file, bisect by rendering progressively smaller slices of the source
+(or a single isolated line) until the exact failing substring is found — the reported line number
+is counted against mermaid's pre-processed text, not the file on disk.
+
+If the diagram lives inside an interactive local preview page (tabs, pan-zoom, several diagrams on
+one page — not a bare `.mmd`), `mmdc` alone cannot catch runtime/DOM bugs, such as a library
+mis-initializing against a hidden, zero-size panel. Drive the page headlessly instead:
+
+```js
+// Resolve puppeteer from mermaid-cli's own npx cache — no separate install needed:
+//   find ~/.npm/_npx -maxdepth 4 -path "*/node_modules/puppeteer/package.json"
+import puppeteer from "<resolved path>/lib/puppeteer/puppeteer.js";
+const browser = await puppeteer.launch({ headless: "new" });
+const page = await browser.newPage();
+page.on("pageerror", err => console.log("[pageerror]", err.message));
+await page.goto("file://<absolute path to the .html>", { waitUntil: "networkidle0" });
+// page.evaluate(...) to inspect DOM state (transforms, innerHTML, computed style) per tab;
+// page.click(...) to simulate the interaction that triggers the bug.
+await browser.close();
+```
+
+The Chromium binary `mmdc` downloads on first run is reusable for this (cached at
+`~/.cache/puppeteer/chrome/...`) — no separate browser download needed.
+
 ## Style decisions
 
 A comment like "move the tags before the name" or "colour new classes yellow" is a convention, not
