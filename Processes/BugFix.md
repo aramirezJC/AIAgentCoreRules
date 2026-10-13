@@ -20,6 +20,7 @@ steps:
     - "A system that a survey, log or hypothesis implicates later gets the same treatment at that moment: read its entry before reading its code, not at fix time."
     - "Locate the flow: codeindex.py where/members, usages.py for callers (/uses). Breadth → /discover."
     - "Recent history: git log --since=<first-seen build date> -- <files on the failing path>. A sibling fix may already explain the bug, or be missing from the reported build."
+    - "Crash reports: read the full native trace (Android tombstone, iOS full crash log), not the summary stacktrace. Summary exports truncate the crashing thread (~64 frames) and can drop managed method names, so recursion depth and the actual cycle are only visible in the full trace. Name the cycle from the repeating frames, and treat a hypothesis built only from a truncated trace as unverified."
   3_hypotheses:
     - "Read the method bodies on the failing path. Every claim carries file:line."
     - "Rank 1–3 hypotheses by evidence. For each: the evidence, what would confirm it, what would rule it out."
