@@ -27,3 +27,4 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 | **[ALLMAN]** | Allman braces — `{` always on its own new line. |
 | **[ACCESS]** | All access modifiers must be explicit on every member — no implicit defaults. |
 | **[LOG]** | All logging via the project Logger wrapper only. Never `UnityEngine.Debug.Log`, `Debug.LogWarning`, or `Debug.LogError`. |
+| **[SECRET]** | Never print, echo, log or slice any part of a credential value. Check a credential's shape with booleans only; if a fragment leaks, say so and recommend rotating it. |

@@ -14,7 +14,7 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
 | 4b | **Fresh session (offered)** | If the session is past about 8 turns, the agent offers to do the fix in a new session, because long sessions make every fix step re-read the whole diagnosis. On yes, it writes `bugfix_handoff.md` in the session folder (root cause, approved fix, files, blast radius, planned test, systems already read, rejected hypotheses), runs `/end-session` for the diagnosis, and prints the command that starts the new session at step 5. |
 | 5 | **Fix** | Load the rules the fix touches. Make the smallest change that removes the cause — no drive-by refactors; those are listed as follow-ups. |
 | 5b | **Audit** | Run `/audit` on every changed file, including repro tooling and the test file. Self-review is not a substitute. |
-| 6 | **Test** | One regression test that fails without the fix and passes with it. If the bug cannot be unit-tested (timing, platform, Editor-only), write manual repro steps and explain why. |
+| 6 | **Test** | One regression test that fails without the fix and passes with it. If the bug cannot be unit-tested (timing, platform, Editor-only), write manual repro steps and explain why. For engine or native behaviour, build the repro on the real prefab or live object, not on objects created from scratch. If the engineer already confirmed the bug with a tool, base the repro on how that tool captures its data. |
 | 7 | **Verify** | Run the host's compile check (`typecheck.py`). The engineer runs the tests and repro steps in Unity and reports the results. |
 | 8 | **Close** | Summarise cause, fix, test and follow-ups. Offer `/end-session`. |
 

@@ -88,6 +88,10 @@ generating partial code.
 - Existing comments, regions and TODOs are preserved unchanged.
 - Only the required lines changed; surrounding code is untouched.
 
+**Secrets** — in any command, the agent never prints any part of a credential (not even a
+prefix). It checks a token's shape with yes/no tests only, and if a fragment leaks it says so
+and recommends rotating it.
+
 **Source files:** [[MetaRouter]] · [[StopAndVerify]] · [[CoreTags]]
 
 ---

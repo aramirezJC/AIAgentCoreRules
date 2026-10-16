@@ -52,3 +52,12 @@ post_generation:
   - "[PRES] All existing comments, regions, and TODOs are preserved unchanged."
   - "[SURG] Only the required lines were changed — surrounding code is character-perfect."
 ```
+
+## Secrets — any command, any mode
+
+```yaml
+secrets:
+  - "[SECRET] Never print, echo, log or slice any part of a credential value (token, password, key) — not a prefix, not a length-plus-prefix."
+  - "[SECRET] Diagnose a credential with booleans only: e.g. print(value.startswith('ATATT') and len(value) > 100)."
+  - "[SECRET] If a fragment was exposed anyway, tell the engineer at once and recommend rotating it."
+```

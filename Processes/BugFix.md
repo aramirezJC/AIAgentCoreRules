@@ -42,6 +42,8 @@ steps:
   6_test:
     - "Load TestingRules.md and the host project's testing setup."
     - "Write one regression test that fails without the fix and passes with it. If the bug cannot be unit-tested (timing, platform, Editor-only), write the manual repro steps instead and say why."
+    - "Engine / native behaviour (aliasing, serialization, native memory, rendering): build the repro or test on the REAL asset or object (instantiate the prefab, read the live component). An object built from scratch may take a different native path and pass without the fix."
+    - "If the engineer already confirmed the bug with a tool or inspection (a comparer, a debug window, inspector values), ask which one and build the repro on the same data path — capture where and how that tool captures."
   7_verify:
     - "Run typecheck.py."
     - "Ask the engineer to run the test(s) in the Unity Test Runner and the repro steps; report results as given."

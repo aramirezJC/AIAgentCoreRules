@@ -46,9 +46,14 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   before moving on. The data reconciliation strategy cannot be left blank; if it is undecided it
   is marked TBD and logged as an open item.
 - **1c consistency and gap review**, **1d metrics**, **1e document generation**.
+- **Pre-publish sweep** — before publishing, every decision changed in the session is grepped
+  for across the TDD and its diagram sources, and earlier confirmed sections that contradict it are
+  fixed (real design conflicts go to the engineer).
 - **Publishing for review** — if the TDD also goes to Confluence (or another wiki), the
-  [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally and published
-  in one call. Each round of review comments is one pass: one read of the page and its comments,
+  [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally, measured, and
+  published in one call per page — a body over ~50K characters is split into child pages first,
+  because a call cut off mid-body saves a truncated page. Every publish is fetched back and
+  checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
   The host project's conventions file sets the layout and the comment convention. Review round
   trips were the largest cost of an Intake phase (191M tokens for one feature) before passes.

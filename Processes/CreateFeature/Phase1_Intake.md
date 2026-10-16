@@ -23,6 +23,12 @@ first publish and run every round of review comments as one pass. Diagrams itera
 their source file and push to the board on the same schedule as the document, not per revision.
 Review round trips were the largest cost of an Intake phase.
 
+**Before the first publish (and any publish after a session of decisions):** list every decision
+changed this session, grep the TDD and its diagram sources for the old wording, and fix each
+earlier section that now contradicts it. A contradiction that is a real design conflict, not just
+stale wording, goes to the engineer. One sweep found four stale statements and one real conflict
+in sections that had already been confirmed.
+
 ---
 
 ## Sub-phase 1a — GDD Conversion

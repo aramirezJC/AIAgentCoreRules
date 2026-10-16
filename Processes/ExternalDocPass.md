@@ -23,8 +23,11 @@ publish:
   - "Load the host's doc-conventions file. Read its style reference page once, for structure only."
   - "Build the complete page body locally (a scratch file next to the local source doc), including diagrams. Validate diagrams before publishing if the host names a validator."
   - "If the document has diagrams reviewed on a board, push them in this same pass — see 'Diagrams reviewed on a board' below. Do not push a diagram ahead of the document it illustrates."
-  - "Publish in one create or update call."
+  - "Measure the built body before publishing. Over ~50K characters, split it into child pages (the host's doc-conventions file says how) — one call per page."
+  - "Publish each page in one create or update call, written in the main session. Never hand a body to a subagent to retype."
+  - "Verify every publish: fetch the page (or read the create response) and confirm it ends at its last section. A call cut off mid-body still saves a truncated page."
   - "Record the page in the progress file's sources_of_truth: kind, id, title, version returned by the call."
+per_call_budget: "~50K characters of body. A 145K body was cut off mid-call and replaced the live page with a truncated one; 127K happened to pass, so a past success does not prove a size is safe."
 ```
 
 ## Review pass (engineer comments)

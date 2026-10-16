@@ -18,7 +18,7 @@ python3 <core>/Tools/setup/install.py worktrees --json
 
 ```yaml
 steps:
-  - "Record the session as lane other, work type other (Session tracking block). Skip this when /end-session called this skill: the session keeps its lane."
+  - "Record the session as lane other, work type other (Session tracking block) ONLY when the session has no lane yet or is already lane other. A session that already has a work lane (bug_fix, small_task, feature, investigation) keeps it: landing finishes that work, it is not a new lane, and a relabel files the session under the wrong lane once /end-session closes it. Also skip when /end-session called this skill."
   - "List worktrees with `install.py worktrees`. No argument → show the list and ask which one. A PRUNABLE row → offer `git worktree prune`."
   - "Worktree of another repository (e.g. a rules repo linked under GitIgnoredExternals/) → pass `--project <that repo's main checkout>` to install.py and run the git commands there."
   - "Target branch = the main checkout's current branch. State it and the worktree branch in one line before doing anything."
