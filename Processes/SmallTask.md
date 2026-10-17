@@ -28,6 +28,7 @@ steps:
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
+    - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
     - "Anything broader than one targeted query → /discover, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
@@ -56,7 +57,7 @@ steps:
 
 ```yaml
 expected_loads:
-  - "Systems/<owning system>.md (if it exists)"
+  - "Systems/<owning system>.md (if it exists), plus the entry of every system the change uses (messages, states, prizes)"
   - "Rules/CodingStandards.md"
   - "plus each 3_rules row the change matched"
 expected_tools: [codeindex.py, typecheck.py, /audit]   # C# changes only

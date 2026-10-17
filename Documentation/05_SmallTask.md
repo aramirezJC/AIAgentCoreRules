@@ -17,7 +17,7 @@ If any of these stops being true mid-task, the agent stops, says so in one line 
 | # | Step | What happens |
 |---|---|---|
 | 1 | **Scope** | For a tool, script or report: ask whether it is one-off or reusable, and where it runs (Editor, runtime, CLI), then wait. Restate the deliverable in one line. |
-| 2 | **Context** | Read the Systems entry for the owning system and any matching pattern. Inspect the model example with the host's code index (`codeindex.py`) and read only the bodies being copied. If the change sends or listens for a message, read every listener's handler first. |
+| 2 | **Context** | Read the Systems entry for the owning system and any matching pattern, plus the entry of every system the change uses (sending or listening for messages, pushing or setting states, touching reward flows). Inspect the model example with the host's code index (`codeindex.py`) and read only the bodies being copied. If the change sends or listens for a message, read every listener's handler first. |
 | 3 | **Rules** | Coding Standards always; Architectural Principles for new classes or interfaces; Resource Management for subscriptions, timers and loads; Multi-Step Operations for async sequences; Testing Rules if tests are requested. |
 | 4 | **Propose** | List the files to create or modify, one line each. The agent waits for approval only when more than 2 files change or a public contract changes. |
 | 5 | **Implement** | Stop and Verify checks, then write the code. |
