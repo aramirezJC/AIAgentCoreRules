@@ -28,6 +28,8 @@ steps:
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
+    - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
+    - "Existing utility first — before writing any helper, tool, window, exporter, logger or importer, look for one to extend, in this order: (1) the host metadata (SystemIndex trigger comments, Systems/, SystemPatterns/); (2) the codebase (codeindex.py where/types on likely names, /discover when broad). Record what you searched for 4_propose."
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
     - "Anything broader than one targeted query → /discover, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
@@ -39,6 +41,8 @@ steps:
     tests_requested:           [../Rules/TestingRules.md]
   4_propose:
     - "Before writing: list files to create/modify, one line each. Wait for OK only if more than 2 files or any public contract changes."
+    - "Always name the model: 'Extending <X> (found via <search>)', or 'No existing utility found (searched: <queries>) — is there an example you want me to follow?' The engineer answers in the same round-trip as the plan; no extra stop."
+    - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
   5b_audit:   # checkpoint — do not start step 6 until it has run
@@ -56,7 +60,7 @@ steps:
 
 ```yaml
 expected_loads:
-  - "Systems/<owning system>.md (if it exists)"
+  - "Systems/<owning system>.md (if it exists), plus the entry of every system the change uses (messages, states, prizes)"
   - "Rules/CodingStandards.md"
   - "plus each 3_rules row the change matched"
 expected_tools: [codeindex.py, typecheck.py, /audit]   # C# changes only
