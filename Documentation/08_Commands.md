@@ -38,6 +38,7 @@ commands — see the host project's documentation.
 | Command | What it does |
 |---|---|
 | `/land-worktree [name] [--squash]` | Merges an agent worktree's branch into your current branch without committing, waits while you test it, then commits and removes the worktree and branch — or rolls the merge back. With no name, lists the worktrees. Warns when a worktree branched from the default branch instead of yours and offers to cherry-pick only the agent's commits. Lands into whatever branch the main checkout has checked out, including the default branch, and works for worktrees of other linked repos via `--project`. Never pushes. Records the session as lane `other` only when it has no work lane yet; a bug fix or feature session keeps its lane. |
+| `/new-session <prompt> [--in terminal\|rider] [--model M]` | Opens a fresh Claude Code session that starts with `<prompt>` (for example `/small-task …` or `/resume-work <Name>`) in a new Terminal.app window or a new tab of Rider's terminal. Without `--in` it asks which. The session starts in the main checkout and runs independently of this one. macOS only; Rider needs Accessibility permission for the app that runs Claude. Details: `Tools/new-session/README.md`. |
 
 ## Reporting
 
@@ -45,7 +46,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/new-session/SKILL|/new-session]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 
