@@ -134,7 +134,8 @@ per_stage:
   assignee:          "Name of engineer responsible"
 ```
 
-Populate the task table. Each task row: Task | Assignee | Status (unchecked `[ ]` by default).
+Populate the task table. Each task row: Title | Task | Assignee | Status (unchecked `[ ]` by default).
+Title is a short, human-readable task name (a few words), ready to become the Jira ticket summary.
 
 Add as many stages as needed. The "Final Touches" stage is always included — see below.
 
@@ -285,7 +286,8 @@ With all TDD sections complete and reviewed, produce the output documents:
 task_list_format:
   - stage: "V0 — Core Loop"
     tasks:
-      - task: "Task description"
+      - title: "Short task name (Jira summary)"
+        task: "Task description"
         assignee: "Name"
         status: "[ ]"
 ```

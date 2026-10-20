@@ -59,23 +59,23 @@ process.]
 ### Stage Level (ie V0, V1 …)
 * **Level of effort:** [Insert t-shirt size plus estimate in days]
 
-| Task | Assignee | **Status** |
-| --- | --- | --- |
-| Sample Task | Andrea Ramirez | [ ] |
-| Show and tell to designer! | Andrea Ramirez | [ ] |
+| Title | Task | Assignee | **Status** |
+| --- | --- | --- | --- |
+| Sample task | Sample Task | Andrea Ramirez | [ ] |
+| Designer show and tell | Show and tell to designer! | Andrea Ramirez | [ ] |
 
 ### Final touches
 * **Level of effort:** At least 5 days.
 
-| Task | Assignee | **Status** |
-| --- | --- | --- |
-| Implement and validate data reconciliation strategy | Andrea Ramirez | [ ] |
-| Implement CS Gifting Strategy | Andrea Ramirez | [ ] |
-| Add BI calls | Andrea Ramirez | [ ] |
-| Add Unit Tests | Andrea Ramirez | [ ] |
-| Implement design and support tools | Andrea Ramirez | [ ] |
-| Implement QA Debug functionality | Andrea Ramirez | [ ] |
-| Backport Systems to RST | Andrea Ramirez | [ ] |
+| Title | Task | Assignee | **Status** |
+| --- | --- | --- | --- |
+| Data reconciliation | Implement and validate data reconciliation strategy | Andrea Ramirez | [ ] |
+| CS gifting | Implement CS Gifting Strategy | Andrea Ramirez | [ ] |
+| BI calls | Add BI calls | Andrea Ramirez | [ ] |
+| Unit tests | Add Unit Tests | Andrea Ramirez | [ ] |
+| Design and support tools | Implement design and support tools | Andrea Ramirez | [ ] |
+| QA debug functionality | Implement QA Debug functionality | Andrea Ramirez | [ ] |
+| RST backport | Backport Systems to RST | Andrea Ramirez | [ ] |
 
 ## Design And Support Tools
 List of tools and mechanisms that the feature will need long term. Following are some examples:
