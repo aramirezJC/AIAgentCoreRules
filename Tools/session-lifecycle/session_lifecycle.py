@@ -382,8 +382,9 @@ def router_trace(state, project_dir):
                                 first["via"] += " → Read"
                             continue
                         seen[key] = {"file": display_path(absolute, project_dir, roots),
-                                      "via": "%s · %s" % (via, block.get("name")),
-                                      "at": local_clock(entry.get("timestamp", ""))})
+                                     "via": "%s · %s" % (via, block.get("name")),
+                                     "at": local_clock(entry.get("timestamp", ""))}
+                        loads.append(seen[key])
     return imports, loads, tools
 
 

@@ -65,6 +65,17 @@ class RouterTraceTests(unittest.TestCase):
     def test_time_is_local(self):
         self.assertEqual(self.trace()[0]["at"], "11:42:01")
 
+    def test_bash_load_later_read_is_upgraded(self):
+        """Retro 824b0189 #2: a file cat'ed first and Read later kept only its Bash row."""
+        with open(self.transcript, "w") as handle:
+            for i, (name, tool_input) in enumerate((("Bash", {"command": "cat %s" % os.path.join(self.rules, "BugFix.md")}),
+                                                     ("Read", {"file_path": os.path.join(self.rules, "BugFix.md")}),
+                                                     ("Read", {"file_path": os.path.join(self.rules, "BugFix.md")}))):
+                handle.write(json.dumps({"type": "assistant", "timestamp": "2026-10-13T18:42:0%dZ" % i, "message": {
+                    "content": [{"type": "tool_use", "name": name, "input": tool_input}]}}) + "\n")
+        self.assertEqual([(load["file"], load["via"]) for load in self.trace()],
+                         [("Layer/Rules/BugFix.md", "main · Bash → Read")])
+
     def test_breakdown_counts_only_md_reads_as_loads(self):
         roots = [os.path.join(self.tmp, "Ext", "Layer")]
         self.assertEqual(token_breakdown.classify("Read", {"file_path": os.path.join(self.rules, "tool.py")}, roots),

@@ -78,7 +78,8 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
 
 The router trace is read from the session transcript, not from the agent's memory. Rows loaded
 with the Read tool are exact; rows inferred from shell commands are heuristic (a `grep` over a
-file counts as a load). `Documentation/` pages are never listed: they mirror the rules for
+file counts as a load). A file first seen in a shell command and Read later shows as
+`Bash → Read`, since it was loaded properly in the end. `Documentation/` pages are never listed: they mirror the rules for
 humans and are not a routing load.
 
 ## Retrospectives
