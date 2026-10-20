@@ -58,7 +58,9 @@ python3 .../session_meta_report.py --since 2026-09-25 --until 2026-10-02
 4. **Where issues concentrate.** A heat map of area × session, counting mentions in each retro's
    Proposed changes, Router check misses and Discovery gaps. A second heat map shows correction
    root cause × lane.
-5. **Solutions.** Every proposed change, with a status and the evidence for it.
+5. **Solutions.** Every proposed change, with a status and the evidence for it. Above the table,
+   a list of retros that still have pending proposals (deferred in the Applied section) or
+   undecided ones (no Applied line), with the proposal numbers.
 6. **What else could be improved.** Recurring open areas, repeated router misses, tracking gaps
    (no lane, no `/end-session`, no token data, corrections not logged live) and token outliers.
 
@@ -66,7 +68,7 @@ python3 .../session_meta_report.py --since 2026-09-25 --until 2026-10-02
 
 | Status | Evidence |
 |---|---|
-| applied / skipped | The retro's `## Applied` section (`- #N applied: …` / `- #N skipped …`) |
+| applied / skipped / pending | The retro's `## Applied` section (`- #N applied: …` / `- #N skipped …` / `- #N pending …`). Pending means deferred on purpose, not forgotten |
 | likely applied | A commit touched the proposed file after the session ended, or the file has uncommitted changes made after it |
 | open | Neither of the above, or the file could not be found in the scanned repositories |
 

@@ -90,6 +90,7 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 
 ## Cost
 <total tokens, turns, subagents from metrics.md; the 3 heaviest turns and whether each was necessary.
+ Quote one total: the "Total tokens" row (each model call counted once). The breakdown shares that total.
  Rank turns by FRESH tokens (Uncached In + Output in the "Highest-Cost Turns" table of tokens/*.md),
  not Total Tokens, which is mostly cache reads. If the heaviest turn by Total is not already in the
  list, add it as a 4th. One numbered line per turn, in this shape, so the meta-analysis can read it:
@@ -99,6 +100,12 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
  Then one line from metrics.md's "Token breakdown (estimated)": the standardized-operations share and
  the top saving mechanism. retro.html charts these next to the session-vs-average comparison.>
 ```
+
+**Background session.** Once Step 0 has removed the worktree, the isolation guard refuses Write
+in the shared checkout, so retro.md cannot be written into the session folder directly. Write it
+to the job tmp dir (`$CLAUDE_JOB_DIR/tmp/retro.md`) and file it with
+`python3 <script> retro --from "$CLAUDE_JOB_DIR/tmp/retro.md"`. That copies it into the session
+folder and renders retro.html. Step 3's `open` then works unchanged.
 
 Keep it evidence-based: every claim points at a trace row, a logged note, or `file:line`.
 Write "none" for an empty section rather than padding it.
@@ -116,13 +123,24 @@ the session.
 steps:
   - "Run: python3 <script> open        # renders retro.html from retro.md, opens it and metrics.md"
   - "In chat: 3–5 lines — outcome, cost, top router finding — then the Proposed changes table."
-  - "Ask which proposed changes to apply."
+  - "Ask which proposed changes to apply, and where — fresh session first (see the Gate)."
 ```
 
 ## Gate — improvements
 
 Apply only the changes the engineer approves, one file at a time. Rule and index files are
 shared across sessions; an unreviewed edit there changes every future session.
+
+Where to apply them, offered in this order:
+
+```yaml
+fresh_session:   # default — this session's context is at its largest, and every edit re-reads it
+  how: "Mark the approved proposals pending, then print (or run via /new-session):"
+  command: '/new-session "Apply proposals <N,M> from <retro.md path>: read only its Proposed changes table, apply each, then mark it with session_lifecycle.py retro --folder <id8> --mark <N> --status applied"'
+  note: "The new session reads the retro's table, not this transcript. Record it as lane other."
+in_place:        # only for 1–2 one-line edits
+  how: "Apply here, one file at a time, as below."
+```
 
 Record every decision with the script, never by hand-editing retro.md. It writes the
 `## Applied` line the meta-analysis reads, creates the section on first use (every other proposal

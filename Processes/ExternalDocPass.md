@@ -41,8 +41,9 @@ review_pass:
   3_confirm:  "Show the pass list. Ask only about items that are ambiguous or conflict with each other; do not ask per item."
   4_apply:    "Apply every item to the local copy of the body in one go. An item that removes a question also removes every mention of it."
   5_write:    "One update call. If the update fails on a version conflict, re-read once and re-apply; never loop."
+  5b_verify:  "Verify the update as for a publish: check the update response first. If it does not show the body ending at its last section, do one verification fetch."
   6_report:   "Reply with: new version, threads addressed (the engineer resolves them; the agent cannot), threads skipped and why. Update sources_of_truth to the new version."
-budget:       "Per pass: at most 2 page reads (step 1 and one conflict retry) and 1 update. Exceeding it means the pass was split; say why in the report."
+budget:       "Per pass: at most 2 page reads for review (step 1 and one conflict retry) and 1 update. The post-write verification (5b, and Publish's verify) does not count against it — at most one fetch per page written. Exceeding the budget means the pass was split; say why in the report."
 ```
 
 ## Diagrams reviewed on a board (Miro)

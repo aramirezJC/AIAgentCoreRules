@@ -15,7 +15,9 @@ Targets:
               Escape (focus back to the editor, so the next shortcut opens rather than hides the
               terminal), the terminal tool window shortcut, the new-tab shortcut, then types the
               command. Shortcuts default to the "Visual Studio OSX" keymap; change them with
-              --terminal-keys / --new-tab-keys.
+              --terminal-keys / --new-tab-keys. From inside Rider's terminal
+              (TERMINAL_EMULATOR=JetBrains-JediTerm) there is no `open -a` and only the new-tab
+              shortcut is pressed.
 
 Permissions (one-time macOS prompts): Automation for Terminal.app / System Events, and for rider,
 Accessibility for the app that runs this script (Terminal.app, or Rider when Claude runs inside it).
@@ -74,13 +76,22 @@ def terminal_script(run):
     return 'tell application "Terminal"\n  activate\n  do script %s\nend tell' % applescript_string(run)
 
 
-def rider_script(run, terminal_keys, new_tab_keys, delay):
-    return "\n".join([
-        'tell application "System Events"',
+def in_rider_terminal():
+    """True when this runs inside Rider's own terminal (e.g. Claude Code started there)."""
+    return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
+
+
+def rider_script(run, terminal_keys, new_tab_keys, delay, terminal_focused):
+    # The terminal shortcut toggles: from a focused terminal it HIDES the tool window, and Escape
+    # does not leave the terminal (the shell gets it), so the new-tab shortcut then lands in the
+    # editor (Go to Class). When already in Rider's terminal, only open the tab.
+    focus = [] if terminal_focused else [
         "  key code 53",                          # Escape: focus to the editor
         "  delay 0.3",
         "  " + keystroke(terminal_keys),
         "  delay %.1f" % delay,
+    ]
+    return "\n".join(['tell application "System Events"'] + focus + [
         "  " + keystroke(new_tab_keys),
         "  delay %.1f" % (delay * 2),             # the new shell needs longer than the tab
         "  keystroke %s" % applescript_string(run),
@@ -89,12 +100,13 @@ def rider_script(run, terminal_keys, new_tab_keys, delay):
     ])
 
 
-def osascript(script):
+def osascript(script, run):
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
         error = result.stderr.strip()
         hint = next((text for code, text in PERMISSION_HINTS.items() if code in error), "")
-        sys.exit("osascript failed: %s%s" % (error, "\n" + hint if hint else ""))
+        sys.exit("osascript failed: %s%s\nRun it by hand in a new terminal: %s"
+                 % (error, "\n" + hint if hint else "", run))
 
 
 def main():
@@ -121,7 +133,7 @@ def main():
     if args.target == "terminal":
         steps = [terminal_script(run)]
     else:
-        steps = [rider_script(run, args.terminal_keys, args.new_tab_keys, args.delay)]
+        steps = [rider_script(run, args.terminal_keys, args.new_tab_keys, args.delay, in_rider_terminal())]
 
     if args.dry_run:
         with open(launcher) as handle:
@@ -132,10 +144,11 @@ def main():
         print("osascript:\n%s" % steps[0])
         return
 
-    if args.target == "rider":
+    if args.target == "rider" and not in_rider_terminal():
+        # From inside Rider its window is already in front; `open -a` there started a second instance.
         subprocess.run(["open", "-a", "Rider", project], check=True)
         time.sleep(args.delay * 2)                  # let the project window come to the front
-    osascript(steps[0])
+    osascript(steps[0], run)
     print("Opened a new %s session in %s. If nothing ran, run it by hand: %s"
           % ("Terminal.app" if args.target == "terminal" else "Rider terminal", project, run))
 

@@ -88,6 +88,11 @@ generating partial code.
 - Existing comments, regions and TODOs are preserved unchanged.
 - Only the required lines changed; surrounding code is untouched.
 
+**Behaviour claims** — in any mode, what an engine, library, API or CLI does at runtime (a
+getter returning a copy, a library working on every platform, an API accepting a format, where
+a CLI option goes) is stated as a hypothesis, with how to check it, until it is grounded in
+source, `--help`, docs or a run.
+
 **Secrets** — in any command, the agent never prints any part of a credential (not even a
 prefix). It checks a token's shape with yes/no tests only, and if a fragment leaks it says so
 and recommends rotating it.

@@ -21,6 +21,7 @@ inputs:
 outputs:
   report:    "<reports root>/MetaReviews/<YYYY-MM-DD>_MetaReview.html  (publish it as an Artifact when that tool exists)"
   tickets:   "<reports root>/MetaReviews/<YYYY-MM-DD>_Tickets.md"
+  background: "A background session cannot Write into the reports root. Write both files to $CLAUDE_JOB_DIR/tmp, then file them: python3 ../Tools/session-lifecycle/session_lifecycle.py file --to MetaReviews <report> <tickets>"
 ```
 
 ---

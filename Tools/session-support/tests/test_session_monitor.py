@@ -604,6 +604,40 @@ class SessionMonitorTests(unittest.TestCase):
         self.assertIsNone(snapshot["tokens"]["context"]["window_tokens"])
         self.assertEqual(snapshot["subagents"]["active"], 1)
 
+    def test_claude_call_split_across_content_blocks_is_counted_once(self) -> None:
+        # MR-20261016-01: Claude writes one record per content block and repeats the call's usage
+        # on each, so per-record summing inflated session totals ~2x.
+        primary = self.root / "claude-split.jsonl"
+
+        def record(type_: str, message: dict, **extra) -> str:
+            return json.dumps({"type": type_, "sessionId": "claude-split",
+                               "timestamp": "2026-10-19T12:00:00Z", "message": message, **extra})
+
+        usage = {"input_tokens": 10, "cache_read_input_tokens": 1000, "cache_creation_input_tokens": 50}
+        primary.write_text("\n".join([
+            record("user", {"content": [{"type": "text", "text": "Fix it."}]}, promptId="p1"),
+            record("assistant", {"id": "msg_1", "content": [{"type": "text", "text": "Looking."}],
+                                 "usage": {**usage, "output_tokens": 5}, "stop_reason": None}),
+            record("assistant", {"id": "msg_1", "content": [{"type": "tool_use", "input": {"command": "ls"}}],
+                                 "usage": {**usage, "output_tokens": 30}, "stop_reason": None}),
+            record("assistant", {"id": "msg_1", "content": [{"type": "tool_use", "input": {"command": "pwd"}}],
+                                 "usage": {**usage, "output_tokens": 30}, "stop_reason": "tool_use"}),
+            record("assistant", {"id": "msg_2", "content": [{"type": "text", "text": "Done."}],
+                                 "usage": {**usage, "output_tokens": 4}, "stop_reason": "end_turn"}),
+        ]) + "\n", encoding="utf-8")
+
+        config = {
+            "_base": str(TOOLS_ROOT),
+            "category_config": str(mod.DEFAULT_CATEGORY_CONFIG.resolve()),
+            "state_root": str(self.root / "claude-state"),
+            "labels": {"project": "ExampleProject"},
+        }
+        snapshot = mod.SessionMonitor(self.root, rollout=primary, agent="claude", project_config=config).snapshot()
+
+        # Two calls: (10 + 1000 + 50 + 30) + (10 + 1000 + 50 + 4).
+        self.assertEqual(snapshot["tokens"]["session"]["total_tokens"], 2154)
+        self.assertEqual(snapshot["tokens"]["session"]["output_tokens"], 34)
+
     def test_non_triplematch_project_config_controls_policy_and_handoff(self) -> None:
         category_path = self.root / "categories.json"
         category_path.write_text(json.dumps({

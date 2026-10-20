@@ -16,7 +16,7 @@ and reports:
     4. what else to improve — recurring open areas, repeated router misses, tracking gaps
 
 Proposal status, in order of trust:
-    applied / skipped   the retro's "## Applied" section says so
+    applied / skipped / pending   the retro's "## Applied" section says so (pending = deferred)
     likely applied      a git commit touched the proposed file after the session ended
     open                neither
 
@@ -159,7 +159,7 @@ def parse_retro(path):
                                        "why": strip_md(cells[3])[:300] if len(cells) > 3 else ""})
 
     for line in parts.get("applied", "").splitlines():
-        match = re.match(r"^\s*[-*]\s*#(\d+)\s+(applied|skipped)\b:?\s*(.*)", line, re.I)
+        match = re.match(r"^\s*[-*]\s*#(\d+)\s+(applied|skipped|pending)\b:?\s*(.*)", line, re.I)
         if match:
             retro["applied"][int(match.group(1))] = (match.group(2).lower(), strip_md(match.group(3)))
 
@@ -555,7 +555,8 @@ def analyse(sessions):
                  for s in retros for p in s["retro"]["proposals"]]
 
     return {"turns": turns, "heat": heat, "areas": areas, "kinds": kinds, "causes": causes,
-            "proposals": proposals, "improve": improvements(sessions, retros, heat, proposals, turns),
+            "proposals": proposals, "undecided": undecided_retros(retros),
+            "improve": improvements(sessions, retros, heat, proposals, turns),
             "worst": worst(sessions, turns),
             "saved": savings(sessions, turns, ASSUMPTIONS_OVERRIDE),
             "turn_stats": {"total": stats([t["total"] for t in turns]), "fresh": stats([t["fresh"] for t in turns if t["fresh"]])},
@@ -602,6 +603,20 @@ def worst(sessions, turns):
             "features": group("feature"), "feature_phases": group("feature_phase"),
             "avoidable": sum(t["fresh"] for t in turns if t["verdict"] in AVOIDABLE),
             "judged": sum(1 for t in turns if t["verdict"] != "no verdict")}
+
+
+def undecided_retros(retros):
+    """Retros with a proposal still waiting on the engineer: `pending` in the Applied section
+    (deferred on purpose), or no Applied line at all (never decided)."""
+    rows = []
+    for s in retros:
+        recorded = s["retro"]["applied"]
+        pending = sorted(n for n, (state, _detail) in recorded.items() if state == "pending")
+        undecided = sorted(p["n"] for p in s["retro"]["proposals"] if p["n"] not in recorded)
+        if pending or undecided:
+            rows.append({"session": s["id"], "date": s["started"][:10], "lane": s["lane"], "title": s["title"],
+                         "folder": s["folder"], "pending": pending, "undecided": undecided})
+    return rows
 
 
 def improvements(sessions, retros, heat, proposals, turns):
@@ -701,7 +716,7 @@ main{max-width:1180px;margin:0 auto;padding:24px 16px 64px}h1{font-size:26px;mar
 table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 th{color:var(--muted);font-weight:600}.heat td.c{text-align:center;min-width:34px;font-weight:600}
 .pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor;white-space:nowrap}
-.applied{color:var(--ok)}.likely{color:var(--warn)}.open{color:var(--bad)}.skipped{color:var(--muted)}
+.applied{color:var(--ok)}.likely{color:var(--warn)}.open{color:var(--bad)}.skipped{color:var(--muted)}.pending{color:var(--accent)}
 button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 button.on{border-color:var(--accent);color:var(--accent)}svg text{fill:var(--muted);font-size:11px}
 .legend span{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin:0 4px 0 10px}
@@ -744,7 +759,11 @@ ol li{margin-bottom:6px}.note{font-size:12px}
 </section>
 
 <section class="panel"><h2>5 · Solutions proposed and their status</h2>
-<p class="muted note">applied/skipped = recorded in the retro's Applied section · likely applied = a commit touched the file after the session (verify) · open = neither.</p>
+<p class="muted note">applied/skipped/pending = recorded in the retro's Applied section (pending = deferred on purpose) · likely applied = a commit touched the file after the session (verify) · open = neither.</p>
+<h3>Retros with pending or undecided proposals</h3>
+<p class="muted note">Pending = deferred in the Applied section · undecided = no Applied line at all. Mark each with <code>session_lifecycle.py retro --folder &lt;id8&gt; --mark N --status …</code>.</p>
+<div id="undecided"></div>
+<h3>Every proposal</h3>
 <div id="props"></div></section>
 
 <section class="panel"><h2>6 · What else could be improved</h2><ol id="improve"></ol></section>
@@ -757,7 +776,7 @@ const S=D.sessions, withTok=S.filter(s=>s.tokens), retros=S.filter(s=>s.has_retr
 document.getElementById("sub").textContent=`${S.length} session folders · ${retros.length} retrospectives · ${R.turns.length} measured turns · generated ${D.generated}`;
 const P=R.proposals, done=P.filter(p=>p.status==="applied").length, likely=P.filter(p=>p.status==="likely applied").length;
 document.getElementById("kpis").innerHTML=[["Sessions with tokens",withTok.length+" / "+S.length],["Total tokens",fmt(withTok.reduce((a,s)=>a+s.tokens,0))],
-["Median session",fmt(R.session_stats.median)],["Proposals",P.length],["Applied / likely",done+" / "+likely],["Open",P.filter(p=>p.status==="open").length],["Flagged avoidable",fmt(R.worst.avoidable)+" fresh"],["Est. saved",fmt(R.saved.total)+" fresh"]]
+["Median session",fmt(R.session_stats.median)],["Proposals",P.length],["Applied / likely",done+" / "+likely],["Pending / open",P.filter(p=>p.status==="pending").length+" / "+P.filter(p=>p.status==="open").length],["Flagged avoidable",fmt(R.worst.avoidable)+" fresh"],["Est. saved",fmt(R.saved.total)+" fresh"]]
 .map(([k,v])=>`<div class="kpi"><span class="muted">${k}</span><b>${v}</b></div>`).join("");
 
 function bell(metric){
@@ -834,8 +853,13 @@ function shade(c,max){if(!c)return"var(--h0)";const k=Math.min(4,Math.ceil(c/max
   D.causes.forEach(c=>{const t=lanes.reduce((n,l)=>n+R.causes[c][l],0);h+=`<tr><td>${c}</td>`+lanes.map(l=>`<td class="c" style="background:${shade(R.causes[c][l],max)}">${R.causes[c][l]||""}</td>`).join("")+`<td class="c">${t}</td></tr>`});
   document.getElementById("heatB").innerHTML=h+'</table>'})();
 
+(function undecided(){const U=R.undecided,el=document.getElementById("undecided");
+  if(!U.length){el.innerHTML='<p class="muted">Every retro proposal has a decision.</p>';return}
+  el.innerHTML='<table><tr><th>Session</th><th>Title</th><th>Pending</th><th>Undecided</th></tr>'+
+  U.map(u=>`<tr><td>${esc(u.date)}<br><span class="muted">${esc(u.lane)} · ${u.session}</span></td><td>${esc(u.title)}</td><td>${u.pending.map(n=>"#"+n).join(", ")||"–"}</td><td>${u.undecided.map(n=>"#"+n).join(", ")||"–"}</td></tr>`).join("")+'</table>'})();
+
 (function props(){if(!P.length){document.getElementById("props").innerHTML='<p class="muted">No proposals yet.</p>';return}
-  const cls=s=>s==="applied"?"applied":s==="skipped"?"skipped":s==="likely applied"?"likely":"open";
+  const cls=s=>s==="applied"?"applied":s==="skipped"?"skipped":s==="pending"?"pending":s==="likely applied"?"likely":"open";
   document.getElementById("props").innerHTML='<table><tr><th>Session</th><th>#</th><th>Area</th><th>Change</th><th>Status</th><th>Evidence</th></tr>'+
   P.map(p=>`<tr><td>${esc(p.date)}<br><span class="muted">${esc(p.lane)} · ${p.session}</span></td><td>${p.n}</td><td><code>${esc(p.area)}</code></td><td>${esc(p.change)}</td><td><span class="pill ${cls(p.status)}">${esc(p.status)}</span></td><td class="muted note">${esc(p.evidence)}</td></tr>`).join("")+'</table>'})();
 

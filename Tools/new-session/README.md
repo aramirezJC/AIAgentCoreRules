@@ -19,6 +19,11 @@ python3 Tools/new-session/new_session.py --in rider --dry-run "<prompt>"   # pri
    - **rider:** `open -a Rider <project root>` brings that project's window to the front. System
      Events then presses Escape (focus back to the editor, so the next shortcut opens the terminal
      instead of hiding it), the terminal shortcut, the new-tab shortcut, and types the command.
+     Run from inside Rider's terminal (`TERMINAL_EMULATOR=JetBrains-JediTerm`, e.g. Claude Code
+     started there), it skips `open -a Rider` and presses only the new-tab shortcut: the window is
+     already in front and the terminal already has focus. There, `open -a` started a second Rider
+     instance, Escape goes to the shell, and the terminal shortcut hides the panel, sending ⌘T to
+     the editor (Go to Class).
 
 The project root is the main checkout of the current directory (`Tools/setup/project_root.py`),
 so a call from a worktree still opens the session in the main checkout. Override with `--project`.
@@ -45,3 +50,6 @@ macOS asks once per app:
   are dropped silently and Rider just comes to the front.
 
 On a permission error the script prints which setting to change, and the command to run by hand.
+
+A clean exit only means the keystrokes were sent: the script cannot see whether they landed. Ask
+the engineer to confirm the session opened.

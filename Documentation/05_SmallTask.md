@@ -12,6 +12,9 @@ code. Smaller than a feature — no GDD, TDD or task list, and a single proposal
 If any of these stops being true mid-task, the agent stops, says so in one line and offers
 `/feature <Name>`. It does not quietly turn a small task into a feature.
 
+When a session that started in another lane turns into a small task, the agent offers the split
+first: continue there, or open a fresh session with `/new-session "/small-task <ask>"`.
+
 ## Steps
 
 | # | Step | What happens |

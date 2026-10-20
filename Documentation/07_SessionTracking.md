@@ -18,6 +18,9 @@ engineer's part is logging corrections and running `/end-session`.
 | You deliberately change direction | `/iteration <what changed>` | Engineer |
 | Wrap up | `/end-session` compiles metrics, writes the retrospective and opens both files | Engineer |
 | After each agent reply | The Stop hook recompiles metrics (at most every 2 minutes) without marking the session ended, so a session that is never exited still has current metrics | Automatic |
+| You send a prompt after a long break | When the last reply is over an hour old and its context was over ~100k tokens, the UserPromptSubmit hook tells the agent the prompt cache has expired and what the next call costs, so new work can be offered a fresh session (`/new-session`) | Automatic |
+| The agent reads a rule file through the shell | A PreToolUse hook on Bash notices `cat`/`sed`/`head`/`tail` of a `.md` under `Rules/`, `Processes/`, `Systems/`, `SystemPatterns/` or `Skills/` and reminds the agent to use Read, so the router trace stays exact. Only a command in command position counts (start of the line, or after `;`, `&&`, `\|`): a mention inside quoted text or a heredoc stays silent. It never blocks the command | Automatic |
+| The lane changes in a large session | Recording a lane change on a session past ~30M tokens prints a fresh-session offer with the matching command (`/new-session "/bug-fix <symptom>"`, …) | Agent offers, you decide |
 | Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit. It fires only when the process exits, not when the app marks an idle session completed | Automatic |
 
 Every hook run appends one line to `GitIgnoreReports/Sessions/hooks.log` (event, session, the
@@ -25,7 +28,9 @@ agent's working directory, outcome). If a session's metrics look stale, check th
 line means the hook never fired; `no folder for this session` or `ERROR` means it fired and failed.
 Reports always go to the project's main checkout (found from git, or the folder holding `CLAUDE.md`),
 whatever folder the agent has `cd`'d into, so a session never splits into two folders. Nothing to
-configure per project — `install.py` and the tracker share the same root lookup.
+configure per project — `install.py` and the tracker share the same root lookup. Global options
+go before the subcommand: `session_lifecycle.py --reports-root <dir> set …` and
+`install.py --project <repo> worktrees`.
 
 The **lane** is the process that ran; the **work type** is what the work was. They usually match,
 but not always: an investigation into a crash is lane `investigation`, work type `bug_fix`. If the
@@ -73,7 +78,8 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
 
 The router trace is read from the session transcript, not from the agent's memory. Rows loaded
 with the Read tool are exact; rows inferred from shell commands are heuristic (a `grep` over a
-file counts as a load).
+file counts as a load). `Documentation/` pages are never listed: they mirror the rules for
+humans and are not a routing load.
 
 ## Retrospectives
 
@@ -93,6 +99,12 @@ resume.
 | Discovery gaps | Anything looked up mid-task that the host project's SystemIndex or Systems docs should have supplied |
 | Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied** |
 | Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable |
+
+In a background session, `/end-session` cannot write `retro.md` into the session folder: once its
+worktree is removed, Claude Code's isolation guard refuses Write in the shared checkout. The agent
+writes the retro to the job tmp dir instead and files it with
+`session_lifecycle.py retro --from "$CLAUDE_JOB_DIR/tmp/retro.md"`. Foreground sessions are not
+affected.
 
 After the engineer decides on the proposals, the retro gets an `## Applied` section with one line
 per proposal (`- #N applied: …`, `- #N skipped: …`, or `- #N pending: …` while deferred). The
@@ -124,8 +136,8 @@ retro.html gets a **Token charts** section just before Cost, with three charts:
 3. **What saved tokens and round-trips.** Parallel tool calls, subagent delegation, partial file
    reads, and each Runnable tool, with tokens and round-trips saved.
 
-All of these are estimates. Each model call is counted once; the token report's Total Tokens
-counts a call once per content block, so it runs about 2–3× higher. A tool result costs its size
+All of these are estimates. Each model call is counted once, in the breakdown and in the token
+report's Total Tokens alike, so metrics.md quotes a single total. A tool result costs its size
 (characters / 4) times every later call that re-reads it, until a compaction. The savings are
 guesstimates against a counterfactual. For example, each `codeindex.py` call is assumed to replace
 one ~3k-token exploratory read plus 2 round-trips; the assumptions are listed on the page and in
@@ -142,6 +154,12 @@ Proposed changes are only applied after the engineer approves them, one file at 
 and index files are shared across every future session, so an unreviewed edit changes the
 agent's behaviour everywhere. This is how the framework improves over time: corrections become
 root causes, root causes become rule or index changes, and the next session avoids the mistake.
+
+Approved proposals are applied in a fresh session by default. The retro session's context is
+the largest it will ever be, and every edit made there re-reads it; applying proposals in place
+cost more than the task itself in two sessions of the 2026-10-16 review. `/end-session` prints a
+`/new-session` command whose session reads only the retro's proposal table. Applying in place is
+still offered for one or two one-line edits.
 
 When an approved change edits a rule, process, skill or tool, the matching `Documentation/`
 page is updated as part of the same change.
@@ -196,7 +214,9 @@ wraps it in a repeatable review of one time window, by default since the previou
 6. Write `GitIgnoreReports/MetaReviews/<date>_MetaReview.html` (fixed layout) and
    `<date>_Tickets.md`, which lists tickets by priority: P1 for work or data at risk, P2 for
    recurring misses or the top cost driver, P3 for polish. A ticket that cites a code fix names the
-   branch or commit it is on. Then work through the tickets one at a time.
+   branch or commit it is on. A background review writes both files to its job tmp dir and
+   files them with `session_lifecycle.py file --to MetaReviews <files>`. Then work through the
+   tickets one at a time.
 
 **Source files:** [[Processes/MetaReview|MetaReview process]] · [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]]
 

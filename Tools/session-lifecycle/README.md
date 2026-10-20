@@ -25,6 +25,10 @@ root built from them nested duplicate session folders. A cwd inside `GitIgnoredE
 `GitIgnoreReports` twice is refused. Regression tests for root resolution and closed-session
 renames: `python3 -m unittest discover -s Tools/session-lifecycle/tests -p 'test_*.py'`. Override the root with `SESSION_REPORTS_ROOT` or `--reports-root`.
 
+Call shape: `session_lifecycle.py [--reports-root DIR] <subcommand> …`. `--reports-root` is a
+global option and goes before the subcommand. After it, argparse rejects it as an unrecognized
+argument.
+
 Folders are created only when there is something to record: on the first `set`, `note` or
 `compile`, or by `hook-stop` / `hook-end` once the transcript has a typed prompt. `hook-start`
 creates nothing. `hook-end` deletes a folder that is still empty: no lane, title, name or notes,
@@ -67,7 +71,17 @@ python3 session_lifecycle.py open
 python3 session_lifecycle.py path
 python3 session_lifecycle.py retro [--folder <id8>] [--open]
 python3 session_lifecycle.py retro [--folder <id8>] --mark 2 --status applied --note "<file> — <what changed>"
+python3 session_lifecycle.py retro --from "$CLAUDE_JOB_DIR/tmp/retro.md"
+python3 session_lifecycle.py file --to MetaReviews "$CLAUDE_JOB_DIR/tmp/<date>_MetaReview.html" "$CLAUDE_JOB_DIR/tmp/<date>_Tickets.md"
 ```
+
+`retro --from <path>` and `file --to MetaReviews <paths>` are for background sessions. Once their
+worktree is gone, Claude Code's isolation guard refuses Write in the shared checkout, so the agent
+writes to its job tmp dir and files the result through this script. `retro --from` copies the
+file to the session's `retro.md`, overwriting it, and then carries on as a plain `retro` call
+(`--mark` and `--open` still apply). `file` copies each path into `GitIgnoreReports/<to>/` under
+its own name. Both refuse a missing or empty source before copying anything, and print only the
+destination paths.
 
 `retro` renders `retro.html` (a standalone page, no external assets, light and dark) from
 `retro.md` and prints each proposal's status. `--mark N --status applied|skipped|pending` first
@@ -83,8 +97,8 @@ standardized-operations total, and the savings per mechanism) and `comparison` (
 de-duplicated total, for the average) in session.json. metrics.md renders them as *Token breakdown
 (estimated)*, and retro.html renders them as a *Token charts* section before Cost: this session vs
 the average/median/lane average, the standardized-operations share, and what saved tokens and
-round-trips. Each model call is counted once. The token report counts a call once per content
-block (~2–3× higher), so the charts use their own totals for every session. A tool result costs
+round-trips. Each model call is counted once, here and in the token report (both de-duplicate by
+`message.id`); the charts compute every session's total from its transcript. A tool result costs
 its size × every later call that re-reads it. The savings assumptions are in `AVOIDED_BY_TOOL`.
 
 retro.md stays the source of truth. A page opened from disk cannot write back, so each open

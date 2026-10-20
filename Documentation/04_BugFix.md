@@ -26,6 +26,10 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
   command), the agent switches the session lane to `small_task`, follows the [[05_SmallTask|Small Task process]]
   for it, then switches back to `bug_fix`. Both changes are recorded under *Lane changes* in the
   session metrics, and the retrospective checks each part against its own lane.
+- **A lane switch is offered as a split.** When a session that started in another lane turns into
+  a bug fix (a PR review that finds a bug, say), the agent first asks whether to continue there or
+  open a fresh session with `/new-session "/bug-fix <symptom>"`. On a session already past ~30M
+  tokens, recording the lane change prints that offer, because every call re-reads the whole context.
 
 ## What the retrospective expects to see loaded
 
@@ -35,6 +39,10 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
 - Testing Rules plus the host project's testing setup
 - Resource Management or Multi-Step Operations rules if the fix touched them
 - Tools: `usages.py` or `codeindex.py`, `typecheck.py`, `/audit`
+
+When the fix changed no C# (a Python tool, a skill, Markdown), Coding Standards, Testing Rules and
+the C# tools are not expected. The changed tool's own tests and a run against copies of real data
+are expected instead.
 
 **Source files:** [[BugFix]]
 

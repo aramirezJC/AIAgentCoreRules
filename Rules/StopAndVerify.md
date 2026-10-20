@@ -31,6 +31,7 @@ the larger one, or by picking the more impressive one.
 pre_generation:
   - "[CTX] Inventory every interface, class, enum, and base type the solution requires. Confirm each is present in context."
   - "[SIG] Locate every property, method, and field you intend to use in the provided source text."
+  - "[BEHAV] Every runtime behaviour the code relies on (copy vs reference, platform support, accepted formats, argument order) is grounded, not assumed."
   - "[SO]  Verify Unity ScriptableObjects use CreateInstance<T>(), never new T()."
 ```
 
@@ -51,6 +52,15 @@ post_generation:
   - "[SIG]  No API signatures were guessed — every call is grounded in provided source."
   - "[PRES] All existing comments, regions, and TODOs are preserved unchanged."
   - "[SURG] Only the required lines were changed — surrounding code is character-perfect."
+```
+
+## Behaviour Claims — any mode
+
+```yaml
+behaviour:
+  - "[BEHAV] A claim about what an engine, library, API or CLI does at runtime is a hypothesis until grounded: its source (the host's engine-source tool, if any), `--help`, official docs, or a run."
+  - "[BEHAV] Until then, say 'hypothesis' and name the check: 'Hypothesis: the getter returns a copy — check: unitysource show <Type> --member <name>'."
+  - "[BEHAV] Applies to diagnoses and explanations as much as to code: a 'likely trigger' is a hypothesis, not a cause."
 ```
 
 ## Secrets — any command, any mode

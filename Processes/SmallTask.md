@@ -15,6 +15,8 @@ fits_when:
   - "An existing example can be followed ('like xyz, but does abc')"
 escalate_when:
   - "Any fits_when condition breaks mid-task → stop, say so in one line, offer /feature"
+lane_switch:
+  - "Entering this lane from another one in the same session → offer the split as a choice first: continue here, or /new-session \"/small-task <ask>\". Relay the fresh-session offer `set` prints for a large session. The engineer decides."
 ```
 
 ---
@@ -41,6 +43,7 @@ steps:
     tests_requested:           [../Rules/TestingRules.md]
   4_propose:
     - "Before writing: list files to create/modify, one line each. Wait for OK only if more than 2 files or any public contract changes."
+    - "A meta-review ticket or handoff note with Change and Done-when already is the approved plan: state the file list and proceed; wait only if the plan departs from it."
     - "Always name the model: 'Extending <X> (found via <search>)', or 'No existing utility found (searched: <queries>) — is there an example you want me to follow?' The engineer answers in the same round-trip as the plan; no extra stop."
     - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
   5_implement:

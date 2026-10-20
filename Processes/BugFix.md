@@ -73,6 +73,11 @@ command), record the lane change with the lifecycle `set --lane small_task` comm
 starting it, then `set --lane bug_fix` when you return. That keeps metrics and the router check
 accurate. Follow SmallTask.md for the detour, including its own /audit.
 
+Lane switch: entering this lane from another one in the same session (e.g. a PR review that
+turns into a bug), offer the split as a choice before step 1: continue here, or
+`/new-session "/bug-fix <symptom>"`. `set` prints a fresh-session offer when the session is
+already large; relay it. The engineer decides; never switch sessions unasked.
+
 ## Router check (used by /end-session)
 
 ```yaml
@@ -81,5 +86,6 @@ expected_loads:
   - "Rules/CodingStandards.md"
   - "Rules/TestingRules.md + host testing setup"
   - "plus ResourceManagementRules / MultyStepOperationsRules if the fix touched them"
-expected_tools: [usages.py or codeindex.py, typecheck.py, /audit]
+expected_tools: [usages.py or codeindex.py, typecheck.py, /audit]   # C# changes only
+expected_without_csharp: "the changed tool's own tests plus a run against copies of real data; CodingStandards, TestingRules and the C# tools are not expected"
 ```

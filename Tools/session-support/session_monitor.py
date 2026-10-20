@@ -487,6 +487,9 @@ class ClaudeSessionSource(SessionSource):
         commands: list[str] = []
         tool_details: list[dict[str, str]] = []
         turn_usage = {field: 0 for field in TOKEN_FIELDS}
+        # Claude writes one record per content block and repeats the call's usage on each, so a
+        # call is counted once per message id: the largest value seen, adding only the increase.
+        counted_usage: dict[str, tuple[int, int, int, int]] = {}
 
         def finish() -> None:
             nonlocal current_prompt, assistant_text, tool_calls, helpers, commands, tool_details, turn_usage
@@ -547,6 +550,12 @@ class ClaudeSessionSource(SessionSource):
                 cached = int(usage.get("cache_read_input_tokens") or 0)
                 cache_creation = int(usage.get("cache_creation_input_tokens") or 0)
                 output = int(usage.get("output_tokens") or 0)
+                call_id = message.get("id") or event.get("uuid")
+                if call_id:
+                    seen = counted_usage.get(call_id, (0, 0, 0, 0))
+                    peak = tuple(max(old, new) for old, new in zip(seen, (input_tokens, cached, cache_creation, output)))
+                    counted_usage[call_id] = peak
+                    input_tokens, cached, cache_creation, output = (new - old for new, old in zip(peak, seen))
                 turn_usage["input_tokens"] += input_tokens + cached + cache_creation
                 turn_usage["cached_input_tokens"] += cached
                 turn_usage["output_tokens"] += output

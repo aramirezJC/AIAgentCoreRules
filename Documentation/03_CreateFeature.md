@@ -39,7 +39,8 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
 
 - **1a GDD conversion** — if a GDD is provided, it is converted to Markdown in full, without
   summarising.
-- **1b TDD, section by section** — objective, architecture, related docs, development plan
+- **1b TDD, section by section** — objective, architecture, Best Practices (the rules an
+  implementer must follow, each with what stops someone from skipping it), related docs, development plan
   (stages with T-shirt sizes and assignees), final touches, tools, risks, data reconciliation
   strategy, CS strategy, edge cases, CMS data pipeline (optional — only for Airtable-driven or
   OTA-configurable content), notes and future work. Each section is agreed with the engineer
@@ -55,6 +56,8 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   because a call cut off mid-body saves a truncated page. Every publish is fetched back and
   checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
+  The update is verified like a publish; that check (at most one fetch per page) is outside the
+  pass's two-read budget.
   The host project's conventions file sets the layout and the comment convention. Review round
   trips were the largest cost of an Intake phase (191M tokens for one feature) before passes.
   Diagrams are validated locally (`mermaid-cli`) before they are embedded or pushed to a board —

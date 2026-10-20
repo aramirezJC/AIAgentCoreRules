@@ -13,6 +13,7 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 |---|---|
 | **[CTX]** | All required dependencies must be confirmed in context before generating. If anything is missing: look it up; if it cannot be found, STOP — do not generate, request the file. |
 | **[SIG]** | No signature guessing. Every property, method, and field must be physically located in provided source text before use. |
+| **[BEHAV]** | What an engine, library, API or CLI does at runtime is a hypothesis until grounded in its source, `--help`, docs or a run. State it as a hypothesis, with how to check it. |
 | **[PRES]** | Preserve all existing comments, XML summaries, regions, and TODOs unchanged. |
 | **[SURG]** | Surgical edits only — change only the required lines; surrounding code must be character-perfect. |
 | **[SO]** | Unity ScriptableObjects: `CreateInstance<T>()` only, never `new T()`. |

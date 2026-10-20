@@ -15,12 +15,16 @@ Subcommands:
     hook-start   SessionStart hook. Reads hook JSON on stdin, prints context for the agent.
     hook-end     SessionEnd hook. Compiles metrics even when /end-session was not run.
     hook-stop    Stop hook. Recompiles after a reply (throttled), for sessions that never exit.
+    hook-prompt  UserPromptSubmit hook. After an idle gap past the prompt-cache TTL, notes the cost.
+    hook-bash    PreToolUse hook on Bash. Reminds the agent to Read rule files it cat/sed/head/tails.
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
     open         Open metrics.md and retro.html (rendered from retro.md) in the default viewer.
     retro        Render retro.html, list proposal statuses, or mark one proposal applied/skipped/pending.
+                 --from <path> first files a retro written elsewhere (background sessions).
     path         Print the session folder.
+    file         Copy files written elsewhere into a reports folder (file --to MetaReviews <paths>).
     features     List CreateFeature features that are not complete (/active-features).
     prune-empty  Delete session folders with nothing worth keeping (--dry-run to preview).
 
@@ -62,6 +66,24 @@ CREATE_FEATURE_INDEX = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "..", "P
 STOP_COMPILE_INTERVAL_SECONDS = 120
 # Who logged a note. Entries written before sources existed have none and count as engineer.
 NOTE_SOURCES = ["engineer", "agent", "retro"]
+# Fresh-session offers (MR-20261016-02): every call re-reads the whole context, and after the
+# prompt cache expires (1 h) the next call re-reads it uncached.
+FRESH_SESSION_TOKENS = 30000000
+IDLE_GAP_MINUTES = 60
+IDLE_CONTEXT_TOKENS = 100000
+TRANSCRIPT_TAIL_BYTES = 512 * 1024
+# hook-bash (MR-20261016-05): a shell read of a rule file only reaches the router trace by inference.
+# Only at a command position (start, or after ; && || |), so a quoted or heredoc mention is silent.
+SHELL_RULE_READ = re.compile(r"(?:^|[;&|]|\$\()\s*(?:cat|sed|head|tail)\b[^|;&\n]*?(\S*\b(?:Rules|Processes|Systems|SystemPatterns|Skills)/\S*\.md)",
+                             re.MULTILINE)
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.MULTILINE | re.DOTALL)
+QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
+# `file --to` targets (MR-20261016-06): folders next to the sessions root that background jobs
+# cannot Write into directly.
+FILE_TARGETS = ["MetaReviews"]
+LANE_COMMAND = {"bug_fix": "/bug-fix <symptom>", "small_task": "/small-task <ask>",
+                "investigation": "/run-investigation-mode <question>", "feature": "/resume-work <FeatureName>",
+                "other": "<prompt>"}
 
 
 def now_iso():
@@ -305,7 +327,7 @@ def transcript_files(transcript_path, session_id):
 
 def router_trace(state, project_dir):
     imports, roots = import_roots(project_dir)
-    loads, tools, seen = [], {}, set()
+    loads, tools, seen = [], {}, {}
     md_in_command = re.compile(r"[\w./~-]+\.md")
     for path, via in transcript_files(state.get("transcript_path"), state["session_id"]):
         try:
@@ -327,7 +349,8 @@ def router_trace(state, project_dir):
                     tool_input = block.get("input") or {}
                     targets, bases = [], [project_dir]
                     if block.get("name") == "Read":
-                        targets = [tool_input.get("file_path", "")]
+                        # Rules, processes and index entries are .md; a tool's source is not a load.
+                        targets = [path for path in [tool_input.get("file_path", "")] if path.endswith(".md")]
                     elif block.get("name") == "Bash":
                         command = tool_input.get("command", "")
                         for tool in RUNNABLE_TOOLS:
@@ -345,16 +368,32 @@ def router_trace(state, project_dir):
                         candidates = [target] if os.path.isabs(target) else [os.path.join(b, target) for b in bases]
                         absolute = next((c for c in candidates if os.path.isfile(c)), candidates[-1])
                         real = os.path.realpath(absolute)
-                        if not any(real.startswith(os.path.realpath(r) + os.sep) for r in roots):
+                        root = next((r for r in roots if real.startswith(os.path.realpath(r) + os.sep)), None)
+                        if root is None:
+                            continue
+                        # Documentation/ mirrors the rules for humans and is never a routing load.
+                        if os.path.relpath(real, os.path.realpath(root)).split(os.sep)[0] == "Documentation":
                             continue
                         key = (real, via)
                         if key in seen:
+                            # A file first seen in a shell command and Read later was loaded properly.
+                            first = seen[key]
+                            if block.get("name") == "Read" and first["via"].endswith("Bash"):
+                                first["via"] += " → Read"
                             continue
-                        seen.add(key)
-                        loads.append({"file": display_path(absolute, project_dir, roots),
+                        seen[key] = {"file": display_path(absolute, project_dir, roots),
                                       "via": "%s · %s" % (via, block.get("name")),
-                                      "at": entry.get("timestamp", "")[11:19]})
+                                      "at": local_clock(entry.get("timestamp", ""))})
     return imports, loads, tools
+
+
+def local_clock(stamp):
+    """'HH:MM:SS' in local time for a transcript timestamp (stored in UTC), or '' if unparseable."""
+    try:
+        moment = datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    return moment.astimezone().strftime("%H:%M:%S")
 
 
 # ---------------------------------------------------------------- tokens
@@ -499,9 +538,8 @@ def breakdown_lines(state):
                 "- unavailable (%s)" % (breakdown.get("error") or "not compiled yet")]
     total = breakdown["total"]
     lines = ["", "## Token breakdown (estimated)", "",
-             "Total %s across %d model calls, each counted once (the token report counts a call once per "
-             "content block). A tool result costs its size × every later call that re-reads it."
-             % ("{:,}".format(total), breakdown["calls"]), "",
+             "Shares of the total tokens above, across %d model calls. A tool result costs its size × every "
+             "later call that re-reads it." % breakdown["calls"], "",
              "| Category | Standardized | Tokens | Share |", "| --- | --- | ---: | ---: |"]
     for name, tokens in breakdown["categories"].items():
         lines.append("| %s | %s | %s | %.1f%% |" % (name, "yes" if name in token_breakdown.STANDARDIZED else "–",
@@ -778,6 +816,87 @@ def cmd_hook_stop(args):
     return 0
 
 
+def offer_fresh_session(state, lane):
+    """stderr line for the agent when a large session switches lane (stdout stays the folder path)."""
+    total = (state.get("tokens") or {}).get("total_tokens") or 0
+    if total >= FRESH_SESSION_TOKENS:
+        print("Fresh-session offer: this session is at %.1fM tokens and every call re-reads it. Offer the "
+              "engineer to start the %s work fresh: /new-session \"%s\"" % (total / 1e6, lane, LANE_COMMAND[lane]),
+              file=sys.stderr)
+
+
+def last_reply(transcript_path):
+    """(local datetime, context tokens) of the transcript's last model call, or None. Reads only the tail."""
+    try:
+        with open(transcript_path, "rb") as handle:
+            handle.seek(max(os.path.getsize(transcript_path) - TRANSCRIPT_TAIL_BYTES, 0))
+            lines = handle.read().decode("utf-8", errors="replace").splitlines()
+    except (OSError, TypeError):
+        return None
+    for line in reversed(lines):
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        usage = (entry.get("message") or {}).get("usage")
+        if entry.get("type") != "assistant" or not usage or not entry.get("timestamp"):
+            continue
+        context = sum(usage.get(key) or 0 for key in
+                      ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+        moment = datetime.datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00")).astimezone()
+        return moment, context
+    return None
+
+
+def cmd_hook_prompt(args):
+    """UserPromptSubmit hook: after an idle gap long enough for the prompt cache to expire, tell the
+    agent what the next call costs, so new work can be offered a fresh session. Silent otherwise."""
+    hook = {}
+    try:
+        hook = read_hook_input()
+        reply = last_reply(locate_transcript(hook.get("session_id"), hook.get("transcript_path")))
+        if not reply:
+            return 0
+        moment, context = reply
+        idle = datetime.datetime.now().astimezone() - moment
+        if idle.total_seconds() < IDLE_GAP_MINUTES * 60 or context < IDLE_CONTEXT_TOKENS:
+            return 0
+        hours, minutes = divmod(int(idle.total_seconds() // 60), 60)
+        print("Idle-gap note: %dh %02dm since the last reply, so the prompt cache has expired and the next "
+              "call re-reads ~%dk tokens of context uncached. If this prompt starts new work rather than "
+              "continuing the current task, offer a fresh session first: /new-session \"<prompt>\"."
+              % (hours, minutes, context // 1000))
+        hook_log(args, "prompt", hook, "idle %dh%02dm, context %dk" % (hours, minutes, context // 1000))
+    except Exception as error:   # a hook must never block a prompt
+        hook_log(args, "prompt", hook, "ERROR %s" % error)
+    return 0
+
+
+def shell_rule_reads(command):
+    """Rule-file paths a command cat/sed/head/tails, ignoring heredoc bodies and quoted text."""
+    # A quoted single word is a path argument and stays; quoted text with spaces is prose.
+    command = QUOTED.sub(lambda m: m.group(0)[1:-1] if not re.search(r"\s", m.group(0)) else "''",
+                         HEREDOC.sub("", command))
+    return SHELL_RULE_READ.findall(command)
+
+
+def cmd_hook_bash(args):
+    """PreToolUse hook on Bash: remind the agent to load rule and process files with Read when a
+    command cat/sed/head/tails one. Warns only; never blocks the command."""
+    hook = {}
+    try:
+        hook = read_hook_input()
+        paths = shell_rule_reads((hook.get("tool_input") or {}).get("command", ""))
+        if paths:
+            print(json.dumps({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "additionalContext": "Use the Read tool for rule, process, index and skill files (%s) so the "
+                                     "router trace is exact; shell reads are only inferred." % ", ".join(paths)}}))
+    except Exception as error:   # a hook must never block a command
+        hook_log(args, "bash", hook, "ERROR %s" % error)
+    return 0
+
+
 def set_work_type(state, work_type, source):
     if state.get("work_type") and state["work_type"] != work_type:
         state.setdefault("work_type_history", []).append({"at": now_iso(), "from": state["work_type"], "to": work_type})
@@ -797,6 +916,7 @@ def cmd_set(args):
         # Keep earlier lanes: a mid-session change (e.g. a BugFix detour) must stay auditable.
         if state.get("lane") and state["lane"] != args.lane:
             state.setdefault("lane_history", []).append({"at": now_iso(), "from": state["lane"], "to": args.lane})
+            offer_fresh_session(state, args.lane)
         state["lane"] = args.lane
     if args.work_type:
         set_work_type(state, args.work_type, "explicit")
@@ -876,9 +996,23 @@ def retro_folder(args):
     return os.path.join(root, matches[0])
 
 
+def checked_source(path):
+    """A file written elsewhere (a background job's tmp dir) that is about to be filed."""
+    if not os.path.isfile(path):
+        sys.exit("--from file not found: %s" % path)
+    if os.path.getsize(path) == 0:
+        sys.exit("--from file is empty: %s" % path)
+    return path
+
+
 def cmd_retro(args):
     folder = retro_folder(args)
     retro_path = os.path.join(folder, "retro.md")
+    if args.source:
+        # MR-20261016-06: a background session cannot Write into the shared checkout; it writes
+        # the retro to its job tmp dir and files it through this script.
+        shutil.copyfile(checked_source(args.source), retro_path)
+        print("filed " + retro_path)
     if not os.path.isfile(retro_path):
         sys.exit("No retro.md in %s — /end-session writes it." % folder)
     if args.mark is not None:
@@ -907,6 +1041,18 @@ def cmd_path(args):
     print(folder)
 
 
+def cmd_file(args):
+    """Copy outputs written elsewhere (a background job's tmp dir) into a reports folder that is a
+    sibling of the sessions root, e.g. GitIgnoreReports/MetaReviews."""
+    sources = [checked_source(path) for path in args.paths]
+    target = os.path.join(os.path.dirname(reports_root(args)), args.to)
+    os.makedirs(target, exist_ok=True)
+    for source in sources:
+        destination = os.path.join(target, os.path.basename(source))
+        shutil.copyfile(source, destination)
+        print("filed " + destination)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reports-root")
@@ -914,6 +1060,8 @@ def main():
     sub.add_parser("hook-start", help="also safe to run by hand (/start-session)").set_defaults(func=cmd_hook_start)
     sub.add_parser("hook-end").set_defaults(func=cmd_hook_end)
     sub.add_parser("hook-stop").set_defaults(func=cmd_hook_stop)
+    sub.add_parser("hook-prompt").set_defaults(func=cmd_hook_prompt)
+    sub.add_parser("hook-bash").set_defaults(func=cmd_hook_bash)
     features = sub.add_parser("features", help="list CreateFeature features that are not complete (/active-features)")
     features.add_argument("--features-root", help="default <cwd>/%s, or $SESSION_FEATURES_ROOT" % DEFAULT_FEATURES_DIR)
     features.add_argument("--json", action="store_true")
@@ -921,6 +1069,12 @@ def main():
     prune = sub.add_parser("prune-empty", help="delete session folders with no lane, notes, tokens or typed prompt")
     prune.add_argument("--dry-run", action="store_true")
     prune.set_defaults(func=cmd_prune_empty)
+    filing = sub.add_parser("file", help="copy files written elsewhere (a background job's tmp dir) into a "
+                                         "reports folder")
+    filing.add_argument("--to", choices=FILE_TARGETS, required=True,
+                        help="folder next to the sessions root, under %s" % REPORTS_DIR)
+    filing.add_argument("paths", nargs="+", metavar="PATH")
+    filing.set_defaults(func=cmd_file)
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path), ("retro", cmd_retro)):
         command = sub.add_parser(name)
@@ -949,6 +1103,9 @@ def main():
             command.add_argument("--note", help="Applied-line detail, e.g. '<file> — <what changed>'; "
                                                 "omitted keeps the existing note")
             command.add_argument("--open", action="store_true", help="open retro.html afterwards")
+            command.add_argument("--from", dest="source", metavar="PATH",
+                                 help="copy a retro written elsewhere (a background job's tmp dir) to the "
+                                      "session's retro.md first, overwriting it")
     args = parser.parse_args()
     sys.exit(args.func(args) or 0)
 

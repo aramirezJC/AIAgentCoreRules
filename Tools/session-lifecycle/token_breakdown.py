@@ -111,7 +111,7 @@ def classify(name, tool_input, roots):
         return "Subagents"
     elif name == "Read":
         real = os.path.realpath(os.path.expanduser(tool_input.get("file_path", "")))
-        if any(real.startswith(root + os.sep) for root in roots):
+        if real.endswith(".md") and any(real.startswith(root + os.sep) for root in roots):
             return "Rule & process loads"
     return AD_HOC
 
@@ -250,8 +250,7 @@ def analyse(transcript_path, session_id, roots):
 
 
 def session_total(transcript_path, session_id):
-    """(tokens, model calls) for a session, main thread plus subagents, each call counted once.
-    The token report's Total Tokens counts a call once per content block, so it runs ~2-3x higher."""
+    """(tokens, model calls) for a session, main thread plus subagents, each call counted once."""
     if not transcript_path or not os.path.isfile(transcript_path):
         return None
     calls = read_calls(transcript_path)
