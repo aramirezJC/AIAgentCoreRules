@@ -24,6 +24,7 @@ publish:
   - "Build the complete page body locally (a scratch file next to the local source doc), including diagrams. Validate diagrams before publishing if the host names a validator."
   - "If the document has diagrams reviewed on a board, push them in this same pass — see 'Diagrams reviewed on a board' below. Do not push a diagram ahead of the document it illustrates."
   - "Measure the built body before publishing. Over ~50K characters, split it into child pages (the host's doc-conventions file says how) — one call per page."
+  - "Before sending: confirm the `body` argument is the real, complete content just built or read back from its file — not a placeholder, a truncated fragment, or escaped markup typed by mistake. This matters most for a large body typed or pasted directly into the tool call rather than loaded from the file that was just built: a publish call cannot be partially reviewed after the fact, only caught before it is sent or fixed after it has already overwritten the live page."
   - "Publish each page in one create or update call, written in the main session. Never hand a body to a subagent to retype."
   - "Verify every publish: fetch the page (or read the create response) and confirm it ends at its last section. A call cut off mid-body still saves a truncated page."
   - "Record the page in the progress file's sources_of_truth: kind, id, title, version returned by the call."

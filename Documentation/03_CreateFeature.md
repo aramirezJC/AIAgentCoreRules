@@ -53,8 +53,9 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
 - **Publishing for review** — if the TDD also goes to Confluence (or another wiki), the
   [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally, measured, and
   published in one call per page — a body over ~50K characters is split into child pages first,
-  because a call cut off mid-body saves a truncated page. Every publish is fetched back and
-  checked. Each round of review comments is one pass: one read of the page and its comments,
+  because a call cut off mid-body saves a truncated page. Before every send, the body is confirmed
+  to be the real, complete content just built, not a placeholder or truncated fragment. Every
+  publish is fetched back and checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
   The update is verified like a publish; that check (at most one fetch per page) is outside the
   pass's two-read budget.

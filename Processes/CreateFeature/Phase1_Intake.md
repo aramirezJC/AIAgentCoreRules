@@ -321,3 +321,14 @@ gate_1_summary:
 
 **Wait for engineer confirmation, then close the phase session (index.md "One Session per Phase") — do not load Phase 2 here.**
 All `tbd_items` must have an owner before the gate is cleared — unowned TBDs block progression.
+
+---
+
+## Router check (used by /end-session phase retros)
+
+```yaml
+expected_loads:
+  - "../CreateFeature/index.md and this phase file"
+  - "[[ExternalDocPass]], before the first publish or review-comment pass of a session that publishes the TDD externally (e.g. to Confluence) — required every such session, even one that resumes a publish workflow already established in an earlier session"
+missed_publish_discipline: "A publish or review-comment pass run in this phase without reloading ExternalDocPass.md first is a router miss, even if the publish itself succeeds."
+```
