@@ -32,6 +32,7 @@ handoff_command: |
     claude --model <next phase's recommended_model> "/resume-work <FeatureName>"
 exceptions:
   - "The engineer asks to continue in this session: continue, and record the reason in the gate block's open_items."
+  - "Long-session continuations across multiple gates are valid when phases are tightly coupled and context is fresh (e.g., Phase 3 → 4 → 7 in one session for a small, cohesive feature). Document the reasoning in the progress file's `open_items` for each gate passed; metrics will show a single very long session rather than multiple shorter ones, which is expected and correct."
   - "Phase 8 runs in the session that confirms Gate 7 only if the engineer asks; otherwise it is its own session too."
 ```
 
