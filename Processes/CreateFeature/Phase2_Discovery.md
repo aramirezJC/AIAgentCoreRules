@@ -53,3 +53,7 @@ discovery_report:
 ```
 
 **Do not proceed to Phase 3 if `missing_source` is non-empty. Request the missing files first.**
+
+Once approved, save the report as `[FeatureName]_Discovery.md` in the feature's working folder
+and add it to `artifacts` in the progress file. A resumed session reads it instead of
+re-running discovery.

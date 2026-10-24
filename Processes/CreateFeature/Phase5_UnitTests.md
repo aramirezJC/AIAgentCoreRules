@@ -6,6 +6,15 @@ Goal: Write tests in three categories, all directly traced to documents produced
 
 Requires: `[Feature]_UseCases.md` from Phase 1 and implemented classes from Phase 4.
 
+Before writing tests: re-read `../../Rules/TestingRules.md` and the host project's testing setup
+(TripleMatch: `Rules/TestingSetup.md` in the metadata repo).
+
+```yaml
+running_tests:
+  compile:  "Run the host compile check (TripleMatch: typecheck.py) — the agent does this."
+  execute:  "The engineer runs the tests in Unity (Window > General > Test Runner) and pastes failures. The agent does not claim a pass it has not seen."
+```
+
 ---
 
 ## Test Categories
@@ -109,6 +118,9 @@ coverage_summary:
 ---
 
 ## Gate 5 — Tests Passing
+
+Before the gate: run `/audit` on every test file written this phase and fix or report each
+violation. Test code follows the same rules as production code.
 
 All tests passing. `failing_tests` must be empty. Engineer confirms coverage is acceptable.
 Any skipped TBD cases must be logged as follow-up tasks before the gate clears.

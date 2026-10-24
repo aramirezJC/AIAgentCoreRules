@@ -1,0 +1,4 @@
+interface:
+  display_name: "Token Usage Reports"
+  short_description: "Generate sanitized coding-agent token reports"
+  default_prompt: "Use $token-usage-reports to generate a sanitized token usage report for my recent coding-agent sessions."

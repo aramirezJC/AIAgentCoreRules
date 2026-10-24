@@ -2,7 +2,7 @@
 
 # Stop and Verify Protocol
 
-Run before generating any code. If any check fails, stop and request the missing information before continuing.
+Run before generating any code. If a check fails, look the missing piece up yourself first (Read, codeindex, /discover). Stop and ask only when it cannot be found.
 Tag definitions: [[CoreTags]]
 
 ---
@@ -31,14 +31,17 @@ the larger one, or by picking the more impressive one.
 pre_generation:
   - "[CTX] Inventory every interface, class, enum, and base type the solution requires. Confirm each is present in context."
   - "[SIG] Locate every property, method, and field you intend to use in the provided source text."
+  - "[BEHAV] Every runtime behaviour the code relies on (copy vs reference, platform support, accepted formats, argument order) is grounded, not assumed."
   - "[SO]  Verify Unity ScriptableObjects use CreateInstance<T>(), never new T()."
 ```
 
 ## Stop Output Format
 
-When a dependency is missing, output this before any code:
+When a dependency is missing, first search for it (codeindex.py where, Read, /discover). Only if
+it is not in the repository — an external package, an unmerged branch, a server contract —
+output this before any code:
 
-> I cannot implement `[Class]` because I have not seen the definition for `[Dependency]`. Please provide `[Dependency.cs]`.
+> I cannot implement `[Class]` because `[Dependency]` is not in the repository (searched: `[queries run]`). Please provide `[Dependency.cs]` or point me to it.
 
 Do not generate partial code while waiting. Do not guess.
 
@@ -49,4 +52,22 @@ post_generation:
   - "[SIG]  No API signatures were guessed — every call is grounded in provided source."
   - "[PRES] All existing comments, regions, and TODOs are preserved unchanged."
   - "[SURG] Only the required lines were changed — surrounding code is character-perfect."
+```
+
+## Behaviour Claims — any mode
+
+```yaml
+behaviour:
+  - "[BEHAV] A claim about what an engine, library, API or CLI does at runtime is a hypothesis until grounded: its source (the host's engine-source tool, if any), `--help`, official docs, or a run."
+  - "[BEHAV] Until then, say 'hypothesis' and name the check: 'Hypothesis: the getter returns a copy — check: unitysource show <Type> --member <name>'."
+  - "[BEHAV] Applies to diagnoses and explanations as much as to code: a 'likely trigger' is a hypothesis, not a cause."
+```
+
+## Secrets — any command, any mode
+
+```yaml
+secrets:
+  - "[SECRET] Never print, echo, log or slice any part of a credential value (token, password, key) — not a prefix, not a length-plus-prefix."
+  - "[SECRET] Diagnose a credential with booleans only: e.g. print(value.startswith('ATATT') and len(value) > 100)."
+  - "[SECRET] If a fragment was exposed anyway, tell the engineer at once and recommend rotating it."
 ```

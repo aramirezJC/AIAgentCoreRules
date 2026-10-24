@@ -4,6 +4,56 @@
 
 Interactive wizard for designing and implementing a new feature. Load one phase file at a time. Do not advance past any gate without explicit engineer confirmation.
 
+```yaml
+working_folder: "Assets/GitIgnoreAssets/Features/<FeatureName>/   # GDD, TDD, TaskList, UseCases, Discovery, Architecture docs"
+progress_file:  "<working_folder>/<FeatureName>_Progress.md        # resume state — template: ../Templates/Progress_Template.md"
+session_metrics: "per session, in the Session tracking folder — see MetaRouter Session Lifecycle"
+```
+
+A feature usually spans several sessions. Each session gets its own metrics; the Phase 8
+retrospective reads all of them, using the `sessions` list in the progress file.
+
+---
+
+## One Session per Phase
+
+Each phase runs in its own session, so context stays small (a long session re-reads all of
+it on every turn), metrics show what each phase cost, and each phase can start on its
+`recommended_model`. A phase may take several sittings: end each one with `/checkpoint`, and
+the next sitting is another session for the same phase.
+
+```yaml
+on_gate_confirmed:   # in this order, then stop
+  1_record:  "Write the phase_handoff block and update the progress file (on_gate below)."
+  2_close:   "Run /end-session. Mid-feature it writes a short phase retro (see end-session depth)."
+  3_handoff: "Print the command for the next phase's fresh session and stop. Do NOT load the next phase file here."
+handoff_command: |
+  Next: Phase <N> — <Name>. In a new session from the project root:
+    claude --model <next phase's recommended_model> "/resume-work <FeatureName>"
+exceptions:
+  - "The engineer asks to continue in this session: continue, and record the reason in the gate block's open_items."
+  - "Long-session continuations across multiple gates are valid when phases are tightly coupled and context is fresh (e.g., Phase 3 → 4 → 7 in one session for a small, cohesive feature). Document the reasoning in the progress file's `open_items` for each gate passed; metrics will show a single very long session rather than multiple shorter ones, which is expected and correct."
+  - "Phase 8 runs in the session that confirms Gate 7 only if the engineer asks; otherwise it is its own session too."
+```
+
+---
+
+## Progress File — resuming across sessions
+
+Chat context does not survive a session end or a summary. The progress file does.
+
+```yaml
+progress_file:
+  create:     "At the start of Phase 1, from ../Templates/Progress_Template.md, if it does not exist."
+  on_session: "Add the current session folder name (from the Session tracking block) to `sessions` the first time this session writes the file. Readers match entries by the id8 suffix, so a later lane rename does not break them."
+  on_gate:    "Append the phase_handoff block (below) under 'Gates Passed', set current_phase to the next phase, clear the Checkpoint section, update artifacts and the sources_of_truth versions."
+  mid_phase:  "/checkpoint replaces the Checkpoint section — where work stopped and what comes next."
+  on_resume:  "/resume-work <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
+```
+
+Write the gate block **before** closing the session. A gate that is confirmed in chat
+but not written to the progress file is lost to the next session.
+
 ---
 
 ## Phases
@@ -36,7 +86,7 @@ phases:
     goal: Write code file-by-file with per-file engineer acknowledgment
     gate: All files written and engineer-reviewed
     recommended_agent: general-purpose
-    recommended_model: sonnet         # run /audit before starting each file
+    recommended_model: sonnet         # run /audit on each file before presenting it
 
   5_unit_tests:
     file: ./Phase5_UnitTests.md
@@ -63,7 +113,7 @@ phases:
     file: ./Phase8_Retrospective.md
     goal: Identify discovery gaps, missing patterns, gotchas, and process improvements; write approved changes to metadata files
     gate: All approved changes written and confirmed by engineer
-    recommended_agent: general-purpose  # use /retro skill
+    recommended_agent: general-purpose  # run via /end-session
     recommended_model: sonnet
 ```
 
@@ -71,7 +121,8 @@ phases:
 
 ## Handoff Format
 
-At every gate, produce this summary before loading the next phase file:
+At every gate, produce this summary and append it to the progress file before loading the next
+phase file:
 
 ```yaml
 phase_handoff:
@@ -84,9 +135,26 @@ phase_handoff:
 
 ---
 
+## Router check (used by /end-session phase retros)
+
+```yaml
+expected_loads:
+  - "this index and the phase file for the session's phase"
+  - "the rule files the phase names (Phase 4 re-reads CodingStandards and ArchitecturalPrinciples)"
+expected_tools:
+  4_implementation: ["/audit per file, before it is presented", typecheck.py]
+  5_unit_tests:     ["/audit on test files", typecheck.py]
+  6_integration:    ["/audit on changed files", typecheck.py]
+  7_verification:   ["/audit over all created and modified files"]
+missed_audit: "A file written in phases 4–6 without an /audit run, or a Gate 7 without the full run, is a router miss."
+```
+
+---
+
 ## Templates
 
 ```yaml
 templates:
-  tdd: ../Templates/TDD_Template.md   # fill during Phase 1
+  tdd:      ../Templates/TDD_Template.md        # fill during Phase 1
+  progress: ../Templates/Progress_Template.md   # create at the start of Phase 1
 ```

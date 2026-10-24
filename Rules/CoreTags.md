@@ -11,8 +11,9 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 
 | Tag | Rule |
 |---|---|
-| **[CTX]** | All required dependencies must be confirmed in context before generating. If anything is missing: STOP — do not generate, request the file. |
+| **[CTX]** | All required dependencies must be confirmed in context before generating. If anything is missing: look it up; if it cannot be found, STOP — do not generate, request the file. |
 | **[SIG]** | No signature guessing. Every property, method, and field must be physically located in provided source text before use. |
+| **[BEHAV]** | What an engine, library, API or CLI does at runtime is a hypothesis until grounded in its source, `--help`, docs or a run. State it as a hypothesis, with how to check it. |
 | **[PRES]** | Preserve all existing comments, XML summaries, regions, and TODOs unchanged. |
 | **[SURG]** | Surgical edits only — change only the required lines; surrounding code must be character-perfect. |
 | **[SO]** | Unity ScriptableObjects: `CreateInstance<T>()` only, never `new T()`. |
@@ -27,3 +28,4 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 | **[ALLMAN]** | Allman braces — `{` always on its own new line. |
 | **[ACCESS]** | All access modifiers must be explicit on every member — no implicit defaults. |
 | **[LOG]** | All logging via the project Logger wrapper only. Never `UnityEngine.Debug.Log`, `Debug.LogWarning`, or `Debug.LogError`. |
+| **[SECRET]** | Never print, echo, log or slice any part of a credential value. Check a credential's shape with booleans only; if a fragment leaks, say so and recommend rotating it. |

@@ -2,37 +2,76 @@
 
 # Agent Rule Router
 
-This file and [[StopAndVerify]] are the only files loaded unconditionally. Classify the task, then use your Read tool to load the relevant files **before generating any code**.
+This file, [[StopAndVerify]] and [[CoreTags]] are the only core files loaded unconditionally; the host project's CLAUDE.md may add its own always-on files. Classify the task, then use your Read tool to load the relevant files **before generating any code**.
 
 ```yaml
-directory_layout:
-  ./Rules/      # Standards and principles — what code must look like
-  ./Processes/  # Step-by-step wizard workflows — how to carry out specific tasks
+directory_layout:   # relative to the repository root
+  Rules/        # Standards and principles — what code must look like
+  Processes/    # Step-by-step wizard workflows — how to carry out specific tasks
 ```
 
-All paths below are relative to the directory containing this file.
+All `load` and `routing` paths below are relative to the directory containing this file (`Rules/`) — pass them straight to Read.
+
+---
+
+## Session Lifecycle — every session, every mode
+
+```yaml
+session_lifecycle:
+  start:   "Automatic (SessionStart hook) — a 'Session tracking' block appears in context. If it is missing, run /start-session."
+  record:  "Right after classifying the mode below, record the lane and work type with the `set` command shown in the Session tracking block."
+  work_type: "bug_fix | small_feature | feature | question | other — what the work is, not which lane ran it (definitions in ../Skills/start-session). Defaults to the lane's; pass --work-type when they differ."
+  name:    "/start-session <name> names the session (folder + metrics heading). Optional."
+  during:  "The engineer logs /inaccuracy <reason> after correcting you, and /iteration <change> on a deliberate change of direction."
+  self_log: "When you retract a claim, or the engineer rejects your approach, log it yourself straight away with `note --kind inaccuracy --source agent \"<what was wrong>\"` (command in the Session tracking block). Unlogged corrections are back-filled by /end-session with --source retro."
+  end:     "/end-session — compiles metrics + router trace, writes a lane-scaled retrospective, opens both files."
+  backstop: "If /end-session is skipped, the SessionEnd hook still compiles metrics.md (no retrospective)."
+```
+
+Load rule and process files with the **Read** tool, not shell `cat`/`sed` — the router trace in
+the session metrics is exact for Read and only inferred for shell commands.
 
 ---
 
 ## First: Classify the Mode
 
 Before the routing table, decide which mode the request is in. They have different outputs and
-different rules, and picking wrong wastes the whole turn.
+different rules, and picking wrong wastes the whole turn. The mode is the session's lane.
 
 ```yaml
 mode_fork:
-  investigating:
-    looks_like: "how feasible / how does X compare / where does X happen / hypothetical refactor / compile a list"
+  small_task:
+    looks_like: "make a tool/utility/debug command like X that does Y / small tweak / follow this example / /small-task"
+    output:     "code for a bounded change — no TDD, one proposal checkpoint"
+    load:       [../Processes/SmallTask.md]
+  bug_fix:
+    looks_like: "X is broken / what could be causing / why does X happen / fix this crash / /bug-fix"
+    output:     "diagnosis → approved fix → regression test"
+    load:       [../Processes/BugFix.md]
+  investigation:
+    looks_like: "how feasible / how does X compare / where does X happen / hypothetical refactor / compile a list / /run-investigation-mode"
     output:     "a document or recommendation — NOT code"
-    load:       [Rules/InvestigationMode]
-  building:
-    looks_like: "implement / build / add feature X / /feature <Name>"
-    output:     "code, tests, integration — with gates"
-    load:       [../Processes/CreateFeature/index]
+    load:       [./InvestigationMode.md]
+  code_review:
+    looks_like: "review PR X / does this satisfy our rules / evaluate my review comments"
+    output:     "findings with file:line — NOT code"
+    load:       [./CodingStandards.md, ./ArchitecturalPrinciples.md, ./MultyStepOperationsRules.md]
+    also_load:  "the host SystemIndex entry for every system the diff touches, before reading its source"
+    first_step: "Find the real base: a stacked PR targets a feature branch, not the default branch — use git merge-base. Check whether downstream stacked branches contain the PR tip before comparing against them."
+    record_as:  "lane other, work type question — session tracking has no code_review lane"
+  feature:
+    looks_like: "implement / build / add feature X / here is the GDD / /feature <Name>"
+    output:     "code, tests, integration — with all 8 gates"
+    load:       [../Processes/CreateFeature/index.md]
+  other:
+    looks_like: "questions, tooling/config, docs, anything not above"
+    output:     "whatever was asked — routing table only"
+    load:       []
 ```
 
-Never silently escalate investigation into feature work, or answer a build request with a document.
-If genuinely ambiguous, state the assumed mode in one line and continue — do not block.
+Never silently escalate between lanes: a small task that outgrows SmallTask's limits, or an
+investigation that turns into a bug, is offered to the engineer as a lane change, not taken.
+If genuinely ambiguous, state the assumed lane in one line and continue — do not block.
 
 ---
 
@@ -80,38 +119,64 @@ When a task matches a process, load the process and follow it. Processes are wiz
 ```yaml
 routing:
   # Processes — load and follow step by step
-  create_new_feature:             [../Processes/CreateFeature/index]
+  create_new_feature:             [../Processes/CreateFeature/index.md]
+  small_bounded_change:           [../Processes/SmallTask.md]
+  diagnose_and_fix_bug:           [../Processes/BugFix.md]
+  meta_review_of_sessions:        [../Processes/MetaReview.md]   # review past sessions · meta-analysis · weekly retro of retros
+  publish_or_review_external_doc: [../Processes/ExternalDocPass.md]   # Confluence/Docs page · apply review comments · publish a TDD
 
   # Modes — decide this first, see "Classify the Mode" above
-  investigate_or_preplan:         [Rules/InvestigationMode]
-  feasibility_or_comparison:      [Rules/InvestigationMode]
-  produce_design_document:        [Rules/InvestigationMode]
+  investigate_or_preplan:         [./InvestigationMode.md]
+  feasibility_or_comparison:      [./InvestigationMode.md]
+  produce_design_document:        [./InvestigationMode.md]
 
   # Rules — load and apply when writing or reviewing code
-  write_or_modify_csharp:         [Rules/CodingStandards]
-  design_classes_or_interfaces:   [Rules/ArchitecturalPrinciples]
-  async_flows_queues_sequences:   [Rules/MultyStepOperationsRules]
-  write_or_modify_tests:          [Rules/TestingRules]
-  resource_management:            [Rules/ResourceManagementRules]
-  refactor_or_review:             [Rules/CodingStandards, Rules/ArchitecturalPrinciples]
-  new_feature_multi_system:       [Rules/CodingStandards, Rules/ArchitecturalPrinciples, Rules/MultyStepOperationsRules]
+  write_or_modify_csharp:         [./CodingStandards.md]
+  design_classes_or_interfaces:   [./ArchitecturalPrinciples.md]
+  async_flows_queues_sequences:   [./MultyStepOperationsRules.md]
+  write_or_modify_tests:          [./TestingRules.md]
+  resource_management:            [./ResourceManagementRules.md]
+  refactor_or_review:             [./CodingStandards.md, ./ArchitecturalPrinciples.md]
+  new_feature_multi_system:       [./CodingStandards.md, ./ArchitecturalPrinciples.md, ./MultyStepOperationsRules.md]
 ```
 
 ---
 
 ## How to Load
 
-```
-# Processes
-Read: ../Processes/CreateFeature/index.md
+Read each path from the tables above exactly as written. Do not generate code until the relevant files are read.
 
-# Rules
-Read: ./InvestigationMode.md
-Read: ./CodingStandards.md
-Read: ./ArchitecturalPrinciples.md
-Read: ./MultyStepOperationsRules.md
-Read: ./TestingRules.md
-Read: ./ResourceManagementRules.md
+Rule files loaded early can be summarised away in a long session. When a process step says to
+re-read a rule file, re-read it — do not rely on memory of it.
+
+Read any file you are about to edit with the **Read** tool first. A shell `cat`, `sed` or `grep`
+does not count: the edit is rejected, and the router trace can only guess at shell loads.
+
+---
+
+## Commands
+
+```yaml
+commands:   # skills in ../Skills/ (project-specific ones in the host metadata repo)
+  /start-session:  "start/resume tracking, set lane (normally automatic)"
+  /end-session:    "metrics + router trace + retrospective, opens files"
+  /inaccuracy:     "engineer logs a corrected agent mistake"
+  /iteration:      "engineer logs a deliberate change of direction"
+  /feature <Name>: "enter the CreateFeature process"
+  /small-task <ask>: "enter the SmallTask process (lane small_task), skipping classification"
+  /bug-fix <symptom>: "enter the BugFix process (lane bug_fix), skipping classification"
+  /run-investigation-mode <question>: "enter Investigation Mode (lane investigation), skipping classification"
+  /generate-meta-review [time frame]: "run the MetaReview process over the sessions in the window"
+  /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
+  /resume-work [Name]: "pick up a feature from its progress file in a fresh session; no name → choose from the active features"
+  /active-features: "list features not yet complete: phase, status, next step, resume command"
+  /discover <area>: "subagent survey, returns a compact map"
+  /audit [files]:  "rules compliance check, report only"
+  /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"
+  /new-session <prompt>: "open a fresh session with that prompt in a new Terminal.app window or Rider terminal tab (macOS)"
+  /uses <Type>:    "who uses a type / calls its members (host project tool)"
 ```
 
-Do not generate code until the relevant files are read.
+`Documentation/` (in this repo and in the host metadata repo) is the human-facing copy of the
+Rules, Processes, Skills and Tools. Never load it for routing — load the source files above.
+When you change one of those source files, update the matching `Documentation/` page with it.

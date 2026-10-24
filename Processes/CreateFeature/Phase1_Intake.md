@@ -7,11 +7,27 @@ Goal: Convert the GDD into a complete TDD and supporting documents. Work section
 Output files produced by this phase:
 ```yaml
 outputs:
-  - "[FeatureName]_TDD.md        — filled from Templates/TDD_Template.md"
+  - "[FeatureName]_TDD.md        — filled from ../Templates/TDD_Template.md"
   - "[FeatureName]_TaskList.md   — ordered actionable items from the Development Plan"
   - "[FeatureName]_UseCases.md   — use cases and edge cases table"
   - "[FeatureName]_GDD.md        — AI-friendly version of the source GDD (if provided)"
+  - "[FeatureName]_Progress.md   — created first, from ../Templates/Progress_Template.md (see index.md 'Progress File')"
 ```
+
+Intake is the longest phase and often spans sessions. After each TDD section is agreed, suggest
+`/checkpoint` if the session is getting long.
+
+If the TDD is also published for review outside the repository (e.g. Confluence), or its diagrams
+are reviewed on a board (e.g. Miro), load [[ExternalDocPass]] (`../ExternalDocPass.md`) before the
+first publish and run every round of review comments as one pass. Diagrams iterate locally against
+their source file and push to the board on the same schedule as the document, not per revision.
+Review round trips were the largest cost of an Intake phase.
+
+**Before the first publish (and any publish after a session of decisions):** list every decision
+changed this session, grep the TDD and its diagram sources for the old wording, and fix each
+earlier section that now contradicts it. A contradiction that is a real design conflict, not just
+stale wording, goes to the engineer. One sweep found four stale statements and one real conflict
+in sections that had already been confirmed.
 
 ---
 
@@ -66,6 +82,34 @@ architecture_checks:
 
 ---
 
+### Section: Best Practices
+
+Ask:
+> "What rules must whoever implements this follow — and for each one, what actually stops someone from skipping it?"
+
+Work through the hard rules and conventions the Architecture section implies (resource lifecycles,
+who may touch what, required declarations, naming/registration conventions). For each one, sort by
+the strongest mechanism that can realistically hold it, strongest first:
+
+```yaml
+enforcement_tiers:   # strongest to weakest — place each rule at the strongest tier it can reach
+  - "Compile-time: the type system makes the mistake impossible to write."
+  - "Generator / CI: a build step fails when the rule is broken."
+  - "Test-time: a reflection check or required test fixture fails the suite."
+  - "Runtime guard: the code catches/asserts the violation itself, instead of trusting the caller."
+  - "Scaffolded: a wizard/tool writes the correct boilerplate by default — not enforced, but cheap to get right."
+  - "Process: code review only. Last resort — a rule that lands here is one more thing to remember."
+best_practices_checks:
+  - Does every rule name the mechanism that holds it, not just the rule?
+  - Is anything sitting at Process that could realistically move up a tier?
+  - Where a rule is deliberately left as a case-by-case judgment call (not tooled), is that reasoning written down, not just the absence of a mechanism?
+```
+
+If the feature has nothing beyond ordinary coding standards, say so explicitly rather than leaving
+the section blank — an empty section reads as "not considered," not "not applicable."
+
+---
+
 ### Section: Related Documentation
 
 Ask:
@@ -90,7 +134,8 @@ per_stage:
   assignee:          "Name of engineer responsible"
 ```
 
-Populate the task table. Each task row: Task | Assignee | Status (unchecked `[ ]` by default).
+Populate the task table. Each task row: Title | Task | Assignee | Status (unchecked `[ ]` by default).
+Title is a short, human-readable task name (a few words), ready to become the Jira ticket summary.
 
 Add as many stages as needed. The "Final Touches" stage is always included — see below.
 
@@ -213,27 +258,19 @@ Present findings as a numbered list. Discuss each gap with the engineer until re
 
 ---
 
-## Sub-phase 1d — Metrics Initialization
+## Sub-phase 1d — Metrics
 
-Create `.claude/session_metrics.md` in the project root before producing any output documents. Use the feature name from the TDD Objective section.
+Session metrics are already running (SessionStart hook — see MetaRouter Session Lifecycle).
+Make sure the lane and title are recorded:
 
-```markdown
-# Session Metrics — [FeatureName]
-
-Started: [YYYY-MM-DD]
-
-inaccuracy_count: 0
-iteration_count:  0
-
-## Inaccuracies
-
-## Iterations
+```bash
+python3 <lifecycle script> set --lane feature --title "<FeatureName>"
 ```
 
-Remind the engineer:
-- Run `/inaccuracy <reason>` immediately after correcting an agent mistake.
-- Run `/iteration <description>` when deliberately changing direction or refining scope.
-- Run `/cost` before starting Phase 8 and paste the total into the Phase 8 benchmarks step.
+Remind the engineer once:
+- `/inaccuracy <reason>` immediately after correcting an agent mistake.
+- `/iteration <description>` when deliberately changing direction or refining scope.
+- `/end-session` at the end of every working session — each session of this feature gets its own metrics.
 
 ---
 
@@ -241,7 +278,7 @@ Remind the engineer:
 
 With all TDD sections complete and reviewed, produce the output documents:
 
-**`[FeatureName]_TDD.md`** — fill `Templates/TDD_Template.md` with all gathered content. Set version to `1.0.0`.
+**`[FeatureName]_TDD.md`** — fill `../Templates/TDD_Template.md` with all gathered content. Set version to `1.0.0`.
 
 **`[FeatureName]_TaskList.md`** — extract all tasks from all Development Plan stages in order:
 
@@ -249,7 +286,8 @@ With all TDD sections complete and reviewed, produce the output documents:
 task_list_format:
   - stage: "V0 — Core Loop"
     tasks:
-      - task: "Task description"
+      - title: "Short task name (Jira summary)"
+        task: "Task description"
         assignee: "Name"
         status: "[ ]"
 ```
@@ -281,5 +319,16 @@ gate_1_summary:
   open_items:            []   # unresolved gaps from 1c
 ```
 
-**Wait for engineer confirmation before loading Phase 2.**
+**Wait for engineer confirmation, then close the phase session (index.md "One Session per Phase") — do not load Phase 2 here.**
 All `tbd_items` must have an owner before the gate is cleared — unowned TBDs block progression.
+
+---
+
+## Router check (used by /end-session phase retros)
+
+```yaml
+expected_loads:
+  - "../CreateFeature/index.md and this phase file"
+  - "[[ExternalDocPass]], before the first publish or review-comment pass of a session that publishes the TDD externally (e.g. to Confluence) — required every such session, even one that resumes a publish workflow already established in an earlier session"
+missed_publish_discipline: "A publish or review-comment pass run in this phase without reloading ExternalDocPass.md first is a router miss, even if the publish itself succeeds."
+```
