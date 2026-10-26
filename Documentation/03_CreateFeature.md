@@ -38,7 +38,10 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
 ### Phase 1 — Intake
 
 - **1a GDD conversion** — if a GDD is provided, it is converted to Markdown in full, without
-  summarising.
+  summarising. With no GDD but planning notes, threads or a scope summary, a use-case-driven
+  pseudo-GDD is written instead (problem, codebase survey, design questions with options and a
+  decision, use cases, open items marked ⚠️/🔧/📐/✅), modelled on an existing one if the project
+  has one — the notes are not transcribed.
 - **1b TDD, section by section** — objective, architecture, Best Practices (the rules an
   implementer must follow, each with what stops someone from skipping it), related docs, development plan
   (stages with T-shirt sizes and assignees), final touches, tools, risks, data reconciliation

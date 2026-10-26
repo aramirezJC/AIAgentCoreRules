@@ -44,7 +44,19 @@ gdd_conversion:
   - Confirm the conversion with the engineer before proceeding.
 ```
 
-If no GDD exists, skip to 1b and gather information through direct questions.
+If there is no GDD but there are planning notes, threads or a scope summary, write a pseudo-GDD
+instead:
+
+```yaml
+pseudo_gdd:
+  - Make it use-case driven — do not transcribe the notes.
+  - "Sections: Problem · codebase survey · design questions (options + decision) · use cases · open items."
+  - "Mark each open item ⚠️ / 🔧 / 📐 / ✅."
+  - Model it on an existing pseudo-GDD in the project, if one exists.
+  - Save as [FeatureName]_GDD.md and confirm it with the engineer before proceeding.
+```
+
+If there is no GDD and no planning material, skip to 1b and gather information through direct questions.
 
 ---
 
