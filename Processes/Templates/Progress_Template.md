@@ -13,6 +13,8 @@ sessions:       []                  # session folder names that worked on this f
 sources_of_truth: []                # documents edited outside this folder, with the version last read, e.g.
                                     #   - {kind: confluence, id: "4787830785", title: "<Feature> TDD", version: 14}
                                     # /resume-work compares versions; update the version at every /checkpoint and gate
+pull_requests:                      # Phase 4: PR numbers per TDD V-phase; the doc-review Progress tab shows their comments, e.g.
+                                    #   V0: [9923, 9930]
 ```
 
 ---

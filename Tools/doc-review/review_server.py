@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from anchor_resolver import resolve_thread
-from progress_view import build_model, find_progress_file, watched_paths
+from progress_view import build_model, find_progress_file, pr_refresh_stamp, watched_paths
 from sidecar_store import SidecarStore
 
 MERMAID_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"
@@ -90,6 +90,17 @@ PAGE_TEMPLATE = """<!doctype html>
   .phase .stage + ul {{ padding-left: 16px; }}
   .gate {{ margin-top: 8px; font-size: 13px; color: #9aa3b5; }}
   .gate.pending {{ color: var(--gate); font-weight: 600; }}
+  /* Implementation V-phases from the TDD: a Tasks and a PR notes collapsible each. */
+  .dev-phase details {{ margin: 4px 0 0 20px; font-size: 13px; }}
+  .dev-phase summary {{ cursor: pointer; color: #b7bcc7; }}
+  .dev-phase .pr {{ margin: 6px 0 0 4px; }}
+  .dev-phase .pr a {{ color: #6cb6ff; }}
+  .dev-phase .pill.pr-state {{ background: #333944; color: #e4e6eb; }}
+  .dev-phase .note {{ border-left: 2px solid #333944; margin: 6px 0 0 8px; padding: 2px 10px; }}
+  .dev-phase .note-meta {{ color: #9aa3b5; font-size: 12px; }}
+  .dev-phase .note-meta a {{ color: #9aa3b5; }}
+  .dev-phase .note-body {{ white-space: pre-wrap; color: #e4e6eb; }}
+  .dev-phase .empty {{ color: #5c6577; margin: 4px 0 0 4px; }}
 </style>
 </head>
 <body>
@@ -172,6 +183,39 @@ PAGE_TEMPLATE = """<!doctype html>
     return '<span class="mark ' + state + '">' + glyph + '</span>';
   }}
 
+  function devPhaseHtml(dev) {{
+    const done = dev.tasks.filter((task) => task.status === "done").length;
+    const allDone = dev.tasks.length > 0 && done === dev.tasks.length;
+    const parts = ['<div class="dev-phase"><div class="stage">' + markHtml(allDone ? "done" : "todo") + escapeHtml(dev.title) + '</div>',
+      '<details data-key="' + escapeHtml(dev.key) + ':tasks"' + (dev.open ? ' open' : '') + '><summary>Tasks ('
+        + done + '/' + dev.tasks.length + ')</summary><ul>'];
+    dev.tasks.forEach((task) => {{
+      parts.push('<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml((task.id ? task.id + ' · ' : '') + task.title) + '</li>');
+    }});
+    const prs = dev.pull_requests || [];
+    const noteCount = prs.reduce((sum, pr) => sum + pr.notes.length, 0);
+    parts.push('</ul></details><details data-key="' + escapeHtml(dev.key) + ':prs"><summary>PR notes ('
+      + prs.length + ' PR' + (prs.length === 1 ? '' : 's') + ', ' + noteCount + ' note' + (noteCount === 1 ? '' : 's') + ')</summary>');
+    if (!prs.length) {{
+      parts.push('<div class="empty">No PRs linked. Add <code>' + escapeHtml(dev.key) + ': [1234]</code> under <code>pull_requests:</code> in the progress file.</div>');
+    }}
+    prs.forEach((pr) => {{
+      parts.push('<div class="pr"><a href="' + escapeHtml(pr.url) + '" target="_blank" rel="noopener">#' + escapeHtml(pr.number)
+        + (pr.title ? ' ' + escapeHtml(pr.title) : '') + '</a>' + (pr.state ? ' <span class="pill pr-state">' + escapeHtml(pr.state) + '</span>' : ''));
+      if (pr.error) parts.push('<div class="error">' + escapeHtml(pr.error) + '</div>');
+      if (!pr.error && !pr.notes.length) parts.push('<div class="empty">No comments yet.</div>');
+      pr.notes.forEach((note) => {{
+        const where = note.location || note.kind + (note.state ? ' ' + note.state.toLowerCase() : '');
+        const whereHtml = note.url ? '<a href="' + escapeHtml(note.url) + '" target="_blank" rel="noopener">' + escapeHtml(where) + '</a>' : escapeHtml(where);
+        parts.push('<div class="note"><div class="note-meta">' + escapeHtml(note.author) + ' &middot; ' + escapeHtml(note.created_at.slice(0, 10))
+          + ' &middot; ' + whereHtml + '</div><div class="note-body">' + escapeHtml(note.body) + '</div></div>');
+      }});
+      parts.push('</div>');
+    }});
+    parts.push('</details></div>');
+    return parts.join("");
+  }}
+
   function renderProgress(id, src) {{
     const target = document.getElementById(id);
     try {{
@@ -190,18 +234,27 @@ PAGE_TEMPLATE = """<!doctype html>
           parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title) + '</li>');
         }});
         parts.push('</ul>');
-        phase.stages.forEach((stage) => {{
+        // The TDD's V-phases replace the task list when the TDD has them.
+        const devPhases = phase.dev_phases || [];
+        (devPhases.length ? [] : phase.stages).forEach((stage) => {{
           parts.push('<div class="stage">' + escapeHtml(stage.title) + '</div><ul>');
           stage.tasks.forEach((task) => {{
             parts.push('<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml(task.id + ' · ' + task.title) + '</li>');
           }});
           parts.push('</ul>');
         }});
+        devPhases.forEach((dev) => parts.push(devPhaseHtml(dev)));
         const pending = phase.key === model.next_gate_phase;
         parts.push('<div class="gate' + (pending ? ' pending' : '') + '">Gate' + (pending ? ' to pass next' : '')
           + ': ' + escapeHtml(phase.gate) + '</div></section>');
       }});
+      // A refresh rebuilds the tab; keep the collapsibles the engineer opened or closed by hand.
+      const openState = {{}};
+      target.querySelectorAll("details[data-key]").forEach((el) => {{ openState[el.dataset.key] = el.open; }});
       target.innerHTML = parts.join("");
+      target.querySelectorAll("details[data-key]").forEach((el) => {{
+        if (el.dataset.key in openState) el.open = openState[el.dataset.key];
+      }});
     }} catch (err) {{
       target.innerHTML = '<div class="error">' + escapeHtml(err && err.message ? err.message : err) + '</div>';
     }}
@@ -553,7 +606,8 @@ def _tab_source(tab: Dict) -> str:
 
 def _tab_mtime(tab: Dict) -> float:
     if tab["kind"] == "progress":
-        return max(path.stat().st_mtime for path in watched_paths(tab["path"]))
+        newest_file = max(path.stat().st_mtime for path in watched_paths(tab["path"]))
+        return max(newest_file, pr_refresh_stamp(tab["path"]))
     return tab["path"].stat().st_mtime
 
 

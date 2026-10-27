@@ -175,6 +175,8 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /resume-work [Name]: "pick up a feature from its progress file in a fresh session; no name → choose from the active features"
   /active-features: "list features not yet complete: phase, status, next step, resume command"
   /preview-feature [Name]: "open a feature in the doc-review preview: Progress tab, TDD, diagrams"
+  /feature-pr <PR> [Name] [V-phase]: "tie a PR to a feature's V-phase in its progress file, read its review notes, record addressed ones there"
+  /kill-server [port|pid|all]: "stop a running doc-review preview server"
   /discover <area>: "subagent survey, returns a compact map"
   /audit [files]:  "rules compliance check, report only"
   /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"

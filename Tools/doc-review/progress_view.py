@@ -6,10 +6,15 @@ same way session_lifecycle.py reads them. Sources:
   - Processes/CreateFeature/Phase*.md     steps = the "## " headings (minus apply/Gate/Router check)
   - <Name>_Progress.md                    current_phase, status, phase_handoff blocks, checkpoint.done
   - <Name>_TaskList.md (optional)         stages + tasks, nested under the implementation phase
+  - <Name>_TDD.md (optional)              "### V<n> — ..." development phases and their task tables,
+                                          nested under the implementation phase (replace the task list)
+  - Progress.md pull_requests block       "  V0: [9923, 9930]" -> each PR's notes, fetched with gh (pr_notes.py)
 """
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
+
+import pr_notes
 
 CREATE_FEATURE_DIR = Path(__file__).resolve().parents[2] / "Processes" / "CreateFeature"
 IMPLEMENTATION_PHASE_KEY = "4_implementation"
@@ -24,6 +29,11 @@ TASK_LINE = re.compile(r'^\s*-\s*\{id:\s*([^,]+),\s*status:\s*"\[(.)\]",\s*title
 STAGE_LINE = re.compile(r'^-\s*stage:\s*"([^"]*)"')
 DONE_ITEM_LINE = re.compile(r'^\s{4}-\s*"(.*)"\s*$')
 TASK_STATUS_BY_MARK = {"x": "done", "~": "partial", " ": "todo"}
+DEV_PLAN_HEADING = re.compile(r"^##\s+Development plan\b", re.IGNORECASE)
+DEV_PHASE_HEADING = re.compile(r"^###\s+(V\d+[a-z]?)\b.*$")
+TABLE_SEPARATOR_ROW = re.compile(r"^[\s|:-]+$")
+MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+PR_PHASE_LINE = re.compile(r"^\s+(V\d+[a-z]?):\s*\[([^\]]*)\]")
 
 
 def find_progress_file(doc_path: Path) -> Optional[Path]:
@@ -36,20 +46,43 @@ def task_list_path(progress_path: Path) -> Path:
     return progress_path.with_name(progress_path.name[: -len("_Progress.md")] + "_TaskList.md")
 
 
+def tdd_path(progress_path: Path) -> Path:
+    return progress_path.with_name(progress_path.name[: -len("_Progress.md")] + "_TDD.md")
+
+
 def watched_paths(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -> List[Path]:
     """Every file the model is built from -- the tab re-renders when any of them changes."""
-    candidates = [progress_path, task_list_path(progress_path), process_dir / "index.md"]
+    candidates = [progress_path, task_list_path(progress_path), tdd_path(progress_path), process_dir / "index.md"]
     candidates += sorted(process_dir.glob("Phase*.md"))
     return [path for path in candidates if path.is_file()]
 
 
-def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -> Dict:
+def pr_refresh_stamp(progress_path: Path) -> float:
+    """Start of the current PR refresh window when Progress.md links PRs, else 0 -- folded into the
+    tab's mtime so PR comments posted on GitHub reach the page without any local file changing."""
+    if not _pull_requests(progress_path.read_text()):
+        return 0.0
+    return float(pr_notes.refresh_window() * pr_notes.REFRESH_SECONDS)
+
+
+def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
+                fetch_pr: Callable[[int, Path], Dict] = pr_notes.fetch_pr_notes) -> Dict:
     progress_text = progress_path.read_text()
     current_key = _quoted_field(progress_text, "current_phase") or ""
     completed_numbers = {int(m.group(1)) for m in map(PHASE_COMPLETED_LINE.match, progress_text.splitlines()) if m}
     done_items = _checkpoint_done(progress_text)
     task_list = task_list_path(progress_path)
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
+    tdd = tdd_path(progress_path)
+    dev_phases = _dev_phases(tdd.read_text()) if tdd.is_file() else []
+    pull_requests = _pull_requests(progress_text)
+    for dev_phase in dev_phases:
+        dev_phase["pull_requests"] = [fetch_pr(number, progress_path.parent)
+                                      for number in pull_requests.get(dev_phase["key"], [])]
+    # The V-phase in progress starts with its tasks expanded: the first one with an unfinished task.
+    in_progress = next((dev for dev in dev_phases if any(task["status"] != "done" for task in dev["tasks"])), None)
+    for dev_phase in dev_phases:
+        dev_phase["open"] = dev_phase is in_progress
 
     phases = []
     for phase in _index_phases(process_dir):
@@ -68,6 +101,7 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -> 
                 "current": is_current,
                 "steps": steps,
                 "stages": stages if phase["key"] == IMPLEMENTATION_PHASE_KEY else [],
+                "dev_phases": dev_phases if phase["key"] == IMPLEMENTATION_PHASE_KEY else [],
             }
         )
 
@@ -163,6 +197,64 @@ def _task_stages(task_list_text: str) -> List[Dict]:
                  "status": TASK_STATUS_BY_MARK.get(task.group(2), "todo")}
             )
     return stages
+
+
+def _dev_phases(tdd_text: str) -> List[Dict]:
+    # "### V<n> — ..." headings inside any "## Development plan..." section; each phase's tasks are the
+    # rows of its markdown table, labelled by the Title column (else Task), status from the Status column.
+    phases: List[Dict] = []
+    in_plan = False
+    current: Optional[Dict] = None
+    columns: List[str] = []
+    for line in tdd_text.splitlines():
+        if line.startswith("## "):
+            in_plan = bool(DEV_PLAN_HEADING.match(line))
+            current = None
+            continue
+        if not in_plan:
+            continue
+        if line.startswith("### "):
+            heading = DEV_PHASE_HEADING.match(line)
+            current = {"key": heading.group(1), "title": line[4:].strip(), "tasks": []} if heading else None
+            if current is not None:
+                phases.append(current)
+            columns = []
+            continue
+        if current is None or not line.lstrip().startswith("|") or TABLE_SEPARATOR_ROW.match(line):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not columns:
+            columns = [cell.lower() for cell in cells]
+            continue
+        current["tasks"].append(_table_task(columns, cells))
+    return phases
+
+
+def _table_task(columns: List[str], cells: List[str]) -> Dict:
+    def cell(name: str) -> str:
+        return cells[columns.index(name)] if name in columns and columns.index(name) < len(cells) else ""
+
+    label = cell("title") or cell("task") or (cells[0] if cells else "")
+    status_mark = re.search(r"\[(.)\]", cell("status"))
+    return {"id": cell("#"), "title": MARKDOWN_LINK.sub(r"\1", label).replace("`", ""),
+            "status": TASK_STATUS_BY_MARK.get(status_mark.group(1).lower(), "todo") if status_mark else "todo"}
+
+
+def _pull_requests(progress_text: str) -> Dict[str, List[int]]:
+    # pull_requests:
+    #   V0: [9923, 9930]
+    links: Dict[str, List[int]] = {}
+    in_block = False
+    for line in progress_text.splitlines():
+        if re.match(r"^pull_requests:\s*(#.*)?$", line):
+            in_block = True
+            continue
+        if in_block:
+            entry = PR_PHASE_LINE.match(line)
+            if not entry:
+                break
+            links[entry.group(1)] = [int(n) for n in re.findall(r"\d+", entry.group(2))]
+    return links
 
 
 def _quoted_field(text: str, field: str) -> Optional[str]:
