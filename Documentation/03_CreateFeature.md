@@ -91,7 +91,7 @@ re-reads the rule files, because Phase 2 may be several sessions ago. Every file
 `/audit` **before** it is presented to the engineer (required, recorded as `(audited)` in the
 checkpoint); the next file is not started until the current one is acknowledged. Before writing
 a test file, the agent reads `Rules/TestingRules.md` (and the host project's testing-setup rule,
-if it has one); the coding standards and architectural principles do not cover tests.
+if it has one); the coding standards and architectural principles do not cover tests. For files with poll handlers, event listeners, or subscription-based updates: verification includes steady-state behavior (state unchanged across multiple ticks with no data change), not just post-action snapshots.
 
 ### Phase 5 — Unit Tests
 
@@ -100,6 +100,8 @@ Three categories, each traced to a document from an earlier phase — no specula
 - one JSON deserialization test per config class,
 - one behavior test per row in the use cases,
 - one boundary test per edge case.
+
+For browser-based or UI features, also include **idle-behavior fixtures** for any polling listeners or event handlers: initialize/render, tick multiple times with no data change, and assert state remains unchanged (no redundant rebuilds, no re-wrapping of highlights, no spurious repaints). Idle tests catch bugs snapshot tests miss.
 
 The agent runs the host project's compile check (`typecheck.py`); the engineer runs the tests in the Unity Test Runner and
 reports the result. The agent never claims a pass it has not seen. Test files are run through

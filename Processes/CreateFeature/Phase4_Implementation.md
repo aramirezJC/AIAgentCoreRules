@@ -27,6 +27,7 @@ per_file_checks:
   method_design:     "No method named with And. Composers sequence only. Leaves touch data only."
   audit:             "REQUIRED: /audit <file> ran and every violation is fixed or reported. It covers the checks above; self-review is not a substitute."
   tests:             "Writing a test file: read ../../Rules/TestingRules.md (and the host project's testing-setup rule, if it has one) before writing it. CodingStandards and ArchitecturalPrinciples do not cover tests."
+  steady_state:      "If this file implements event listeners, poll handlers, or subscription-based updates: verify not just immediately after an action (snapshot) but also at idle with no data change — ensure no redundant rebuilds, repaints, or state mutations occur. E.g., a poll handler should render identically on tick N and tick N+1 when data has not changed."
 ```
 
 Run `/audit <file>` before presenting each file — a file is not presented until its audit has
