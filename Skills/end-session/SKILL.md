@@ -86,7 +86,8 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 
 ## Proposed changes
 | # | File | Change | Why |
-<concrete, minimal edits. Not applied.>
+<concrete, minimal edits. Not applied. Each Change cell is self-contained — state the facts
+ inline, never "the facts above": the applying session reads only this table.>
 
 ## Cost
 <total tokens, turns, subagents from metrics.md; the 3 heaviest turns and whether each was necessary.
