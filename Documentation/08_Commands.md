@@ -19,7 +19,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/feature <Name> [GDD path]` | Starts the 8-phase Create Feature process. If the feature already has a progress file, offers `/resume-work` instead. |
 | `/checkpoint [Name] [note]` | Saves where work stopped inside the current phase to `<Name>_Progress.md`: done, in flight, next action, pending decisions, notes. |
-| `/resume-work [Name]` | Picks a feature up in a fresh session: tags the session with the feature and phase, reloads the current phase, its rules and documents, reports drift (including a newer Confluence version), and waits for confirmation. With no name, lists unfinished features and asks which one to pick up, then continues with it. |
+| `/resume-work [Name]` | Picks a feature up in a fresh session: tags the session with the feature and phase, reloads the current phase, its rules and documents, reports drift (including a newer Confluence version and open comments on a running doc-review server), and waits for confirmation. With no name, lists unfinished features and asks which one to pick up, then continues with it. |
 | `/small-task <ask>` | Starts the Small Task process directly: records the lane and loads the process without classifying the request first. |
 | `/bug-fix <symptom>` | Starts the Bug Fix process directly: diagnosis, approved fix, regression test. |
 | `/run-investigation-mode <question>` | Starts Investigation Mode directly. The output is a document or recommendation, not code. |
