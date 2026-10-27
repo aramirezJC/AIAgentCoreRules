@@ -89,7 +89,9 @@ diagram. The engineer reviews and edits both before approving.
 Order: interfaces → concrete classes → integration glue. Before the first file the agent
 re-reads the rule files, because Phase 2 may be several sessions ago. Every file runs through
 `/audit` **before** it is presented to the engineer (required, recorded as `(audited)` in the
-checkpoint); the next file is not started until the current one is acknowledged.
+checkpoint); the next file is not started until the current one is acknowledged. Before writing
+a test file, the agent reads `Rules/TestingRules.md` (and the host project's testing-setup rule,
+if it has one); the coding standards and architectural principles do not cover tests.
 
 ### Phase 5 — Unit Tests
 

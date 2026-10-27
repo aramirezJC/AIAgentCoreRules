@@ -91,6 +91,7 @@ non_negotiables:
   - "[LOG]      All logging via the project Logger wrapper only — never native platform debug logging."
   - "[DELEGATE] Breadth goes to subagents. Any 'where / which files / who implements' question is delegated, not run inline."
   - "[SHAPE]    A tool/script/report request hits the [[StopAndVerify]] Scope Gate before any exploration."
+  - "[TRIM]     Tool output stays out of context unless the task needs it or verbosity is requested — see [[StopAndVerify]]'s Tool Output section."
 ```
 
 ### [DELEGATE] — when to spawn, when not to
@@ -101,6 +102,9 @@ delegate_aggressively:
   - "'Where is X / which files / who implements Y'            → Explore agent, or /discover"
   - "Several independent areas                                → one agent per area, ONE message"
   - "A compliance or review sweep over many files             → fan out, then synthesise"
+  - "Multi-round exploratory/trial-and-error work (browser-automation probing, iterative debug
+     scripts needing several retries to get right)            → fork — only the final working
+     script and its conclusion need to come back, not every retry's output"
 keep_inline:
   - "Reading the specific method bodies a conclusion rests on."
   - "A single targeted fact check — one grep or one codeindex query is cheaper than an agent."

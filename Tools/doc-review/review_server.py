@@ -14,11 +14,14 @@ import webbrowser
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from anchor_resolver import resolve_thread
 from sidecar_store import SidecarStore
 
 MERMAID_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"
 MARKED_CDN = "https://cdnjs.cloudflare.com/ajax/libs/marked/18.1.1/lib/marked.umd.min.js"
 SVG_PAN_ZOOM_CDN = "https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATIC_CONTENT_TYPE_BY_SUFFIX = {".js": "text/javascript", ".css": "text/css"}
 POLL_INTERVAL_MS = 1000
 
 PAGE_TEMPLATE = """<!doctype html>
@@ -29,6 +32,7 @@ PAGE_TEMPLATE = """<!doctype html>
 <script src="{marked_cdn}"></script>
 <script src="{mermaid_cdn}"></script>
 <script src="{panzoom_cdn}"></script>
+{live_head_extra}
 <style>
   /* Deliberately dark-only: color-scheme: light dark previously let the browser apply its own
      dark-mode default TEXT color to marked's unstyled output while this CSS kept light-mode
@@ -40,6 +44,8 @@ PAGE_TEMPLATE = """<!doctype html>
           display: flex; flex-direction: column; }}
   header {{ padding: 12px 16px; background: #1f2430; color: #eee; font-size: 14px; flex: none; }}
   header .hint {{ color: #9aa3b5; margin-left: 10px; }}
+  .content-row {{ display: flex; flex: 1; min-height: 0; }}
+  .main-column {{ display: flex; flex-direction: column; flex: 1; min-width: 0; }}
   .tabs {{ display: flex; gap: 4px; padding: 8px 16px 0; background: #1f2430; flex: none; }}
   .tab {{ background: #2a3040; color: #ccc; border: none; padding: 8px 14px; border-radius: 6px 6px 0 0;
           cursor: pointer; font-size: 13px; }}
@@ -68,15 +74,21 @@ PAGE_TEMPLATE = """<!doctype html>
 <header>{header_text}
   <span class="hint">scroll/pinch to zoom on diagrams &middot; drag to pan &middot; bottom-left icons to reset</span>
 </header>
+<div class="content-row">
+<div class="main-column">
 <div class="tabs">
 {tab_buttons}
 </div>
 {panels}
+</div>
+{live_sidebar_slot}
+</div>
 <script>
   mermaid.initialize({{ startOnLoad: false, theme: "dark" }});
   const tabKinds = {tab_kinds_js};
   const sources = {sources_js};
   const panZoomInstances = {{}};
+  window.panZoomInstances = panZoomInstances; // read by static/diagram_anchors.js (live mode only)
   const renderedSourceFor = {{}};
 
   function renderMarkdown(id, src) {{
@@ -87,6 +99,7 @@ PAGE_TEMPLATE = """<!doctype html>
       // A failure here must not stop renderAll()'s forEach from reaching the other tabs.
       target.innerHTML = '<div class="error">' + (err && err.message ? err.message : err) + '</div>';
     }}
+    document.dispatchEvent(new CustomEvent("docreview:rendered", {{ detail: {{ tabId: id }} }}));
   }}
 
   async function renderDiagram(id, src) {{
@@ -94,6 +107,7 @@ PAGE_TEMPLATE = """<!doctype html>
     const existing = panZoomInstances[id];
     const savedPan = existing ? existing.getPan() : null;
     const savedZoom = existing ? existing.getZoom() : null;
+    const bodyChildrenBefore = new Set(document.body.children);
     try {{
       const {{ svg }} = await mermaid.render(id + "-svg", src);
       target.innerHTML = svg;
@@ -112,7 +126,17 @@ PAGE_TEMPLATE = """<!doctype html>
     }} catch (err) {{
       target.innerHTML = '<div class="error">' + (err && err.message ? err.message : err) + '</div>';
       delete panZoomInstances[id];
+      // mermaid.render() can leave its own temporary rendering container behind in <body> when it
+      // throws partway through (observed directly: a stray "d<id>-svg" div, duplicating the error
+      // message outside this panel and -- worse -- stealing flex height from .content-row). Clean
+      // up whatever appeared as a side effect of this call rather than guessing mermaid's naming.
+      Array.from(document.body.children).forEach((el) => {{
+        if (!bodyChildrenBefore.has(el)) {{
+          el.remove();
+        }}
+      }});
     }}
+    document.dispatchEvent(new CustomEvent("docreview:rendered", {{ detail: {{ tabId: id }} }}));
   }}
 
   function renderTab(id) {{
@@ -169,6 +193,7 @@ PAGE_TEMPLATE = """<!doctype html>
   }});
   {live_script}
 </script>
+{live_module_script}
 </body>
 </html>
 """
@@ -179,6 +204,7 @@ LIVE_SCRIPT_TEMPLATE = """
     try {{
       const res = await fetch("/api/state");
       const state = await res.json();
+      document.dispatchEvent(new CustomEvent("docreview:state", {{ detail: {{ threads: state.threads }} }}));
       const changedIds = [];
       for (const [id, path] of Object.entries(tabPaths)) {{
         const mtime = state.mtimes[path];
@@ -212,7 +238,7 @@ def serve_doc(paths: List[Path], port: Optional[int] = None, open_browser: bool 
     handler_factory = functools.partial(ReviewRequestHandler, doc_paths=paths, store=store)
     httpd = _bind_server(handler_factory, port)
     url = f"http://127.0.0.1:{httpd.server_address[1]}/"
-    print(url)
+    print(url, flush=True)
     if open_browser:
         _open_url(url)
     try:
@@ -236,12 +262,13 @@ def render_static(paths: List[Path], output_path: Optional[Path] = None, open_br
 
 
 class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
-    def __init__(self, *args, doc_paths: List[Path], store: SidecarStore, **kwargs):
+    def __init__(self, *args, doc_paths: List[Path], store: SidecarStore, static_dir: Path = STATIC_DIR, **kwargs):
         # Set before super().__init__: BaseHTTPRequestHandler.__init__ handles the request
         # immediately, so these must already be in place -- same pattern SimpleHTTPRequestHandler
         # uses for its `directory` argument.
         self._doc_paths = doc_paths
         self._store = store
+        self._static_files = _static_allowlist(static_dir)
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
@@ -251,6 +278,8 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
             self._send_json(self._state())
         elif self.path == "/api/sources":
             self._send_json(_collect_sources(_tabs(self._doc_paths)))
+        elif self.path.startswith("/static/"):
+            self._handle_static(self.path[len("/static/"):])
         else:
             self.send_error(404)
 
@@ -259,6 +288,8 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
             self._handle_comment()
         elif self.path == "/api/status":
             self._handle_status()
+        elif self.path == "/api/reply":
+            self._handle_reply()
         else:
             self.send_error(404)
 
@@ -266,7 +297,11 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
         pass  # stdout is reserved for the server URL the engineer scripts against
 
     def _state(self) -> Dict:
-        return {"mtimes": _collect_mtimes(_tabs(self._doc_paths)), "threads": self._store.load()["threads"]}
+        base_dir = self._doc_paths[0].parent
+        threads = self._store.load()["threads"]
+        for thread in threads:
+            thread["resolution"] = resolve_thread(base_dir, thread)
+        return {"mtimes": _collect_mtimes(_tabs(self._doc_paths)), "threads": threads}
 
     def _handle_comment(self):
         body = self._read_json_body()
@@ -294,6 +329,31 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
             self._send_json({"error": str(e)}, status=403)
         except KeyError as e:
             self._send_json({"error": str(e)}, status=404)
+
+    def _handle_reply(self):
+        body = self._read_json_body()
+        if body is None:
+            return
+        thread_id, text = body.get("id"), body.get("text")
+        if not thread_id or not text:
+            self._send_json({"error": "missing id or text"}, status=400)
+            return
+        try:
+            self._store.add_reply(thread_id, "engineer", text)
+            self._send_json({"ok": True})
+        except KeyError as e:
+            self._send_json({"error": str(e)}, status=404)
+
+    def _handle_static(self, name: str):
+        # name is looked up in an allowlist keyed by plain filename, built once from static_dir's
+        # actual contents -- "../../etc/passwd" is simply not a key in that dict, so this is
+        # traversal-safe by construction, with no path-component validation needed.
+        file_path = self._static_files.get(name)
+        if file_path is None:
+            self.send_error(404)
+            return
+        content_type = STATIC_CONTENT_TYPE_BY_SUFFIX.get(file_path.suffix, "application/octet-stream")
+        self._send_bytes(file_path.read_bytes(), content_type, 200)
 
     def _read_json_body(self) -> Optional[Dict]:
         length = int(self.headers.get("Content-Length", 0))
@@ -326,12 +386,21 @@ def build_page(paths: List[Path], live: bool) -> str:
     )
     panels = "\n".join(_panel_html(i, tab) for i, tab in enumerate(tabs))
     tab_paths_js = json.dumps({tab["id"]: str(tab["path"]) for tab in tabs})
+    doc_review_js = json.dumps({"tabs": [{"id": tab["id"], "file": tab["file"], "kind": tab["kind"]} for tab in tabs]})
 
     live_script = ""
+    live_head_extra = ""
+    live_module_script = ""
+    live_sidebar_slot = ""
     if live:
-        live_script = f"const tabPaths = {tab_paths_js};\n" + LIVE_SCRIPT_TEMPLATE.format(
-            poll_interval_ms=POLL_INTERVAL_MS
+        live_script = (
+            f"const tabPaths = {tab_paths_js};\n"
+            f"window.docReview = {doc_review_js};\n"
+            + LIVE_SCRIPT_TEMPLATE.format(poll_interval_ms=POLL_INTERVAL_MS)
         )
+        live_head_extra = '<link rel="stylesheet" href="/static/review_ui.css">'
+        live_module_script = '<script type="module" src="/static/review_ui.js"></script>'
+        live_sidebar_slot = '<aside id="docreview-panel"></aside>'
 
     return PAGE_TEMPLATE.format(
         live_suffix=" (live)" if live else "",
@@ -346,14 +415,40 @@ def build_page(paths: List[Path], live: bool) -> str:
         tab_kinds_js=json.dumps({tab["id"]: tab["kind"] for tab in tabs}),
         sources_js=json.dumps(_collect_sources(tabs)),
         live_script=live_script,
+        live_head_extra=live_head_extra,
+        live_module_script=live_module_script,
+        live_sidebar_slot=live_sidebar_slot,
     )
 
 
 def _tabs(paths: List[Path]) -> List[Dict]:
+    base_dir = paths[0].parent
     return [
-        {"id": f"d{i}", "title": path.stem, "kind": "md" if path.suffix == ".md" else "mmd", "path": path}
+        {
+            "id": f"d{i}",
+            "title": path.stem,
+            "kind": "md" if path.suffix == ".md" else "mmd",
+            "path": path,
+            "file": _relative_to_doc_folder(path, base_dir),
+        }
         for i, path in enumerate(paths)
     ]
+
+
+def _static_allowlist(static_dir: Path) -> Dict[str, Path]:
+    if not static_dir.is_dir():
+        return {}
+    return {entry.name: entry for entry in static_dir.iterdir() if entry.is_file()}
+
+
+def _relative_to_doc_folder(path: Path, base_dir: Path) -> str:
+    # anchor.file (anchor_resolver.py) is always relative to the doc's own folder; a tab's path
+    # is whatever was passed on the CLI (absolute, or relative to the CWD), so the two must be
+    # reconciled here rather than assumed to already match.
+    try:
+        return str(path.resolve().relative_to(base_dir.resolve()))
+    except ValueError:
+        return path.name
 
 
 def _collect_sources(tabs: List[Dict]) -> Dict[str, str]:

@@ -10,6 +10,7 @@ through the live `/api/status` endpoint.
 """
 import argparse
 import functools
+import http.client
 import http.server
 import json
 import shutil
@@ -21,6 +22,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlsplit
 
 TOOL_DIR = Path(__file__).resolve().parents[1]
 if str(TOOL_DIR) not in sys.path:
@@ -29,6 +31,20 @@ if str(TOOL_DIR) not in sys.path:
 import doc_review  # noqa: E402
 from review_server import ReviewRequestHandler, _bind_server, build_page  # noqa: E402
 from sidecar_store import SidecarStore  # noqa: E402
+
+
+def _raw_get(base_url: str, raw_path: str):
+    # http.client.request() sends `raw_path` on the request line exactly as given -- unlike
+    # urllib.request, it does not collapse ".." segments client-side -- so this proves the
+    # SERVER rejects a traversal attempt, not that the client sanitized it away first.
+    parts = urlsplit(base_url)
+    conn = http.client.HTTPConnection(parts.hostname, parts.port)
+    try:
+        conn.request("GET", raw_path)
+        resp = conn.getresponse()
+        return resp.status, resp.read()
+    finally:
+        conn.close()
 
 
 def _request(method: str, url: str, body: dict = None):
@@ -52,8 +68,11 @@ class LiveServerTestCase(unittest.TestCase):
         self.doc_path.write_text("# Doc\n\nSome text to comment on.\n")
         self.store = SidecarStore(self.doc_path)
 
-    def start_server(self, doc_paths):
-        handler_factory = functools.partial(ReviewRequestHandler, doc_paths=doc_paths, store=self.store)
+    def start_server(self, doc_paths, static_dir=None):
+        kwargs = {"doc_paths": doc_paths, "store": self.store}
+        if static_dir is not None:
+            kwargs["static_dir"] = static_dir
+        handler_factory = functools.partial(ReviewRequestHandler, **kwargs)
         httpd = _bind_server(handler_factory, port=None)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
@@ -144,6 +163,140 @@ class CommentApiTests(LiveServerTestCase):
 
         self.assertEqual(status, 400, "a comment with no anchor must be rejected, not silently accepted")
         self.assertEqual(self.store.load()["threads"], [], "a rejected comment must not create a thread")
+
+
+class EngineerReplyApiTests(LiveServerTestCase):
+    def test_postApiReply_onExistingThread_appendsEngineerReply(self):
+        anchor = {"kind": "text", "file": self.doc_path.name, "quote": "Some text to comment on."}
+        thread_id = self.store.add_thread(anchor, "engineer", "what does this mean?")
+        base_url = self.start_server([self.doc_path])
+
+        status, body = _request("POST", f"{base_url}/api/reply", {"id": thread_id, "text": "never mind, got it"})
+
+        self.assertEqual(status, 200)
+        self.assertTrue(body.get("ok"))
+        replies = self.store.load()["threads"][0]["replies"]
+        self.assertEqual(len(replies), 2, "the engineer's reply must be appended, not replace the thread")
+        self.assertEqual(replies[1], {"author": "engineer", "text": "never mind, got it", "at": replies[1]["at"]})
+
+    def test_postApiReply_missingTextOrId_returns400AndAppendsNoReply(self):
+        anchor = {"kind": "text", "file": self.doc_path.name, "quote": "Some text to comment on."}
+        thread_id = self.store.add_thread(anchor, "engineer", "what does this mean?")
+        base_url = self.start_server([self.doc_path])
+
+        status, body = _request("POST", f"{base_url}/api/reply", {"id": thread_id})
+
+        self.assertEqual(status, 400, "a reply with no text must be rejected, not silently accepted")
+        self.assertEqual(len(self.store.load()["threads"][0]["replies"]), 1,
+                          "a rejected reply must not be appended")
+
+    def test_postApiReply_onUnknownThread_returns404(self):
+        base_url = self.start_server([self.doc_path])
+
+        status, body = _request("POST", f"{base_url}/api/reply", {"id": "t999", "text": "hello?"})
+
+        self.assertEqual(status, 404, "replying to a thread that doesn't exist must 404, not create one")
+
+
+class StateResolutionTests(LiveServerTestCase):
+    # Q4: /api/state computes each thread's resolution server-side, via the same
+    # anchor_resolver.resolve_thread the CLI uses, so the engineer sees exactly what the agent's
+    # CLI would report -- including when the anchor no longer resolves (orphaned).
+    def test_getApiState_includesComputedResolutionPerThread(self):
+        anchor = {"kind": "text", "file": self.doc_path.name, "quote": "Some text to comment on."}
+        thread_id = self.store.add_thread(anchor, "engineer", "what does this mean?")
+        base_url = self.start_server([self.doc_path])
+
+        status, state = _request("GET", f"{base_url}/api/state")
+
+        self.assertEqual(status, 200)
+        thread = next(t for t in state["threads"] if t["id"] == thread_id)
+        self.assertEqual(thread["resolution"], {"status": "resolved", "file": self.doc_path.name, "line": 3})
+
+    def test_getApiState_whenAnchorTextWasDeleted_reportsOrphanedResolution(self):
+        anchor = {"kind": "text", "file": self.doc_path.name, "quote": "This text was never written."}
+        thread_id = self.store.add_thread(anchor, "engineer", "where did this go?")
+        base_url = self.start_server([self.doc_path])
+
+        status, state = _request("GET", f"{base_url}/api/state")
+
+        thread = next(t for t in state["threads"] if t["id"] == thread_id)
+        self.assertEqual(thread["resolution"]["status"], "orphaned")
+
+
+class StaticRouteTests(LiveServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.static_dir = self.tmp / "static"
+        self.static_dir.mkdir()
+        (self.static_dir / "review_ui.js").write_text("export const marker = 'js-fixture';\n")
+        (self.static_dir / "review_ui.css").write_text(".marker { color: red; }\n")
+
+    def test_getStaticFile_knownJsFile_servesItWithJavascriptContentType(self):
+        base_url = self.start_server([self.doc_path], static_dir=self.static_dir)
+
+        with urllib.request.urlopen(f"{base_url}/static/review_ui.js") as resp:
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(resp.headers.get("Content-Type"), "text/javascript")
+            self.assertEqual(resp.read(), b"export const marker = 'js-fixture';\n")
+
+    def test_getStaticFile_knownCssFile_servesItWithCssContentType(self):
+        base_url = self.start_server([self.doc_path], static_dir=self.static_dir)
+
+        with urllib.request.urlopen(f"{base_url}/static/review_ui.css") as resp:
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(resp.headers.get("Content-Type"), "text/css")
+
+    def test_getStaticFile_unknownName_returns404(self):
+        base_url = self.start_server([self.doc_path], static_dir=self.static_dir)
+
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(f"{base_url}/static/does_not_exist.js")
+        self.assertEqual(ctx.exception.code, 404)
+
+    def test_getStaticFile_pathTraversalAttempt_rejectedNotServed(self):
+        # The allowlist is keyed by plain filename from static_dir's own contents, so a traversal
+        # attempt simply isn't a key -- not a special case this test needs to defeat by itself.
+        base_url = self.start_server([self.doc_path], static_dir=self.static_dir)
+
+        status, _ = _raw_get(base_url, "/static/../Doc.md")
+
+        self.assertEqual(status, 404, "a path-traversal attempt must not serve a file outside static_dir")
+
+    def test_getStaticFile_withNoStaticDir_everyRequest404s(self):
+        base_url = self.start_server([self.doc_path], static_dir=self.tmp / "no_such_dir")
+
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            urllib.request.urlopen(f"{base_url}/static/review_ui.js")
+        self.assertEqual(ctx.exception.code, 404)
+
+
+class DocReviewPageDataTests(LiveServerTestCase):
+    def test_buildPage_live_exposesWindowDocReviewWithFileRelativeToDocFolder(self):
+        diagrams_dir = self.tmp / "Diagrams"
+        diagrams_dir.mkdir()
+        diagram_path = diagrams_dir / "flow.mmd"
+        diagram_path.write_text("graph TD\n  A --> B\n")
+
+        page = build_page([self.doc_path, diagram_path], live=True)
+        compact = page.replace(" ", "")
+
+        self.assertIn("window.docReview", page)
+        self.assertIn('"file":"Doc.md"', compact)
+        self.assertIn('"file":"Diagrams/flow.mmd"', compact,
+                      "a diagram's file must be relative to the doc's own folder, matching anchor.file")
+
+    def test_buildPage_static_hasNoWindowDocReviewOrEvents(self):
+        page = build_page([self.doc_path], live=False)
+
+        self.assertNotIn("window.docReview", page, "--static must stay comment-UI-free (no page data to drive it)")
+        self.assertNotIn("docreview:state", page, "--static has no poll loop, so no state event either")
+
+    def test_buildPage_live_dispatchesRenderedAndStateEvents(self):
+        page = build_page([self.doc_path], live=True)
+
+        self.assertIn('new CustomEvent("docreview:rendered"', page)
+        self.assertIn('new CustomEvent("docreview:state"', page)
 
 
 class AgentReplyAndEngineerResolveTests(LiveServerTestCase):

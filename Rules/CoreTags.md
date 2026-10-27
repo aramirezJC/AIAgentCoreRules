@@ -29,3 +29,4 @@ Any file that uses a tag inherits the full definition below — no re-statement 
 | **[ACCESS]** | All access modifiers must be explicit on every member — no implicit defaults. |
 | **[LOG]** | All logging via the project Logger wrapper only. Never `UnityEngine.Debug.Log`, `Debug.LogWarning`, or `Debug.LogError`. |
 | **[SECRET]** | Never print, echo, log or slice any part of a credential value. Check a credential's shape with booleans only; if a fragment leaks, say so and recommend rotating it. |
+| **[TRIM]** | Tool output (bash stdout, file dumps, logs) stays out of context unless the task needs it or the engineer asks for verbosity — pipe through `tail`/`grep`/`head`, use `Read` with `limit`/`offset`, summarize instead of pasting raw output. Every call that re-reads a bloated result pays for it again. |

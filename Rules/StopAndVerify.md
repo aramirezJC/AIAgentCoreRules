@@ -71,3 +71,18 @@ secrets:
   - "[SECRET] Diagnose a credential with booleans only: e.g. print(value.startswith('ATATT') and len(value) > 100)."
   - "[SECRET] If a fragment was exposed anyway, tell the engineer at once and recommend rotating it."
 ```
+
+## Tool Output — any command, any mode
+
+A long session resends its whole history every turn; a verbose result paid for once gets paid
+for again on every later call that re-reads it, then again as it ages into base conversation
+context. Found as a real cost driver in a session retrospective (LocalDocReviewV1, 2026-10-26):
+"ad-hoc tool calls" (raw bash/file output not from a tracked helper) were 24% of that session's
+tokens on their own, before counting what they compounded into.
+
+```yaml
+tool_output:
+  - "[TRIM] Default to the minimum output needed to answer the question — pipe through tail/grep/head, use Read with limit/offset, summarize a test run's pass/fail counts instead of pasting the full log."
+  - "[TRIM] Multi-round exploratory or trial-and-error work (browser automation probing, iterative debug scripts, anything that needs several retries to get right) belongs in a fork, not the main thread — see [[MetaRouter]]'s [DELEGATE]. Only the final working script and its conclusion need to come back."
+  - "[TRIM] Verbosity is fine when the engineer asks for it, or when the raw output is itself the deliverable (a diff under review, a stack trace being diagnosed)."
+```

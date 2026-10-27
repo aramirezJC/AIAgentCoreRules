@@ -26,6 +26,7 @@ per_file_checks:
   resource_symmetry: "Every subscription has unsubscribe. Every acquire has release. Guards use IDisposable/using."
   method_design:     "No method named with And. Composers sequence only. Leaves touch data only."
   audit:             "REQUIRED: /audit <file> ran and every violation is fixed or reported. It covers the checks above; self-review is not a substitute."
+  tests:             "Writing a test file: read ../../Rules/TestingRules.md (and the host project's testing-setup rule, if it has one) before writing it. CodingStandards and ArchitecturalPrinciples do not cover tests."
 ```
 
 Run `/audit <file>` before presenting each file — a file is not presented until its audit has

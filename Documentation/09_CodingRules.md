@@ -16,8 +16,9 @@ checklists and by `/audit`.
 | RES | Every resource acquisition (subscription, load, timer, guard) has a matching release in the same scope. |
 | ASYNC | No `async void` except event handlers and synchronous overrides bridging into async, which must have a full try/catch. |
 | LOG | All logging through the project Logger wrapper — never `Debug.Log`, `Debug.LogWarning` or `Debug.LogError`. |
-| DELEGATE | Breadth goes to subagents: "where / which files / who implements" questions are delegated. |
+| DELEGATE | Breadth goes to subagents: "where / which files / who implements" questions are delegated, and so is multi-round exploratory/trial-and-error work (browser-automation probing, iterative debug scripts) — only the final working script and its conclusion need to come back. |
 | SHAPE | A tool, script or report request goes through the scope gate before any exploration. |
+| TRIM | Tool output stays out of context unless the task needs it or verbosity is requested — pipe through `tail`/`grep`/`head`, use `Read` with `limit`/`offset`, summarize instead of pasting raw output. |
 
 ## Rule tags
 
