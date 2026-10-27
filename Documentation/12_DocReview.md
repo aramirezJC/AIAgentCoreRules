@@ -50,7 +50,8 @@ way, with its TDD and diagrams:
   `pull_requests:` then `  V0: [9923, 9930]`. Notes are fetched with `gh` and refreshed every
   5 minutes. A gh failure shows as an error under that PR.
 - **Task list.** When the TDD has no V-phases, tasks in `<Name>_TaskList.md` are listed under
-  Phase 4 instead.
+  Phase 4 instead. Both task forms are read: the one-line `- {id:, status:, title:}` form and
+  the multi-line `- task: "<text>"` form with an indented `status: "[x]"` line (no id).
 - **Current phase.** Highlighted in blue.
 - **Gate to pass next, in red.** This is the current phase's gate until its handoff block is
   written, then the next unfinished phase's.

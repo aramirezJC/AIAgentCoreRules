@@ -5,7 +5,8 @@ code. Smaller than a feature — no GDD, TDD or task list, and a single proposal
 
 ## When it fits
 
-- Touches one system and at most about 5 files.
+- Touches one system and at most about 5 files. Documentation/ and Systems/ sync edits that
+  follow a code change do not count toward the 5.
 - No new config root, player-data schema or server contract.
 - An existing example can be followed ("like xyz, but does abc").
 

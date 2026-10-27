@@ -86,6 +86,19 @@ TASK_LIST_MD = """```yaml
 """
 
 
+MULTILINE_TASK_LIST_MD = """```yaml
+stages:
+  - stage: "Stage 1 — Multi-line"
+    tasks:
+      - task: "First"
+        assignee: "Someone"
+        status: "[x]"
+      - task: "Second"
+        status: "[ ]"
+```
+"""
+
+
 TDD_MD = """# Demo TDD
 
 ### V9 — Not in the plan
@@ -215,6 +228,14 @@ class BuildModelTests(ProgressViewTestBase):
         self.assertEqual(stages[0]["title"], "V1 — Stage one")
         self.assertEqual([t["status"] for t in stages[0]["tasks"]], ["done", "partial", "todo"])
         self.assertEqual(self.phase(model, "1_intake")["stages"], [])
+
+    def test_multi_line_task_list_form_parses_task_text_and_status(self):
+        self.write_progress("4_implementation")
+        (self.feature_dir / "Demo_TaskList.md").write_text(MULTILINE_TASK_LIST_MD)
+        stages = self.phase(self.model(), "4_implementation")["stages"]
+        self.assertEqual(stages[0]["title"], "Stage 1 — Multi-line")
+        self.assertEqual([(t["id"], t["title"], t["status"]) for t in stages[0]["tasks"]],
+                         [("", "First", "done"), ("", "Second", "todo")])
 
     def test_tdd_v_phases_are_nested_under_implementation_with_table_tasks(self):
         self.write_progress("4_implementation")

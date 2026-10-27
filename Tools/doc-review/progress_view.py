@@ -26,7 +26,9 @@ SKIPPED_HEADING = re.compile(r"^(apply:|Gate \d|Router check)")
 STEP_KEY = re.compile(r"^(?:Sub-phase\s+(\d+[a-z])|(Step\s+\d+|Category\s+\d+))\b")
 PHASE_COMPLETED_LINE = re.compile(r'^\s*phase_completed:\s*"Phase\s+(\d+)\b')
 TASK_LINE = re.compile(r'^\s*-\s*\{id:\s*([^,]+),\s*status:\s*"\[(.)\]",\s*title:\s*"([^"]*)"')
-STAGE_LINE = re.compile(r'^-\s*stage:\s*"([^"]*)"')
+TASK_TEXT_LINE = re.compile(r'^\s*-\s*task:\s*"([^"]*)"')
+TASK_STATUS_LINE = re.compile(r'^\s+status:\s*"\[(.)\]"')
+STAGE_LINE = re.compile(r'^\s*-\s*stage:\s*"([^"]*)"')
 DONE_ITEM_LINE = re.compile(r'^\s{4}-\s*"(.*)"\s*$')
 TASK_STATUS_BY_MARK = {"x": "done", "~": "partial", " ": "todo"}
 DEV_PLAN_HEADING = re.compile(r"^##\s+Development plan\b", re.IGNORECASE)
@@ -185,10 +187,12 @@ def _checkpoint_done(progress_text: str) -> List[str]:
 
 def _task_stages(task_list_text: str) -> List[Dict]:
     stages: List[Dict] = []
+    open_task: Optional[Dict] = None  # a multi-line "- task:" entry still waiting for its "status:" line
     for line in task_list_text.splitlines():
         stage = STAGE_LINE.match(line)
         if stage:
             stages.append({"title": stage.group(1).strip(), "tasks": []})
+            open_task = None
             continue
         task = TASK_LINE.match(line)
         if task and stages:
@@ -196,6 +200,17 @@ def _task_stages(task_list_text: str) -> List[Dict]:
                 {"id": task.group(1).strip(), "title": task.group(3).strip(),
                  "status": TASK_STATUS_BY_MARK.get(task.group(2), "todo")}
             )
+            open_task = None
+            continue
+        task_text = TASK_TEXT_LINE.match(line)
+        if task_text and stages:
+            open_task = {"id": "", "title": task_text.group(1).strip(), "status": "todo"}
+            stages[-1]["tasks"].append(open_task)
+            continue
+        status = TASK_STATUS_LINE.match(line)
+        if status and open_task is not None:
+            open_task["status"] = TASK_STATUS_BY_MARK.get(status.group(1), "todo")
+            open_task = None
     return stages
 
 
