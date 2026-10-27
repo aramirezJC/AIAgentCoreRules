@@ -45,6 +45,7 @@ reload:
   - "Read: the phase file for current_phase."
   - "Read: the rule files that phase depends on — for Phase 2 and later, the load_rules list in Phase2_Discovery.md, using [FeatureName]_Discovery.md to decide the conditional ones."
   - "Read: the artifacts the current phase works from (e.g. TDD and TaskList for Phase 1–3, Architecture and Discovery for Phase 4, UseCases for Phase 5). Skip ones it does not use."
+  - "Check the host's SystemIndex for an entry matching the system this feature lives in (not just the feature's own Discovery/Architecture docs) — read it too if one exists. A feature's own docs cover what changed; the SystemIndex entry covers the system's standing gotchas and may be stale, in which case propose updating it at /end-session."
   - "Checkpoint lists files in `done`: confirm they exist on disk (one ls / codeindex query). Do not re-read their bodies unless the next step needs them."
   - "For each entry in `sources_of_truth` (e.g. the Confluence TDD), fetch only its current version number. A version newer than the recorded one is drift: say what changed before continuing, and read the new version if the current phase works from it."
 ```

@@ -102,6 +102,22 @@ boundary_test_rules:
 
 ---
 
+## Browser-Based / Smoke Tests (Tools & UI Features)
+
+For features involving browser-side logic, polling, event listeners, or dynamic UI updates:
+
+```yaml
+browser_test_rules:
+  - "Include at least one idle-behavior fixture: initialize/render, tick N times with no data change, assert state remains unchanged."
+  - "Idle behavior tests catch bugs that action-snapshot tests miss: redundant re-renders, unconditional rebuilds in poll handlers, races between competing update paths."
+  - "Example: a poll handler that rebuilds the entire UI tree every tick regardless of whether data changed will pass 'verify immediately after action' but fail 'verify after N idle ticks without data change'."
+  - "Every polling listener, subscription, or event handler must have at least one idle fixture alongside the behavior/boundary tests for that feature."
+```
+
+**Why:** UI bugs commonly appear only at idle or under repeated updates with no state change — snapshot verification immediately after an action never catches them.
+
+---
+
 ## Coverage Summary
 
 Present this before Gate 5:

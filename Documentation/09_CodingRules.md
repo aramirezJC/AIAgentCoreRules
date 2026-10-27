@@ -16,8 +16,9 @@ checklists and by `/audit`.
 | RES | Every resource acquisition (subscription, load, timer, guard) has a matching release in the same scope. |
 | ASYNC | No `async void` except event handlers and synchronous overrides bridging into async, which must have a full try/catch. |
 | LOG | All logging through the project Logger wrapper — never `Debug.Log`, `Debug.LogWarning` or `Debug.LogError`. |
-| DELEGATE | Breadth goes to subagents: "where / which files / who implements" questions are delegated. |
+| DELEGATE | Breadth goes to subagents: "where / which files / who implements" questions are delegated, and so is multi-round exploratory/trial-and-error work (browser-automation probing, iterative debug scripts) — only the final working script and its conclusion need to come back. |
 | SHAPE | A tool, script or report request goes through the scope gate before any exploration. |
+| TRIM | Tool output stays out of context unless the task needs it or verbosity is requested — pipe through `tail`/`grep`/`head`, use `Read` with `limit`/`offset`, summarize instead of pasting raw output. |
 
 ## Rule tags
 
@@ -44,7 +45,7 @@ Loaded on demand by the routing table (see [[02_WorkModes#Loading rules on deman
 | **Architectural Principles** | SOLID applied to our code, creating interfaces only as needed, composition over inheritance, Unity assembly structure, hard rules. |
 | **Multi-Step Operations Rules** | Favour an async loop over the callback-pump pattern; bridging callback-based APIs; state tracking; guarding against mutation during execution. |
 | **Resource Management Rules** | The symmetry principle; `IDisposable` scoped state instead of boolean flags; event subscriptions; Addressables. |
-| **Testing Rules** | Container setup, test doubles, assertions, state reset, async tests, naming. |
+| **Testing Rules** | Container setup, test doubles, assertions, state reset, async tests, naming, **idle-behavior tests for poll handlers and event listeners** (verify state unchanged across multiple ticks when data has not changed). |
 
 ## Project rules
 

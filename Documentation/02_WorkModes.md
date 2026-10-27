@@ -67,6 +67,11 @@ context for reading the specific method bodies a conclusion depends on and for t
 itself. The failure mode being guarded against is not over-delegating — it is filling the main
 context with file listings and leaving no room for the analysis.
 
+Multi-round exploratory or trial-and-error work — browser-automation probing, an iterative debug
+script that needs several retries to get right — also goes to a fork rather than the main thread.
+Only the final working script and its conclusion need to come back; every retry's raw output
+left in the main thread gets resent on every later turn for the rest of the session.
+
 ## Stop and Verify
 
 Always-on checks that run before and after any code is generated:
@@ -96,6 +101,12 @@ source, `--help`, docs or a run.
 **Secrets** — in any command, the agent never prints any part of a credential (not even a
 prefix). It checks a token's shape with yes/no tests only, and if a fragment leaks it says so
 and recommends rotating it.
+
+**Tool output** — in any command, raw output stays out of context unless the task needs it or
+the engineer asks for verbosity: pipe through `tail`/`grep`/`head`, use `Read` with
+`limit`/`offset`, summarize a test run's pass/fail counts instead of pasting the full log. A
+verbose result paid for once gets paid for again on every later turn that re-reads it. Added
+after a session retrospective found "ad-hoc tool calls" alone were 24% of that session's tokens.
 
 **Source files:** [[MetaRouter]] · [[StopAndVerify]] · [[CoreTags]]
 

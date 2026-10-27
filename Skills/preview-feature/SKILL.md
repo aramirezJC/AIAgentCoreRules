@@ -1,0 +1,28 @@
+---
+name: preview-feature
+description: Open a CreateFeature feature's documentation in the local doc-review preview server - a Progress tab (current phase, steps, tasks, next gate) first, then the TDD (or GDD when there is no TDD) and the architecture diagrams. Use when the engineer runs /preview-feature [Name] or asks to see, open or preview a feature's plan status, TDD or diagrams.
+---
+
+# Preview Feature
+
+Read only: opens the docs, never edits them. Run from the project root.
+
+```yaml
+paths:
+  features_root: "$SESSION_FEATURES_ROOT, else Assets/GitIgnoreAssets/Features"
+  feature_dir:   "<features_root>/<Name>"
+  server:        "GitIgnoredExternals/AIAgentCoreRules/Tools/doc-review/doc_review.py"
+
+steps:
+  - "No name → list the folders under features_root that contain a <Name>_Progress.md, ask which one, and wait."
+  - "Name with no matching folder → list the folder names, ask, and wait. Do not guess a close match."
+  - "Main doc: the first that exists of <Name>_TDD.md, <Name>_GDD.md, <Name>_Progress.md. It must be passed first: the server keys the Progress tab and the comment sidecar off it."
+  - "Diagrams: <feature_dir>/Diagrams/*.mmd sorted by name, skipping *.miro.mmd (copies prepared for Miro)."
+  - "Run in the background (Bash run_in_background) — the server blocks: python3 <server> serve <main doc> <diagrams...> --open"
+  - "Read the first line of its output — the URL — and report it with the tabs: Progress (when <Name>_Progress.md exists), the main doc (say when it fell back from the TDD), each diagram, and any skipped files."
+  - "The server lives until the engineer stops it or the session ends. Offer to stop it when they are done."
+```
+
+The Progress tab comes from the server itself (see Documentation/12_DocReview.md): phases,
+steps and gates from CreateFeature, completion from the progress file's handoff blocks, tasks from
+`<Name>_TaskList.md`, and the next gate in red. It refreshes on save, like every other tab.

@@ -65,6 +65,11 @@ documented in its own page tree.
   - [[11_Contributing#Where improvements come from|Where improvements come from]]
   - [[11_Contributing#Conventions|Conventions]]
   - [[11_Contributing#Publishing to Confluence|Publishing to Confluence]]
+- **[[12_DocReview|Doc Review Tool]]** — local doc + diagram preview with in-page comments and the feature Progress tab
+  - [[12_DocReview#Commands|Commands]]
+  - [[12_DocReview#Commenting in the page|Commenting in the page]]
+  - [[12_DocReview#Progress tab|Progress tab]]
+  - [[12_DocReview#Tests|Tests]]
 
 ## Why this exists
 

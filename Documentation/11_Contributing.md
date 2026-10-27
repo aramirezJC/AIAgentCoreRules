@@ -40,7 +40,11 @@ rule files change every future session.
 - **Lane processes** (Small Task, Bug Fix) end with a *Router check* block listing the files and tools the lane is expected
   to load; `/end-session` compares it with the router trace.
 - **Skills** live in `Skills/<name>/SKILL.md` and are linked into each engineer's
-  `.claude/skills/`. Tell the team when you add one so they can add the link.
+  `.claude/skills/`. Tell the team when you add one so they can add the link. Wiring a new skill:
+  link it from the host root with
+  `ln -s ../../GitIgnoredExternals/AIAgentCoreRules/Skills/<name> .claude/skills/<name>`, add it
+  to the `commands:` list in `Rules/MetaRouter.md`, and add a row and a *Source files* link in
+  [[08_Commands|Command Reference]].
 - **Tools** run on stock `python3`, and hooks must always exit 0 so a failure never blocks a
   session.
 - **Documentation pages** are written for Obsidian: wikilinks (double square brackets) between pages, a *Source
@@ -63,4 +67,4 @@ somewhere else. It works the same on a host layer's `Documentation/` folder.
 
 ---
 
-← [[10_HostProjectLayer|Host Project Layer]] · [[00_Overview|Overview]]
+← [[10_HostProjectLayer|Host Project Layer]] · [[00_Overview|Overview]] · [[12_DocReview|Doc Review Tool]] →

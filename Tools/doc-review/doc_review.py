@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List
 
-from anchor_resolver import resolve_diagram_anchor, resolve_text_anchor, scan_inline_markers
+from anchor_resolver import resolve_thread, scan_inline_markers
 from review_server import render_static, serve_doc
 from sidecar_store import SidecarStore
 
@@ -43,7 +43,7 @@ def cmd_comments(args: argparse.Namespace) -> None:
     if args.status != "all":
         threads = [thread for thread in threads if thread["status"] == args.status]
 
-    resolved = [_resolve_thread(base_dir, thread) for thread in threads]
+    resolved = [_cli_resolved_thread(base_dir, thread) for thread in threads]
     markers = scan_inline_markers(base_dir, _marker_candidate_files(doc_path, data["threads"]))
 
     if args.json:
@@ -96,14 +96,10 @@ def _validate_diagram(file_path: Path) -> None:
         raise DiagramValidationError(f"{file_path} failed mermaid validation:\n{result.stderr.strip()}")
 
 
-def _resolve_thread(base_dir: Path, thread: Dict) -> Dict:
+def _cli_resolved_thread(base_dir: Path, thread: Dict) -> Dict:
     anchor = thread["anchor"]
-    if anchor["kind"] == "text":
-        resolution = resolve_text_anchor(base_dir, anchor)
-        quote = anchor.get("quote", "")
-    else:
-        resolution = resolve_diagram_anchor(base_dir, anchor)
-        quote = anchor.get("label") or anchor.get("source_id", "")
+    quote = anchor.get("quote", "") if anchor["kind"] == "text" else (anchor.get("label") or anchor.get("source_id", ""))
+    resolution = resolve_thread(base_dir, thread)
     return {"id": thread["id"], "status": thread["status"], "quote": quote, "resolution": resolution}
 
 
@@ -124,7 +120,10 @@ def _print_text(resolved: List[Dict], markers: List[Dict]) -> None:
         resolution = item["resolution"]
         quote = _truncate(item["quote"])
         if resolution["status"] == "resolved":
-            print(f'{resolution["file"]}:{resolution["line"]} [{item["status"]}] {item["id"]}: {quote}')
+            # An empty-space diagram pin (anchor_resolver.resolve_diagram_anchor) has no line --
+            # it never referred to source content.
+            location = f'{resolution["file"]}:{resolution["line"]}' if resolution.get("line") is not None else resolution["file"]
+            print(f'{location} [{item["status"]}] {item["id"]}: {quote}')
         elif resolution["status"] == "ambiguous":
             lines = ", ".join(str(line) for line in resolution["candidate_lines"])
             print(f'AMBIGUOUS {item["id"]} [{item["status"]}] "{quote}" -- candidate lines: {lines}')

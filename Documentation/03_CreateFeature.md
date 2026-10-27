@@ -38,7 +38,10 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
 ### Phase 1 — Intake
 
 - **1a GDD conversion** — if a GDD is provided, it is converted to Markdown in full, without
-  summarising.
+  summarising. With no GDD but planning notes, threads or a scope summary, a use-case-driven
+  pseudo-GDD is written instead (problem, codebase survey, design questions with options and a
+  decision, use cases, open items marked ⚠️/🔧/📐/✅), modelled on an existing one if the project
+  has one — the notes are not transcribed.
 - **1b TDD, section by section** — objective, architecture, Best Practices (the rules an
   implementer must follow, each with what stops someone from skipping it), related docs, development plan
   (stages with T-shirt sizes and assignees), final touches, tools, risks, data reconciliation
@@ -86,7 +89,9 @@ diagram. The engineer reviews and edits both before approving.
 Order: interfaces → concrete classes → integration glue. Before the first file the agent
 re-reads the rule files, because Phase 2 may be several sessions ago. Every file runs through
 `/audit` **before** it is presented to the engineer (required, recorded as `(audited)` in the
-checkpoint); the next file is not started until the current one is acknowledged.
+checkpoint); the next file is not started until the current one is acknowledged. Before writing
+a test file, the agent reads `Rules/TestingRules.md` (and the host project's testing-setup rule,
+if it has one); the coding standards and architectural principles do not cover tests. For files with poll handlers, event listeners, or subscription-based updates: verification includes steady-state behavior (state unchanged across multiple ticks with no data change), not just post-action snapshots.
 
 ### Phase 5 — Unit Tests
 
@@ -95,6 +100,8 @@ Three categories, each traced to a document from an earlier phase — no specula
 - one JSON deserialization test per config class,
 - one behavior test per row in the use cases,
 - one boundary test per edge case.
+
+For browser-based or UI features, also include **idle-behavior fixtures** for any polling listeners or event handlers: initialize/render, tick multiple times with no data change, and assert state remains unchanged (no redundant rebuilds, no re-wrapping of highlights, no spurious repaints). Idle tests catch bugs snapshot tests miss.
 
 The agent runs the host project's compile check (`typecheck.py`); the engineer runs the tests in the Unity Test Runner and
 reports the result. The agent never claims a pass it has not seen. Test files are run through
@@ -171,7 +178,8 @@ To continue in a new session, run **`/resume-work <FeatureName>`**. The agent:
 
 1. switches the session to the feature lane and adds the session to the feature's list,
 2. reloads the process index, the progress file, the current phase file, that phase's rule
-   files and the documents it works from,
+   files, the documents it works from, and the host SystemIndex's entry for the feature's
+   system (not just the feature's own Discovery/Architecture docs) if one exists,
 3. checks the files on disk against the progress file and reports any drift,
 4. presents a summary — phase, gates passed, what is done, what is next, pending decisions —
    and **waits for confirmation** before continuing.

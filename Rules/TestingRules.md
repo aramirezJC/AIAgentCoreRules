@@ -84,3 +84,21 @@ examples:
   - CanStartEvent_WhenAlreadyInProgress_ReturnsFalse
   - ProcessPrize_WithMemoryFlag_CallsPrizeProcess
 ```
+
+---
+
+## Idle Behavior & Polling
+
+Event listeners and poll-based update handlers must be verified not just immediately after an action (single snapshot) but also at idle with no data change.
+
+```yaml
+idle_behavior_rules:
+  - "Verify that poll handlers, event listeners, and state-update subscriptions do not cause unnecessary recomputation, re-rendering, or DOM mutations when data has not changed."
+  - "Include at least one idle fixture: render/initialize, tick N times with no data change, assert state remains unchanged (no re-wrapping of highlights, no redundant repaints, no spurious re-renders)."
+  - "Example: a subscription that rebuilds the entire UI tree on every poll tick regardless of data change will fail this test when the tree is rendered twice and compared unchanged."
+  - "This catches bugs that snapshot tests (verify-after-action) miss: redundant rebuilds, races between competing update paths, frame-to-frame accumulation of DOM mutations."
+```
+
+**Rationale:** Unit tests typically verify behavior immediately after an action (single snapshot in time), which misses steady-state defects only visible across multiple ticks at idle or under repeated updates with no data change.
+
+

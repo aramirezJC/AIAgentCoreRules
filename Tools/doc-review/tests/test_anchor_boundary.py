@@ -9,9 +9,18 @@ writing these tests and were resolved with the engineer before the tests below w
     fixed to echo the anchor's own heading_path, and surfaced in the CLI's text output
     (doc_review.py _print_text). Tested here.
   - E11: the documented "fuzzy fallback" after tag-stripping does not exist -- only an exact
-    match on the stripped text. Left as-is and logged as a TaskList follow-up (fuzzy matching is
-    its own design decision); the test below covers the exact-match-after-strip behavior that
-    actually exists, not the fuzzy fallback.
+    match on the stripped text. Logged as a TaskList follow-up (fuzzy matching, task 21, is its
+    own design decision) and still not implemented: a quote that differs from the source by
+    actual wording still orphans (tested below). A *whitespace* difference no longer needs that
+    fallback, though -- V1's Q1/G3 Markdown-normalization (anchor_resolver._normalize_markdown)
+    collapses whitespace as part of matching against the rendered (tag- and syntax-free) text the
+    browser's selection quote is captured from, so the old "double space vs. single space"
+    near-miss now resolves. That is deterministic normalization, not fuzzy matching, so it was
+    updated below rather than carved out as a gap.
+
+V1 additions (LocalDocReviewV1_Architecture.md Q1-Q3): Markdown-syntax-normalized text matching
+(G3), diagram edge anchors (G1), and sequence-message occurrence_index restricted to message
+lines, not Notes/participants/aliases (G2).
 
     python3 -m unittest discover -s Tools/doc-review/tests -p 'test_*.py'
 """
@@ -103,21 +112,57 @@ class TextAnchorBoundaryTests(unittest.TestCase):
                           "an exact match against the tag-stripped source must still resolve")
         self.assertEqual(resolution["line"], 3)
 
-    def test_resolveTextAnchor_withInlineHtmlAndNoExactStrippedMatch_reportsOrphanedNotFuzzyMatched(self):
-        # E11 gap (logged as a follow-up, not fixed here): stripping tags still leaves an exact
-        # substring search. A quote that only matches after tags are stripped AND collapsed
-        # whitespace is restored has no fuzzy fallback today, so it must orphan, not false-match.
+    def test_resolveTextAnchor_withInlineHtmlAndExtraInnerWhitespace_resolvesViaWhitespaceCollapse(self):
+        # G3/Q1: a double space inside a tag-stripped span is a whitespace difference, which V1's
+        # Markdown normalization now collapses on both sides of the comparison -- this used to
+        # orphan (no fuzzy fallback existed yet) but is deterministic normalization, not fuzzy
+        # matching, so it now resolves.
         self.doc_path.write_text(
             '# Design\n\nThe <span class="NEW">quick  brown</span> fox jumps over the lazy dog.\n'
         )
-        # Two spaces survive the tag strip where the quote below has one -- no fuzzy pass exists
-        # to absorb that, so this must orphan rather than silently matching the wrong text.
         anchor = {"file": self.doc_path.name, "quote": "The quick brown fox jumps over the lazy dog."}
 
         resolution = resolve_text_anchor(self.tmp, anchor)
 
+        self.assertEqual(resolution["status"], "resolved",
+                          "a whitespace-only difference must resolve after Markdown normalization")
+        self.assertEqual(resolution["line"], 3)
+
+    def test_resolveTextAnchor_withGenuinelyDifferentWording_reportsOrphanedNotFuzzyMatched(self):
+        # E11 gap, still open (task 21): normalization handles Markdown syntax and whitespace, not
+        # approximate text similarity. A quote that differs by actual wording must still orphan.
+        self.doc_path.write_text("# Design\n\nThe quick brown fox jumps over the lazy dog.\n")
+        anchor = {"file": self.doc_path.name, "quote": "The quick brown fox leaps over the lazy dog."}
+
+        resolution = resolve_text_anchor(self.tmp, anchor)
+
         self.assertEqual(resolution["status"], "orphaned",
-                          "without a fuzzy fallback, a near-miss after tag-stripping must orphan, not guess")
+                          "without a fuzzy fallback, different wording must orphan, not guess")
+
+    def test_resolveTextAnchor_quoteWritesMarkdownSyntaxInSource_resolvesAgainstNormalizedView(self):
+        # G3/Q1: the quote is captured from the browser's rendered (syntax-free) text; the source
+        # carries bold/italic/code emphasis, a link, a heading marker, and a list marker.
+        self.doc_path.write_text(
+            "# Design\n\n"
+            "- The **quick** _brown_ `fox` jumps over the [lazy dog](https://example.com/dog).\n"
+        )
+        anchor = {"file": self.doc_path.name, "quote": "The quick brown fox jumps over the lazy dog."}
+
+        resolution = resolve_text_anchor(self.tmp, anchor)
+
+        self.assertEqual(resolution["status"], "resolved",
+                          "Markdown emphasis/link/list syntax must be normalized away before matching")
+        self.assertEqual(resolution["line"], 3)
+
+    def test_resolveTextAnchor_quoteMatchesTableCellText_resolvesWithPipesStripped(self):
+        # G3/Q1: a table row's rendered cell text has no pipes; the source does.
+        self.doc_path.write_text("# Design\n\n| Risk | Owner |\n| --- | --- |\n| Data loss | Andi |\n")
+        anchor = {"file": self.doc_path.name, "quote": "Data loss Andi"}
+
+        resolution = resolve_text_anchor(self.tmp, anchor)
+
+        self.assertEqual(resolution["status"], "resolved")
+        self.assertEqual(resolution["line"], 5)
 
 
 class DiagramAnchorBoundaryTests(unittest.TestCase):
@@ -125,6 +170,25 @@ class DiagramAnchorBoundaryTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="anchor-boundary-diagram-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.diagram_path = self.tmp / "flow.mmd"
+
+    def test_resolveDiagramAnchor_emptySpacePin_resolvesWithNoLineRatherThanOrphaning(self):
+        # U3: a click on empty diagram space creates a point-only pin, with nothing textual or
+        # structural to re-resolve against. It never referred to source content, so it should
+        # never be reported orphaned just because it carries no element_id/source_id/label.
+        self.diagram_path.write_text("graph TD\n  A --> B\n")
+        anchor = {"file": self.diagram_path.name, "point": {"x": 12.0, "y": 34.0}}
+
+        resolution = resolve_diagram_anchor(self.tmp, anchor)
+
+        self.assertEqual(resolution, {"status": "resolved", "file": self.diagram_path.name, "line": None})
+
+    def test_resolveDiagramAnchor_emptySpacePinWhenFileMissing_stillOrphans(self):
+        # E20: the file itself not being served at all is a real orphan, point-only or not.
+        anchor = {"file": "missing.mmd", "point": {"x": 1.0, "y": 2.0}}
+
+        resolution = resolve_diagram_anchor(self.tmp, anchor)
+
+        self.assertEqual(resolution["status"], "orphaned")
 
     def test_resolveDiagramAnchor_whenSourceIdRenamed_fallsBackToLabelThenOrphans(self):
         # E3: the node the comment was anchored to (old_id) was renamed to new_id in the diagram.
@@ -160,6 +224,60 @@ class DiagramAnchorBoundaryTests(unittest.TestCase):
         self.assertEqual(first["line"], 2, "occurrence_index 0 must pick the first 'ping' line")
         self.assertEqual(second["status"], "resolved")
         self.assertEqual(second["line"], 4, "occurrence_index 1 must pick the second 'ping' line, not the first")
+
+    def test_resolveDiagramAnchor_sequenceMessageLabelAlsoAppearsInNoteAndAlias_countsMessageLinesOnly(self):
+        # G2: "ping" also appears in a Note and a participant alias; neither is a message, so
+        # occurrence_index 1 must still land on the second actual A->>B: ping message, not the
+        # Note or the alias line.
+        self.diagram_path.write_text(
+            "sequenceDiagram\n"
+            "  participant A as pinger\n"
+            "  A->>B: ping\n"
+            "  Note over A,B: ping was sent\n"
+            "  B->>A: pong\n"
+            "  A->>B: ping\n"
+        )
+        anchor_second = {"file": self.diagram_path.name, "label": "ping", "occurrence_index": 1}
+
+        resolution = resolve_diagram_anchor(self.tmp, anchor_second)
+
+        self.assertEqual(resolution["status"], "resolved")
+        self.assertEqual(resolution["line"], 6, "the Note and the alias must not count as 'ping' messages")
+
+    def test_resolveDiagramAnchor_withEdgeFromToAndIndex_resolvesTheIndexthMatchingEdgeLine(self):
+        # G1: edge anchors have no stable source_id (mermaid's L_A_B_0 never appears in source);
+        # the resolver instead finds the line containing both node ids and an arrow.
+        self.diagram_path.write_text(
+            "graph TD\n"
+            "  A[Start] --> B[Middle]\n"
+            "  B[Middle] --> C[End]\n"
+            "  A[Start] --> B[Middle]\n"
+        )
+        anchor_first = {"file": self.diagram_path.name, "edge": {"from": "A", "to": "B", "index": 0}}
+        anchor_second = {"file": self.diagram_path.name, "edge": {"from": "A", "to": "B", "index": 1}}
+
+        first = resolve_diagram_anchor(self.tmp, anchor_first)
+        second = resolve_diagram_anchor(self.tmp, anchor_second)
+
+        self.assertEqual(first["status"], "resolved")
+        self.assertEqual(first["line"], 2, "index 0 must pick the first A->B edge line")
+        self.assertEqual(second["status"], "resolved")
+        self.assertEqual(second["line"], 4, "index 1 must pick the second A->B edge line, not the first")
+
+    def test_resolveDiagramAnchor_withEdgeWhereNodesOnlyCoOccurWithoutAnArrow_orphans(self):
+        # G1: a line can mention both node ids without being an edge between them (e.g. both
+        # appear inside an unrelated node's label) -- that must not be mistaken for the edge.
+        self.diagram_path.write_text(
+            "graph TD\n"
+            "  A[Start] --> C[End]\n"
+            "  N[mentions A and B but is not an edge]\n"
+        )
+        anchor = {"file": self.diagram_path.name, "edge": {"from": "A", "to": "B", "index": 0}}
+
+        resolution = resolve_diagram_anchor(self.tmp, anchor)
+
+        self.assertEqual(resolution["status"], "orphaned",
+                          "both ids co-occurring without an arrow between them must not resolve")
 
 
 if __name__ == "__main__":
