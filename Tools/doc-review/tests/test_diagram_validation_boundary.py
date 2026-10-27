@@ -1,8 +1,9 @@
 """Category 3 (Boundary) test for LocalDocReview -- E8.
 
-"Agent edit breaks a diagram (parse error)": the tab shows the mermaid error (browser-side,
-untestable here), the CLI must still list its comments regardless, and the agent's `reply`
-must refuse to mark a thread addressed until mermaid-cli validates the edited diagram.
+"Agent edit breaks a diagram (parse error)": the tab shows the mermaid error (browser-side --
+see LocalDocReviewV1's tests/smoke/review_ui_smoke.js for that half, E17), the CLI must still
+list its comments regardless, and the agent's `reply` must refuse to mark a thread addressed
+until mermaid-cli validates the edited diagram.
 
 subprocess.run (the actual `npx @mermaid-js/mermaid-cli` call) is mocked -- this is a unit test
 for doc_review.py's validation gate, not an integration test of mermaid-cli/npm/node, which

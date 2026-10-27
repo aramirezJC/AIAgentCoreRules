@@ -1,0 +1,210 @@
+/* Dark-only, every color explicit -- same reasoning as review_server.py's PAGE_TEMPLATE: letting
+   the browser mix its own dark-mode text color with a light-mode background produces
+   white-on-white (or here, invisible-on-dark) text. */
+
+.docreview-popover {
+  position: fixed;
+  z-index: 1000;
+  width: 280px;
+  background: #20242e;
+  color: #e4e6eb;
+  border: 1px solid #333944;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.docreview-popover-input {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  background: #15171c;
+  color: #e4e6eb;
+  border: 1px solid #333944;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.docreview-popover-error {
+  color: #ff6b6b;
+}
+
+.docreview-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.docreview-popover-actions button {
+  background: #2a3040;
+  color: #e4e6eb;
+  border: 1px solid #3b4357;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.docreview-popover-submit {
+  background: #3a6fd8;
+  border-color: #3a6fd8;
+  color: #fff;
+}
+
+.docreview-highlight {
+  background: #5a4a1f;
+  color: inherit;
+}
+
+.docreview-pin {
+  fill: #f0c674;
+  stroke: #15171c;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+#docreview-panel {
+  width: 320px;
+  flex: none;
+  background: #1a1e27;
+  border-left: 1px solid #272c38;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 12px;
+  font-size: 13px;
+  color: #e4e6eb;
+}
+
+.docreview-panel-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.docreview-section {
+  border-bottom: 1px solid #272c38;
+  padding: 6px 0;
+}
+
+.docreview-section summary {
+  cursor: pointer;
+  color: #9aa3b5;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.docreview-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.docreview-card {
+  background: #20242e;
+  border: 1px solid #333944;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.docreview-draft-card {
+  border-left: 3px solid #3a6fd8;
+}
+
+.docreview-draft-input {
+  width: 100%;
+  min-height: 50px;
+  resize: vertical;
+  background: #15171c;
+  color: #e4e6eb;
+  border: 1px solid #333944;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.docreview-draft-send {
+  background: #3a6fd8;
+  border-color: #3a6fd8;
+  color: #fff;
+}
+
+.docreview-card-quote {
+  font-style: italic;
+  color: #ccd1dc;
+  cursor: pointer;
+}
+
+.docreview-card-quote:hover {
+  color: #fff;
+}
+
+.docreview-card-note {
+  color: #f0c674;
+  font-size: 12px;
+}
+
+.docreview-card-replies {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.docreview-reply {
+  background: #15171c;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.docreview-reply-input {
+  width: 100%;
+  min-height: 40px;
+  resize: vertical;
+  background: #15171c;
+  color: #e4e6eb;
+  border: 1px solid #333944;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.docreview-card-error {
+  color: #ff6b6b;
+}
+
+.docreview-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.docreview-card-actions button {
+  background: #2a3040;
+  color: #e4e6eb;
+  border: 1px solid #3b4357;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.docreview-reply-btn {
+  background: #3a6fd8;
+  border-color: #3a6fd8;
+  color: #fff;
+}

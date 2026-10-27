@@ -176,7 +176,8 @@ To continue in a new session, run **`/resume-work <FeatureName>`**. The agent:
 
 1. switches the session to the feature lane and adds the session to the feature's list,
 2. reloads the process index, the progress file, the current phase file, that phase's rule
-   files and the documents it works from,
+   files, the documents it works from, and the host SystemIndex's entry for the feature's
+   system (not just the feature's own Discovery/Architecture docs) if one exists,
 3. checks the files on disk against the progress file and reports any drift,
 4. presents a summary — phase, gates passed, what is done, what is next, pending decisions —
    and **waits for confirmation** before continuing.
