@@ -174,6 +174,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
   /resume-work [Name]: "pick up a feature from its progress file in a fresh session; no name → choose from the active features"
   /active-features: "list features not yet complete: phase, status, next step, resume command"
+  /preview-feature [Name]: "open a feature in the doc-review preview: Progress tab, TDD, diagrams"
   /discover <area>: "subagent survey, returns a compact map"
   /audit [files]:  "rules compliance check, report only"
   /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"

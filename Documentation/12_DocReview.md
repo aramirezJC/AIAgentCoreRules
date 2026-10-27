@@ -29,7 +29,8 @@ thread ready for the agent, and the agent replies and marks it addressed. Thread
 ## Progress tab
 
 When the served doc's folder contains a `<Name>_Progress.md` (a CreateFeature feature folder),
-a **Progress** tab is added last, automatically:
+a **Progress** tab is added first, automatically. `/preview-feature <Name>` opens a feature this
+way, with its TDD and diagrams:
 
 - **Phases and steps.** Phases 1–8 and their gates come from `Processes/CreateFeature/index.md`.
   The steps are the `##` headings of each `Phase*.md` file.

@@ -199,18 +199,26 @@ class ServerTabTests(ProgressViewTestBase):
         tabs = review_server._tabs([self.doc_path])
         self.assertEqual([t["kind"] for t in tabs], ["md"])
 
-    def test_progress_tab_is_appended_with_a_json_source_and_its_own_mtime_key(self):
+    def test_progress_tab_is_first_with_a_json_source_and_its_own_mtime_key(self):
         self.write_progress("1_intake")
         tabs = review_server._tabs([self.doc_path, self.progress_path])
-        self.assertEqual([t["kind"] for t in tabs], ["md", "md", "progress"])
+        self.assertEqual([t["kind"] for t in tabs], ["progress", "md", "md"])
+        self.assertEqual([t["id"] for t in tabs], ["d0", "d1", "d2"])
         mtimes = review_server._collect_mtimes(tabs)
         self.assertEqual(len(mtimes), 3)  # the md tab of Progress.md and the Progress tab do not collide
-        source = json.loads(review_server._collect_sources(tabs)[tabs[2]["id"]])
+        source = json.loads(review_server._collect_sources(tabs)[tabs[0]["id"]])
         self.assertEqual(source["feature"], "Demo")
+
+    def test_progress_tab_file_key_does_not_shadow_the_progress_md_tab(self):
+        self.write_progress("1_intake")
+        tabs = review_server._tabs([self.doc_path, self.progress_path])
+        # static/*.js resolve anchor.file with find(), so the first tab with a matching file wins.
+        first_match = next(t for t in tabs if t["file"] == tabs[2]["file"])
+        self.assertEqual(first_match["kind"], "md")
 
     def test_progress_tab_mtime_follows_the_newest_watched_file(self):
         self.write_progress("1_intake")
-        tab = review_server._tabs([self.doc_path])[-1]
+        tab = review_server._tabs([self.doc_path])[0]
         task_list = self.feature_dir / "Demo_TaskList.md"
         task_list.write_text(TASK_LIST_MD)
         future = self.progress_path.stat().st_mtime + 100

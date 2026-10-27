@@ -24,6 +24,7 @@ commands — see the host project's documentation.
 | `/bug-fix <symptom>` | Starts the Bug Fix process directly: diagnosis, approved fix, regression test. |
 | `/run-investigation-mode <question>` | Starts Investigation Mode directly. The output is a document or recommendation, not code. |
 | `/active-features` | Lists every feature that is not complete: phase, status, last update, next step, and the command that resumes it with the phase's recommended model. New sessions show a short version of this list at start. |
+| `/preview-feature [Name]` | Opens a feature's docs in the local doc-review preview server: a Progress tab first (current phase, steps, tasks, next gate in red), then the TDD (or the GDD when there is no TDD) and the `Diagrams/*.mmd` files. Read only. With no name, lists the features and asks. See [[12_DocReview\|Doc Review Tool]]. |
 
 ## Analysis and review
 
@@ -46,7 +47,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/new-session/SKILL|/new-session]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/preview-feature/SKILL|/preview-feature]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/new-session/SKILL|/new-session]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 

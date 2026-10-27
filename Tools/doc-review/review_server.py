@@ -495,26 +495,29 @@ def _tabs(paths: List[Path]) -> List[Dict]:
     base_dir = paths[0].parent
     tabs = [
         {
-            "id": f"d{i}",
             "title": path.stem,
             "kind": "md" if path.suffix == ".md" else "mmd",
             "path": path,
             "file": _relative_to_doc_folder(path, base_dir),
         }
-        for i, path in enumerate(paths)
+        for path in paths
     ]
     progress_path = find_progress_file(paths[0])
     if progress_path is not None:
-        # Auto-added for a feature doc: phases/steps/gates from CreateFeature, state from Progress.md.
-        tabs.append(
+        # Auto-added first for a feature doc: phases/steps/gates from CreateFeature, state from Progress.md.
+        # Its file key carries "#progress" because the static/*.js tab lookups match anchor.file with
+        # find(): a thread anchored in a Progress.md md tab must not resolve to this tab, which precedes it.
+        tabs.insert(
+            0,
             {
-                "id": f"d{len(tabs)}",
                 "title": "Progress",
                 "kind": "progress",
                 "path": progress_path,
-                "file": _relative_to_doc_folder(progress_path, base_dir),
-            }
+                "file": _relative_to_doc_folder(progress_path, base_dir) + "#progress",
+            },
         )
+    for i, tab in enumerate(tabs):
+        tab["id"] = f"d{i}"
     return tabs
 
 
