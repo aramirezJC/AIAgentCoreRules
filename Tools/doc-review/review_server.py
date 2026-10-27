@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from anchor_resolver import resolve_thread
+from progress_view import build_model, find_progress_file, watched_paths
 from sidecar_store import SidecarStore
 
 MERMAID_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"
@@ -68,6 +69,27 @@ PAGE_TEMPLATE = """<!doctype html>
   .markdown blockquote {{ border-left: 3px solid #4a5468; margin: 0; padding: 4px 16px; color: #b7bcc7; }}
   .markdown hr {{ border: none; border-top: 1px solid #333944; }}
   .error {{ color: #ff6b6b; font-family: monospace; white-space: pre-wrap; padding: 16px; }}
+  /* Progress tab: green = done (same --ok green as retro_page.py's dark theme), red = gate still to pass. */
+  .progress-view {{ --ok: #5fd394; --gate: #ff6b6b; --current: #6cb6ff; background: #20242e; color: #e4e6eb;
+                    max-width: 900px; margin: 0 auto; padding: 24px 32px; border-radius: 8px;
+                    box-shadow: 0 1px 4px rgba(0,0,0,.4); box-sizing: border-box; line-height: 1.5; }}
+  .progress-view h1 {{ margin: 0 0 4px; font-size: 22px; color: #fff; }}
+  .progress-view .meta {{ color: #9aa3b5; font-size: 13px; margin-bottom: 18px; }}
+  .phase {{ border: 1px solid #333944; border-left: 4px solid #333944; border-radius: 6px; padding: 10px 14px; margin: 10px 0; }}
+  .phase.completed {{ border-left-color: var(--ok); }}
+  .phase.current {{ border-color: var(--current); border-left-color: var(--current); background: #23304a; }}
+  .phase h2 {{ margin: 0; font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px; }}
+  .phase .pill {{ font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; }}
+  .phase .pill.current {{ background: var(--current); color: #10141c; }}
+  .mark {{ display: inline-block; width: 1.2em; text-align: center; color: #5c6577; }}
+  .mark.done {{ color: var(--ok); font-weight: 700; }}
+  .mark.partial {{ color: #f0c674; }}
+  .phase ul {{ list-style: none; margin: 6px 0 0; padding-left: 4px; font-size: 14px; }}
+  .phase li.done {{ color: #b7bcc7; }}
+  .phase .stage {{ margin: 8px 0 0 4px; font-size: 13px; color: #9aa3b5; font-weight: 600; }}
+  .phase .stage + ul {{ padding-left: 16px; }}
+  .gate {{ margin-top: 8px; font-size: 13px; color: #9aa3b5; }}
+  .gate.pending {{ color: var(--gate); font-weight: 600; }}
 </style>
 </head>
 <body>
@@ -139,9 +161,57 @@ PAGE_TEMPLATE = """<!doctype html>
     document.dispatchEvent(new CustomEvent("docreview:rendered", {{ detail: {{ tabId: id }} }}));
   }}
 
+  function escapeHtml(text) {{
+    const div = document.createElement("div");
+    div.textContent = text == null ? "" : String(text);
+    return div.innerHTML;
+  }}
+
+  function markHtml(state) {{
+    const glyph = state === "done" ? "✓" : state === "partial" ? "~" : "○";
+    return '<span class="mark ' + state + '">' + glyph + '</span>';
+  }}
+
+  function renderProgress(id, src) {{
+    const target = document.getElementById(id);
+    try {{
+      const model = JSON.parse(src);
+      const parts = ['<h1>' + escapeHtml(model.feature) + '</h1>',
+        '<div class="meta">status: ' + escapeHtml(model.status) + ' &middot; updated ' + escapeHtml(model.updated_at)
+          + (model.next ? '<br>next: ' + escapeHtml(model.next) : '') + '</div>'];
+      model.phases.forEach((phase) => {{
+        const classes = ["phase"];
+        if (phase.completed) classes.push("completed");
+        if (phase.current) classes.push("current");
+        parts.push('<section class="' + classes.join(" ") + '"><h2>' + markHtml(phase.completed ? "done" : "todo")
+          + escapeHtml(phase.title) + (phase.current ? ' <span class="pill current">current</span>' : '') + '</h2><ul>');
+        phase.steps.forEach((step) => {{
+          const state = step.done ? "done" : "todo";
+          parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title) + '</li>');
+        }});
+        parts.push('</ul>');
+        phase.stages.forEach((stage) => {{
+          parts.push('<div class="stage">' + escapeHtml(stage.title) + '</div><ul>');
+          stage.tasks.forEach((task) => {{
+            parts.push('<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml(task.id + ' · ' + task.title) + '</li>');
+          }});
+          parts.push('</ul>');
+        }});
+        const pending = phase.key === model.next_gate_phase;
+        parts.push('<div class="gate' + (pending ? ' pending' : '') + '">Gate' + (pending ? ' to pass next' : '')
+          + ': ' + escapeHtml(phase.gate) + '</div></section>');
+      }});
+      target.innerHTML = parts.join("");
+    }} catch (err) {{
+      target.innerHTML = '<div class="error">' + escapeHtml(err && err.message ? err.message : err) + '</div>';
+    }}
+  }}
+
   function renderTab(id) {{
     if (tabKinds[id] === "md") {{
       renderMarkdown(id, sources[id]);
+    }} else if (tabKinds[id] === "progress") {{
+      renderProgress(id, sources[id]);
     }} else {{
       renderedSourceFor[id] = sources[id];
       renderDiagram(id, sources[id]);
@@ -160,7 +230,7 @@ PAGE_TEMPLATE = """<!doctype html>
     // blank even though svgPanZoom reports success. Markdown has no such measurement step, so
     // it stays eager.
     Object.keys(sources).forEach((id) => {{
-      if (tabKinds[id] === "md") {{
+      if (tabKinds[id] !== "mmd") {{
         renderTab(id);
       }}
     }});
@@ -219,7 +289,7 @@ LIVE_SCRIPT_TEMPLATE = """
           sources[id] = freshSources[id];
           // Markdown is always safe to redraw. A hidden diagram tab is left with its cache
           // just updated -- activate() renders it fresh, correctly, once it's actually selected.
-          if (tabKinds[id] === "md" || isActiveTabId(id)) {{
+          if (tabKinds[id] !== "mmd" || isActiveTabId(id)) {{
             renderTab(id);
           }}
         }});
@@ -385,7 +455,7 @@ def build_page(paths: List[Path], live: bool) -> str:
         for i, tab in enumerate(tabs)
     )
     panels = "\n".join(_panel_html(i, tab) for i, tab in enumerate(tabs))
-    tab_paths_js = json.dumps({tab["id"]: str(tab["path"]) for tab in tabs})
+    tab_paths_js = json.dumps({tab["id"]: _mtime_key(tab) for tab in tabs})
     doc_review_js = json.dumps({"tabs": [{"id": tab["id"], "file": tab["file"], "kind": tab["kind"]} for tab in tabs]})
 
     live_script = ""
@@ -423,7 +493,7 @@ def build_page(paths: List[Path], live: bool) -> str:
 
 def _tabs(paths: List[Path]) -> List[Dict]:
     base_dir = paths[0].parent
-    return [
+    tabs = [
         {
             "id": f"d{i}",
             "title": path.stem,
@@ -433,6 +503,19 @@ def _tabs(paths: List[Path]) -> List[Dict]:
         }
         for i, path in enumerate(paths)
     ]
+    progress_path = find_progress_file(paths[0])
+    if progress_path is not None:
+        # Auto-added for a feature doc: phases/steps/gates from CreateFeature, state from Progress.md.
+        tabs.append(
+            {
+                "id": f"d{len(tabs)}",
+                "title": "Progress",
+                "kind": "progress",
+                "path": progress_path,
+                "file": _relative_to_doc_folder(progress_path, base_dir),
+            }
+        )
+    return tabs
 
 
 def _static_allowlist(static_dir: Path) -> Dict[str, Path]:
@@ -452,16 +535,34 @@ def _relative_to_doc_folder(path: Path, base_dir: Path) -> str:
 
 
 def _collect_sources(tabs: List[Dict]) -> Dict[str, str]:
-    return {tab["id"]: tab["path"].read_text() for tab in tabs}
+    return {tab["id"]: _tab_source(tab) for tab in tabs}
 
 
 def _collect_mtimes(tabs: List[Dict]) -> Dict[str, float]:
-    return {str(tab["path"]): tab["path"].stat().st_mtime for tab in tabs}
+    return {_mtime_key(tab): _tab_mtime(tab) for tab in tabs}
+
+
+def _tab_source(tab: Dict) -> str:
+    if tab["kind"] == "progress":
+        return json.dumps(build_model(tab["path"]))
+    return tab["path"].read_text()
+
+
+def _tab_mtime(tab: Dict) -> float:
+    if tab["kind"] == "progress":
+        return max(path.stat().st_mtime for path in watched_paths(tab["path"]))
+    return tab["path"].stat().st_mtime
+
+
+def _mtime_key(tab: Dict) -> str:
+    # The Progress tab watches several files and may share its Progress.md path with a plain md tab,
+    # so it gets its own key rather than colliding with that tab's.
+    return str(tab["path"]) + "#progress" if tab["kind"] == "progress" else str(tab["path"])
 
 
 def _panel_html(i: int, tab: Dict) -> str:
     active = " active" if i == 0 else ""
-    css_class = "markdown" if tab["kind"] == "md" else "diagram"
+    css_class = {"md": "markdown", "progress": "progress-view"}.get(tab["kind"], "diagram")
     return f'<div class="panel{active}"><div class="{css_class}" id="d{i}"></div></div>'
 
 
