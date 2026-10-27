@@ -16,7 +16,8 @@ TOOL_DIR = Path(__file__).resolve().parents[1]
 if str(TOOL_DIR) not in sys.path:
     sys.path.insert(0, str(TOOL_DIR))
 
-from doc_review import cmd_comments  # noqa: E402
+import doc_review  # noqa: E402
+from doc_review import cmd_comments, cmd_stop, parse_listen_port, parse_server_processes  # noqa: E402
 from sidecar_store import SidecarStore  # noqa: E402
 
 DOC_CONTENT = (
@@ -118,6 +119,52 @@ class InlineMarkerTests(unittest.TestCase):
         self.assertIn(diagram_rel, markers_by_file,
                       "a diagram under Diagrams/ must be auto-discovered without being a comment anchor")
         self.assertEqual(markers_by_file[diagram_rel]["text"], "rename node A")
+
+
+PS_OUTPUT = """\
+  101 /bin/bash -c cd /x && python3 /t/doc_review.py serve A_GDD.md --port 8765 > server.log 2>&1
+  102 /Library/Python.app/Contents/MacOS/Python /t/doc_review.py serve A_GDD.md --port 8765
+  103 python3 /t/doc_review.py serve B_TDD.md Diagrams/x.mmd --open
+  104 python3 /t/doc_review.py serve C.md --static
+  105 python3 /t/doc_review.py comments A_GDD.md
+  106 vim doc_review.py
+"""
+
+
+class ServerListingTests(unittest.TestCase):
+    """servers / stop: only live Python servers, never the launching shell or a static render."""
+
+    def test_parse_server_processes_skips_shells_static_renders_and_other_subcommands(self):
+        self.assertEqual(parse_server_processes(PS_OUTPUT), [{"pid": 102, "doc": "A_GDD.md"}, {"pid": 103, "doc": "B_TDD.md"}])
+
+    def test_parse_listen_port_reads_the_lsof_name_field(self):
+        self.assertEqual(parse_listen_port("p102\nf3\nn127.0.0.1:8765\n"), 8765)
+        self.assertIsNone(parse_listen_port("p102\n"))
+
+    def run_stop(self, servers, **selector):
+        args = argparse.Namespace(**{"port": None, "pid": None, "all": False, **selector})
+        killed = []
+        real_running, real_kill = doc_review.running_servers, doc_review.os.kill
+        doc_review.running_servers = lambda: servers
+        doc_review.os.kill = lambda pid, sig: killed.append(pid)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                cmd_stop(args)
+        except SystemExit:
+            killed.append("exit")
+        finally:
+            doc_review.running_servers, doc_review.os.kill = real_running, real_kill
+        return killed
+
+    def test_stop_without_a_selector_stops_the_only_server_and_refuses_when_several(self):
+        one = [{"pid": 7, "port": 8765, "doc": "A.md", "cwd": "/x"}]
+        two = one + [{"pid": 8, "port": None, "doc": "B.md", "cwd": "/y"}]
+        self.assertEqual(self.run_stop(one), [7])
+        self.assertEqual(self.run_stop(two), ["exit"])
+        self.assertEqual(self.run_stop(two, port=8765), [7])  # a port-less server never matches --port
+        self.assertEqual(self.run_stop(two, pid=8), [8])
+        self.assertEqual(self.run_stop(two, all=True), [7, 8])
+        self.assertEqual(self.run_stop([]), ["exit"])
 
 
 if __name__ == "__main__":

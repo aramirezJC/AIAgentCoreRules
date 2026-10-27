@@ -5,21 +5,30 @@ See LocalDocReview_TDD.md for the full design. Subcommands:
     serve    <doc.md> [<diagram.mmd> ...] [--port N] [--static [--output PATH] [--open]]
     comments <doc.md> [--status open|ready|addressed|resolved|all] [--json]
     reply    <doc.md> <thread_id> "<message>" [--status addressed]
+    servers  [--json]                              list running live servers (pid, port, doc)
+    stop     [--port N | --pid N | --all]          SIGTERM a live server; no selector = the only one
+    pr-notes <PR> [--repo-dir DIR] [--json]        a PR's comments, review bodies and inline notes
 """
 import argparse
 import json
+import os
+import re
+import signal
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import pr_notes
 from anchor_resolver import resolve_thread, scan_inline_markers
 from review_server import render_static, serve_doc
 from sidecar_store import SidecarStore
 
 QUOTE_TRUNCATE_LENGTH = 60
 MMDC_VALIDATION_TIMEOUT_SECONDS = 30
+SHELL_NAMES = {"bash", "sh", "zsh"}
+LSOF_NAME_LINE = re.compile(r"^n.*:(\d+)$")
 
 
 class DiagramValidationError(Exception):
@@ -67,6 +76,103 @@ def cmd_reply(args: argparse.Namespace) -> None:
 
     suffix = f", status={args.status}" if args.status else ""
     print(f"replied to {args.thread_id}{suffix}")
+
+
+def cmd_servers(args: argparse.Namespace) -> None:
+    servers = running_servers()
+    if args.json:
+        print(json.dumps(servers, indent=2))
+    elif not servers:
+        print("no doc-review servers running")
+    else:
+        for server in servers:
+            print(_server_line(server))
+
+
+def cmd_stop(args: argparse.Namespace) -> None:
+    servers = running_servers()
+    if args.all:
+        targets = servers
+    elif args.port is not None:
+        targets = [s for s in servers if s["port"] == args.port]
+    elif args.pid is not None:
+        targets = [s for s in servers if s["pid"] == args.pid]
+    else:
+        targets = servers if len(servers) == 1 else []
+        if len(servers) > 1:
+            print("several servers running -- pass --port, --pid or --all:", file=sys.stderr)
+            for server in servers:
+                print("  " + _server_line(server), file=sys.stderr)
+            sys.exit(1)
+    if not targets:
+        print("no matching doc-review server running", file=sys.stderr)
+        sys.exit(1)
+    for server in targets:
+        os.kill(server["pid"], signal.SIGTERM)
+        print("stopped " + _server_line(server))
+
+
+def cmd_pr_notes(args: argparse.Namespace) -> None:
+    pr = pr_notes.fetch_pr_notes(args.number, Path(args.repo_dir))
+    if args.json:
+        print(json.dumps(pr, indent=2))
+        return
+    if pr["error"]:
+        print(f"error: {pr['error']}", file=sys.stderr)
+        sys.exit(1)
+    print(f"#{pr['number']} {pr['title']} [{pr['state']}] {pr['url']}")
+    for note in pr["notes"]:
+        where = note["location"] or note["kind"] + (f" {note['state'].lower()}" if note["state"] else "")
+        print(f"- {note['author']} {note['created_at'][:10]} {where}: {_truncate(' '.join(note['body'].split()), 200)}")
+
+
+def running_servers() -> List[Dict]:
+    # Only the Python process: a Bash(run_in_background) launch also leaves a shell whose command
+    # line names doc_review.py, and killing that shell would leave the server running.
+    ps = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=False)
+    servers = parse_server_processes(ps.stdout)
+    for server in servers:
+        server["port"] = _listen_port(server["pid"])
+        server["cwd"] = _process_cwd(server["pid"])
+    return servers
+
+
+def parse_server_processes(ps_output: str) -> List[Dict]:
+    servers = []
+    for line in ps_output.splitlines():
+        parts = line.split()
+        if len(parts) < 2 or not parts[0].isdigit() or Path(parts[1]).name in SHELL_NAMES:
+            continue
+        script_index = next((i for i, part in enumerate(parts) if part.endswith("doc_review.py")), None)
+        if script_index is None or parts[script_index + 1: script_index + 2] != ["serve"] or "--static" in parts:
+            continue
+        doc = parts[script_index + 2] if len(parts) > script_index + 2 else ""
+        servers.append({"pid": int(parts[0]), "doc": doc})
+    return servers
+
+
+def parse_listen_port(lsof_output: str) -> Optional[int]:
+    for line in lsof_output.splitlines():
+        match = LSOF_NAME_LINE.match(line)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def _listen_port(pid: int) -> Optional[int]:
+    lsof = subprocess.run(["lsof", "-nP", "-a", "-p", str(pid), "-iTCP", "-sTCP:LISTEN", "-Fn"],
+                          capture_output=True, text=True, check=False)
+    return parse_listen_port(lsof.stdout)
+
+
+def _process_cwd(pid: int) -> str:
+    lsof = subprocess.run(["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"], capture_output=True, text=True, check=False)
+    return next((line[1:] for line in lsof.stdout.splitlines() if line.startswith("n")), "")
+
+
+def _server_line(server: Dict) -> str:
+    url = f"http://127.0.0.1:{server['port']}/" if server["port"] else "(no port yet)"
+    return f"pid {server['pid']}  {url}  {server['doc']}  (cwd {server['cwd']})"
 
 
 def _validate_if_diagram(base_dir: Path, store: SidecarStore, thread_id: str) -> None:
@@ -164,6 +270,23 @@ def main() -> None:
     reply_parser.add_argument("message")
     reply_parser.add_argument("--status", choices=["open", "ready", "addressed", "resolved"], default=None)
     reply_parser.set_defaults(func=cmd_reply)
+
+    servers_parser = subparsers.add_parser("servers", help="List running live doc-review servers")
+    servers_parser.add_argument("--json", action="store_true")
+    servers_parser.set_defaults(func=cmd_servers)
+
+    stop_parser = subparsers.add_parser("stop", help="Stop a live server (the only one, or by --port / --pid / --all)")
+    stop_selector = stop_parser.add_mutually_exclusive_group()
+    stop_selector.add_argument("--port", type=int, default=None)
+    stop_selector.add_argument("--pid", type=int, default=None)
+    stop_selector.add_argument("--all", action="store_true")
+    stop_parser.set_defaults(func=cmd_stop)
+
+    pr_notes_parser = subparsers.add_parser("pr-notes", help="Print a PR's comments, review bodies and inline notes (gh)")
+    pr_notes_parser.add_argument("number", type=int)
+    pr_notes_parser.add_argument("--repo-dir", default=".", help="a folder inside the PR's git repository")
+    pr_notes_parser.add_argument("--json", action="store_true")
+    pr_notes_parser.set_defaults(func=cmd_pr_notes)
 
     args = parser.parse_args()
     args.func(args)

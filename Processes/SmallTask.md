@@ -11,6 +11,7 @@ Tag definitions: [[CoreTags]]
 ```yaml
 fits_when:
   - "Touches one system and at most ~5 files"
+  - "Documentation/ and Systems/ sync edits that follow a code change do not count toward the ~5."
   - "No new config root, player-data schema, or server contract"
   - "An existing example can be followed ('like xyz, but does abc')"
 escalate_when:

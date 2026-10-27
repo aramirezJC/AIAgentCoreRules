@@ -38,6 +38,10 @@ After each acknowledgment, update the progress file's Checkpoint: add the file t
 `(audited)`, and set `next` to the following file from the design. Implementation is where a session most often
 ends mid-phase.
 
+When a PR opens for one of the TDD's V-phases, run `/feature-pr <PR>`: it lists the PR under
+`pull_requests` in the progress file, so the doc-review Progress tab shows its review notes, and
+records each addressed note in this feature's Checkpoint.
+
 ---
 
 ## Gate 4 — Implementation Complete

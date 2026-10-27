@@ -15,8 +15,9 @@ TOOL_DIR = Path(__file__).resolve().parents[1]
 if str(TOOL_DIR) not in sys.path:
     sys.path.insert(0, str(TOOL_DIR))
 
+import pr_notes  # noqa: E402
 import review_server  # noqa: E402
-from progress_view import build_model, find_progress_file, watched_paths  # noqa: E402
+from progress_view import build_model, find_progress_file, pr_refresh_stamp, watched_paths  # noqa: E402
 
 INDEX_MD = """# CreateFeature
 
@@ -82,6 +83,59 @@ TASK_LIST_MD = """```yaml
     - {id: 2, status: "[~]", title: "Second", task: "b"}
     - {id: 3, status: "[ ]", title: "Third",  task: "c"}
 ```
+"""
+
+
+MULTILINE_TASK_LIST_MD = """```yaml
+stages:
+  - stage: "Stage 1 — Multi-line"
+    tasks:
+      - task: "First"
+        assignee: "Someone"
+        status: "[x]"
+      - task: "Second"
+        status: "[ ]"
+```
+"""
+
+
+TDD_MD = """# Demo TDD
+
+### V9 — Not in the plan
+
+| Title | Task | Status |
+| --- | --- | --- |
+| Stray | x | [ ] |
+
+## Development Plan — Stages
+
+Intro paragraph.
+
+### V0 — Core
+
+**Level of effort:** S
+
+| Title | Task | Assignee | Status |
+| --- | --- | --- | --- |
+| Contracts | New asmdef | A | [x] |
+| Router | Save router | A | [~] |
+
+### V1 — Flow
+
+| Task | Status |
+|---|---|
+| `Serve` on [PR 9923](https://example.com/9923) | [ ] |
+
+## Risks
+
+| Title | Status |
+| --- | --- |
+| Not a task | [ ] |
+"""
+
+PULL_REQUESTS_YAML = """pull_requests:
+  V0: [11, 12]
+  V7: [99]
 """
 
 
@@ -175,6 +229,53 @@ class BuildModelTests(ProgressViewTestBase):
         self.assertEqual([t["status"] for t in stages[0]["tasks"]], ["done", "partial", "todo"])
         self.assertEqual(self.phase(model, "1_intake")["stages"], [])
 
+    def test_multi_line_task_list_form_parses_task_text_and_status(self):
+        self.write_progress("4_implementation")
+        (self.feature_dir / "Demo_TaskList.md").write_text(MULTILINE_TASK_LIST_MD)
+        stages = self.phase(self.model(), "4_implementation")["stages"]
+        self.assertEqual(stages[0]["title"], "Stage 1 — Multi-line")
+        self.assertEqual([(t["id"], t["title"], t["status"]) for t in stages[0]["tasks"]],
+                         [("", "First", "done"), ("", "Second", "todo")])
+
+    def test_tdd_v_phases_are_nested_under_implementation_with_table_tasks(self):
+        self.write_progress("4_implementation")
+        self.doc_path.write_text(TDD_MD)
+        model = self.model()
+        dev_phases = self.phase(model, "4_implementation")["dev_phases"]
+        self.assertEqual([d["key"] for d in dev_phases], ["V0", "V1"])  # the V9 outside the plan is ignored
+        self.assertEqual(dev_phases[0]["title"], "V0 — Core")
+        self.assertEqual([(t["id"], t["title"], t["status"]) for t in dev_phases[0]["tasks"]],
+                         [("", "Contracts", "done"), ("", "Router", "partial")])
+        self.assertEqual([t["title"] for t in dev_phases[1]["tasks"]], ["Serve on PR 9923"])  # link + backticks stripped
+        self.assertEqual(self.phase(model, "1_intake")["dev_phases"], [])
+
+    def test_first_v_phase_with_unfinished_tasks_starts_open(self):
+        self.write_progress("4_implementation")
+        self.doc_path.write_text(TDD_MD.replace("[~]", "[x]"))
+        dev_phases = self.phase(self.model(), "4_implementation")["dev_phases"]
+        self.assertEqual([d["open"] for d in dev_phases], [False, True])
+
+    def test_pull_requests_are_fetched_per_v_phase_from_the_progress_file(self):
+        self.write_progress("4_implementation")
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + PULL_REQUESTS_YAML + "```\n")
+        self.doc_path.write_text(TDD_MD)
+        calls = []
+
+        def fake_fetch(number, repo_dir):
+            calls.append((number, repo_dir))
+            return {"number": number, "notes": []}
+
+        model = build_model(self.progress_path, self.process_dir, fetch_pr=fake_fetch)
+        dev_phases = self.phase(model, "4_implementation")["dev_phases"]
+        self.assertEqual([[pr["number"] for pr in d["pull_requests"]] for d in dev_phases], [[11, 12], []])
+        self.assertEqual({repo_dir for _, repo_dir in calls}, {self.feature_dir})
+
+    def test_pr_refresh_stamp_only_when_prs_are_linked(self):
+        self.write_progress("4_implementation")
+        self.assertEqual(pr_refresh_stamp(self.progress_path), 0.0)
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + PULL_REQUESTS_YAML + "```\n")
+        self.assertGreater(pr_refresh_stamp(self.progress_path), 0.0)
+
     def test_header_fields(self):
         self.write_progress("1_intake")
         model = self.model()
@@ -225,11 +326,65 @@ class ServerTabTests(ProgressViewTestBase):
         os.utime(task_list, (future, future))
         self.assertEqual(review_server._tab_mtime(tab), future)
 
+    def test_progress_tab_mtime_moves_with_the_pr_refresh_window(self):
+        self.write_progress("1_intake")
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + PULL_REQUESTS_YAML + "```\n")
+        tab = review_server._tabs([self.doc_path])[0]
+        real_window = pr_notes.refresh_window
+        pr_notes.refresh_window = lambda: 10 ** 9  # a window far later than any watched file's mtime
+        try:
+            self.assertEqual(review_server._tab_mtime(tab), 10 ** 9 * pr_notes.REFRESH_SECONDS)
+        finally:
+            pr_notes.refresh_window = real_window
+
     def test_page_has_progress_panel(self):
         self.write_progress("1_intake")
         page = review_server.build_page([self.doc_path], live=False)
         self.assertIn('class="progress-view"', page)
         self.assertIn(">Progress</button>", page)
+
+
+class PrNotesTests(unittest.TestCase):
+    VIEW = {"number": 7, "title": "Add router", "url": "https://gh/pr/7", "state": "OPEN",
+            "comments": [{"author": {"login": "ann"}, "createdAt": "2026-10-02T00:00:00Z", "body": "Looks good", "url": "u1"}],
+            "reviews": [{"author": {"login": "bob"}, "submittedAt": "2026-10-01T00:00:00Z", "body": "Two nits", "state": "COMMENTED"},
+                        {"author": {"login": "bob"}, "submittedAt": "2026-10-03T00:00:00Z", "body": "", "state": "APPROVED"}]}
+    INLINE_PAGES = [[{"user": {"login": "cy"}, "created_at": "2026-10-01T12:00:00Z", "body": "Rename this",
+                      "html_url": "u2", "path": "A.cs", "line": 12}]]
+
+    def setUp(self):
+        self._real_gh_json = pr_notes._gh_json
+        pr_notes._cache.clear()
+        self.calls = 0
+
+        def fake_gh_json(args, repo_dir):
+            self.calls += 1
+            return self.VIEW if args[0] == "pr" else self.INLINE_PAGES
+
+        pr_notes._gh_json = fake_gh_json
+
+    def tearDown(self):
+        pr_notes._gh_json = self._real_gh_json
+        pr_notes._cache.clear()
+
+    def test_notes_merge_comments_review_bodies_and_inline_comments_by_date(self):
+        pr = pr_notes.fetch_pr_notes(7, Path("."))
+        self.assertEqual((pr["title"], pr["state"], pr["error"]), ("Add router", "OPEN", ""))
+        self.assertEqual([(n["kind"], n["author"], n["location"]) for n in pr["notes"]],
+                         [("review", "bob", ""), ("inline", "cy", "A.cs:12"), ("comment", "ann", "")])  # empty review body dropped
+
+    def test_fetch_is_cached_within_a_refresh_window(self):
+        pr_notes.fetch_pr_notes(7, Path("."))
+        pr_notes.fetch_pr_notes(7, Path("."))
+        self.assertEqual(self.calls, 2)  # one pr view + one api call, not repeated
+
+    def test_gh_failure_becomes_an_error_entry(self):
+        def failing(args, repo_dir):
+            raise ValueError("gh pr failed: not logged in")
+
+        pr_notes._gh_json = failing
+        pr = pr_notes.fetch_pr_notes(8, Path("."))
+        self.assertEqual((pr["number"], pr["error"], pr["notes"]), (8, "gh pr failed: not logged in", []))
 
 
 if __name__ == "__main__":

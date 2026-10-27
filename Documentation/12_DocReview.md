@@ -14,6 +14,9 @@ and svg-pan-zoom load from CDNs in the browser.
 | `doc_review.py serve <doc.md> ... --static [--output PATH] [--open]` | Writes a single HTML preview (default `_doc_review_preview.html` next to the doc). No server, no comments |
 | `doc_review.py comments <doc.md> [--status open\|ready\|addressed\|resolved\|all] [--json]` | Lists comment threads resolved to `file:line`, plus inline `@CLAUDE:` markers |
 | `doc_review.py reply <doc.md> <thread_id> "<message>" [--status addressed]` | Adds an agent reply, optionally marking the thread addressed |
+| `doc_review.py servers [--json]` | Lists the running live servers: pid, URL, doc and folder. Only the Python server process, not the shell that launched it |
+| `doc_review.py stop [--port N \| --pid N \| --all]` | Stops a live server (SIGTERM). With no selector it stops the only one running and refuses when there are several. Used by `/kill-server` |
+| `doc_review.py pr-notes <PR> [--repo-dir DIR] [--json]` | Prints a PR's conversation comments, review bodies and inline notes, oldest first, via `gh`. Used by `/feature-pr` |
 
 `Tools/mermaid-preview/mermaid_preview.py` is the older entry point. It forwards to
 `serve --static`.
@@ -38,14 +41,23 @@ way, with its TDD and diagrams:
   then all its steps are checked. Steps of the current phase are checked when the checkpoint's
   `done` list mentions them. That match is approximate. A skipped phase stays unchecked even
   when later phases are done.
-- **Task list.** Tasks in `<Name>_TaskList.md` are listed under Phase 4 as done (✓), partial (~)
-  or not started (○).
+- **Development phases.** Each `### V<n> — …` heading under the TDD's `## Development plan`
+  is listed under Phase 4 with two collapsibles. **Tasks** lists the rows of that phase's table
+  as done (✓), partial (~) or not started (○), labelled by the Title column (else Task) with
+  status from the Status column. It starts open for the first V-phase with unfinished tasks.
+  **PR notes** lists the conversation comments, review bodies and inline comments of the PRs
+  linked to that phase. Link them in the progress file:
+  `pull_requests:` then `  V0: [9923, 9930]`. Notes are fetched with `gh` and refreshed every
+  5 minutes. A gh failure shows as an error under that PR.
+- **Task list.** When the TDD has no V-phases, tasks in `<Name>_TaskList.md` are listed under
+  Phase 4 instead. Both task forms are read: the one-line `- {id:, status:, title:}` form and
+  the multi-line `- task: "<text>"` form with an indented `status: "[x]"` line (no id).
 - **Current phase.** Highlighted in blue.
 - **Gate to pass next, in red.** This is the current phase's gate until its handoff block is
   written, then the next unfinished phase's.
 
-The tab refreshes whenever the progress file, the task list or a CreateFeature phase file
-changes. Static mode includes the tab without refreshing.
+The tab refreshes whenever the progress file, the task list, the TDD or a CreateFeature phase
+file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
 
 ## Tests
 

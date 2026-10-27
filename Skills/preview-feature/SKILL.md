@@ -20,7 +20,7 @@ steps:
   - "Diagrams: <feature_dir>/Diagrams/*.mmd sorted by name, skipping *.miro.mmd (copies prepared for Miro)."
   - "Run in the background (Bash run_in_background) — the server blocks: python3 <server> serve <main doc> <diagrams...> --open"
   - "Read the first line of its output — the URL — and report it with the tabs: Progress (when <Name>_Progress.md exists), the main doc (say when it fell back from the TDD), each diagram, and any skipped files."
-  - "The server lives until the engineer stops it or the session ends. Offer to stop it when they are done."
+  - "The server lives until the engineer stops it or the session ends. Offer to stop it when they are done (/kill-server)."
 ```
 
 The Progress tab comes from the server itself (see Documentation/12_DocReview.md): phases,
