@@ -12,7 +12,7 @@ and svg-pan-zoom load from CDNs in the browser.
 |---|---|
 | `doc_review.py serve <doc.md> [<diagram.mmd>...] [--port N] [--open]` | Live server. One tab per file, live reload on save, in-page comments. Prints the URL |
 | `doc_review.py serve <doc.md> ... --static [--output PATH] [--open]` | Writes a single HTML preview (default `_doc_review_preview.html` next to the doc). No server, no comments |
-| `doc_review.py comments <doc.md> [--status open\|ready\|addressed\|resolved\|all] [--json]` | Lists comment threads resolved to `file:line`, plus inline `@CLAUDE:` markers |
+| `doc_review.py comments <doc.md> [--status open\|ready\|addressed\|resolved\|all] [--json]` | Lists comment threads resolved to `file:line`, plus inline `@CLAUDE:` markers. Text mode prints each thread's last reply (author and text) under it; `--json` carries `created_by`, the full `replies` list (author, text, at) and `follow_up`. A follow-up (the engineer replied after an agent reply) is selected by every `--status` filter, so a reply on an addressed thread still shows under `--status open` |
 | `doc_review.py reply <doc.md> <thread_id> "<message>" [--status addressed]` | Adds an agent reply, optionally marking the thread addressed |
 | `doc_review.py servers [--json]` | Lists the running live servers: pid, URL, doc and folder. Only the Python server process, not the shell that launched it |
 | `doc_review.py stop [--port N \| --pid N \| --all]` | Stops a live server (SIGTERM). With no selector it stops the only one running and refuses when there are several. Used by `/kill-server` |
