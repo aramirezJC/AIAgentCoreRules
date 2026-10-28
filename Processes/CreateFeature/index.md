@@ -78,8 +78,8 @@ phases:
 
   3_design:
     file: ./Phase3_Design.md
-    goal: Propose architecture, class structure, public contracts, integration points
-    gate: Design explicitly approved — NO CODE WRITTEN BEFORE THIS GATE
+    goal: Reconcile the TDD with Discovery — file plan, missing contracts, Phase 3 TBDs, corrections — written back into the TDD (no separate design doc, no new diagrams)
+    gate: Design delta approved (or confirmed empty) — NO CODE WRITTEN BEFORE THIS GATE
     recommended_agent: plan
     recommended_model: sonnet
 
