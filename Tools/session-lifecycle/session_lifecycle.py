@@ -551,6 +551,15 @@ def breakdown_lines(state):
     for name, saving in sorted(breakdown["savings"].items(), key=lambda item: -item[1]["tokens"]):
         lines.append("| %s | %d | %s | %d |" % (name, saving["count"], "{:,}".format(saving["tokens"]),
                                                 saving["round_trips"]))
+    doc_review = breakdown.get("doc_review") or {}
+    measured = doc_review.get("miro_confluence") or {}
+    if doc_review.get("count") or measured.get("count"):
+        lines += ["", "Doc review preview: %d call%s, ~%s tokens; the same operations through Miro/Confluence "
+                  "≈ %s tokens and %d round-trips. Miro/Confluence MCP calls this session: %d, ~%s tokens."
+                  % (doc_review.get("count", 0), "" if doc_review.get("count") == 1 else "s",
+                     "{:,}".format(doc_review.get("tokens", 0)), "{:,}".format(doc_review.get("equivalent", 0)),
+                     doc_review.get("round_trips", 0), measured.get("count", 0),
+                     "{:,}".format(measured.get("tokens", 0)))]
     return lines
 
 

@@ -33,8 +33,18 @@ LIFECYCLE = "session_lifecycle.py"
 #   usages:    a grep over Assets/ plus two call-site reads.
 #   typecheck: grepping the tail of Editor.log, after waiting for the editor to recompile.
 AVOIDED_BY_TOOL = {"codeindex.py": (3000, 2), "usages.py": (6000, 3), "typecheck.py": (4000, 2)}
+DOC_REVIEW_SAVING = "Doc review vs Miro/Confluence"
 SAVINGS = ["Parallel tool calls", "Subagent delegation", "Partial file reads",
-           "codeindex.py", "usages.py", "typecheck.py"]
+           "codeindex.py", "usages.py", "typecheck.py", DOC_REVIEW_SAVING]
+# Doc-review preview calls (doc_review.py <command>, mermaid_preview.py = serve), and what the same
+# operation would cost through the Miro / Confluence MCP tools: (context tokens, round-trips).
+# Averages of real MCP calls (input + result) in this project's transcripts, measured 2026-10-27:
+#   serve:    updateConfluencePage ~11.4K + Miro canvas composer skill ~1K + canvas_update_from_svg ~6K.
+#   comments: getConfluencePageInlineComments ~1.8K + footer comments ~0.1K + Miro comment list (~0.5K, guessed).
+#   reply:    createConfluenceInlineComment (~1.3K, guessed — no call to measure yet).
+# Low side: a Confluence republish after every doc edit, which the preview's live reload avoids, is not counted.
+DOC_REVIEW_PATTERN = r"python3?\s+\S*(doc_review|mermaid_preview)\.py(?:\s+([\w-]+))?"
+MIRO_CONFLUENCE_BY_COMMAND = {"serve": (18400, 3), "comments": (2400, 2), "reply": (1300, 1)}
 
 
 def size(value):
@@ -114,6 +124,21 @@ def classify(name, tool_input, roots):
         if real.endswith(".md") and any(real.startswith(root + os.sep) for root in roots):
             return "Rule & process loads"
     return AD_HOC
+
+
+def doc_review_commands(name, tool_input):
+    """The doc-review preview commands a Bash call runs, e.g. ["serve"]; mermaid_preview.py is a serve."""
+    if name != "Bash":
+        return []
+    return ["serve" if script == "mermaid_preview" else (command or "?")
+            for script, command in re.findall(DOC_REVIEW_PATTERN, tool_input.get("command", ""))]
+
+
+def is_miro_or_confluence(name):
+    """A Miro or Confluence MCP tool (Jira calls on the Atlassian server are not doc operations)."""
+    if not name or not name.startswith("mcp__"):
+        return False
+    return "miro" in name.split("__")[1] or "Confluence" in name or name.endswith("getContentFormatGuide")
 
 
 def partial_read_unread(tool_input):
@@ -244,9 +269,35 @@ def analyse(transcript_path, session_id, roots):
                 saving["round_trips"] += round_trips
                 saving["tokens"] += carried(max(avoided - op["tokens"] // len(hits), 0), op["at"])
 
+    doc_review = {"count": 0, "tokens": 0, "equivalent": 0, "round_trips": 0, "commands": {},
+                  "miro_confluence": {"count": 0, "tokens": 0}}
+    for op in order:
+        commands = doc_review_commands(op["name"], op["input"])
+        if commands:
+            actual = carried(op["tokens"], op["at"])
+            equivalent = sum(carried(MIRO_CONFLUENCE_BY_COMMAND.get(command, (0, 0))[0], op["at"]) for command in commands)
+            round_trips = sum(MIRO_CONFLUENCE_BY_COMMAND.get(command, (0, 0))[1] for command in commands)
+            doc_review["count"] += 1
+            doc_review["tokens"] += actual
+            doc_review["equivalent"] += equivalent
+            doc_review["round_trips"] += round_trips
+            for command in commands:
+                doc_review["commands"][command] = doc_review["commands"].get(command, 0) + 1
+            if equivalent:
+                saving = savings[DOC_REVIEW_SAVING]
+                saving["count"] += 1
+                saving["round_trips"] += round_trips
+                saving["tokens"] += max(equivalent - actual, 0)
+        elif is_miro_or_confluence(op["name"]):
+            doc_review["miro_confluence"]["count"] += 1
+            doc_review["miro_confluence"]["tokens"] += carried(op["tokens"], op["at"])
+
+    assumptions = {tool: {"tokens": t, "round_trips": r} for tool, (t, r) in AVOIDED_BY_TOOL.items()}
+    assumptions.update({"doc_review.py " + command: {"tokens": t, "round_trips": r}
+                        for command, (t, r) in MIRO_CONFLUENCE_BY_COMMAND.items()})
     return {"estimated": True, "total": total, "calls": len(calls), "categories": categories,
             "standardized": sum(categories[name] for name in STANDARDIZED), "savings": savings,
-            "assumptions": {tool: {"tokens": t, "round_trips": r} for tool, (t, r) in AVOIDED_BY_TOOL.items()}}
+            "doc_review": doc_review, "assumptions": assumptions}
 
 
 def session_total(transcript_path, session_id):

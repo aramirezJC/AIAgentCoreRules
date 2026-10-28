@@ -70,6 +70,12 @@ breakdown: the same estimated token-by-category numbers the retrospective charts
 - **Bell curve.** A histogram of session totals with a normal curve fitted to log10(tokens). Totals
   span orders of magnitude, so the axis is logarithmic. One dot per session; the active one is yellow.
 - **Tokens by category.** Total, average per session and share, across all sessions.
+- **Doc review preview vs Miro/Confluence.** Tokens the `doc_review.py` / `mermaid_preview.py`
+  calls cost, an estimate of the same operations through the Miro/Confluence MCP tools (serve ≈
+  page update + diagram upload, comments ≈ comment fetches, reply ≈ comment post; per-call averages
+  of real MCP calls, in `token_breakdown.MIRO_CONFLUENCE_BY_COMMAND`), and the measured cost of
+  the Miro/Confluence MCP calls sessions really made. Each session lists its own line. Shown only
+  once a breakdown compiled after this change has a preview or MCP call.
 - **Sessions, newest first.** One collapsible each, with its category table. The active session
   (no `ended_at`, `session.json` written in the last hour) is highlighted and open.
 

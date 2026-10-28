@@ -99,8 +99,18 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
         "calls": breakdown.get("calls") or 0,
         "standardized": breakdown.get("standardized") or 0,
         "categories": categories,
+        "doc_review": _doc_review(breakdown.get("doc_review") or {}),
         "sort_key": (_timestamp(started_at), state_path.parent.name),
     }
+
+
+def _doc_review(block: Dict) -> Dict:
+    """Preview calls vs the Miro/Confluence estimate; zeros for breakdowns compiled before it existed."""
+    measured = block.get("miro_confluence") or {}
+    return {"count": block.get("count") or 0, "tokens": block.get("tokens") or 0,
+            "equivalent": block.get("equivalent") or 0, "round_trips": block.get("round_trips") or 0,
+            "commands": block.get("commands") or {},
+            "miro_confluence": {"count": measured.get("count") or 0, "tokens": measured.get("tokens") or 0}}
 
 
 def _timestamp(iso_text: str) -> float:
@@ -138,6 +148,16 @@ def _overview(sessions: List[Dict]) -> Dict:
         "max": max(totals) if totals else 0,
         "standardized": sum(session["standardized"] for session in compiled),
         "categories": categories,
+        "doc_review": {
+            "sessions": sum(1 for session in compiled if session["doc_review"]["count"]),
+            "count": sum(session["doc_review"]["count"] for session in compiled),
+            "tokens": sum(session["doc_review"]["tokens"] for session in compiled),
+            "equivalent": sum(session["doc_review"]["equivalent"] for session in compiled),
+            "round_trips": sum(session["doc_review"]["round_trips"] for session in compiled),
+            "miro_confluence": {
+                "sessions": sum(1 for session in compiled if session["doc_review"]["miro_confluence"]["count"]),
+                "count": sum(session["doc_review"]["miro_confluence"]["count"] for session in compiled),
+                "tokens": sum(session["doc_review"]["miro_confluence"]["tokens"] for session in compiled)}},
         "totals": [{"id": session["id"], "total": session["total"], "active": session["active"]} for session in compiled],
     }
 

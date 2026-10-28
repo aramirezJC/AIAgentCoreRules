@@ -142,7 +142,10 @@ report's Total Tokens alike, so metrics.md quotes a single total. A tool result 
 (characters / 4) times every later call that re-reads it, until a compaction. The savings are
 guesstimates against a counterfactual. For example, each `codeindex.py` call is assumed to replace
 one ~3k-token exploratory read plus 2 round-trips; the assumptions are listed on the page and in
-`AVOIDED_BY_TOOL`.
+`AVOIDED_BY_TOOL`. Doc-review preview calls are compared with doing the same through Miro and
+Confluence (`MIRO_CONFLUENCE_BY_COMMAND`: serve ≈ 18.4k tokens + 3 round-trips, comments ≈ 2.4k + 2,
+reply ≈ 1.3k + 1, from averages of real MCP calls); the breakdown's `doc_review` block also measures
+the Miro/Confluence MCP calls a session really made.
 
 Every claim points at a trace row, a logged note or a `file:line`.
 
