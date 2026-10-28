@@ -174,6 +174,8 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /checkpoint:     "save mid-phase feature progress to <FeatureName>_Progress.md"
   /resume-work [Name]: "pick up a feature from its progress file in a fresh session; no name → choose from the active features"
   /active-features: "list features not yet complete: phase, status, next step, resume command"
+  /close-feature <Name> [reason]: "close / force-terminate a feature: status picker (abandoned default, superseded, on_hold, complete) + reason in its progress file"
+  /reopen-feature [Name]: "return a closed (not complete) feature to in_progress; no name → choose from features --closed"
   /preview-feature [Name]: "open a feature in the doc-review preview: Progress tab, TDD, diagrams"
   /feature-pr <PR> [Name] [V-phase]: "tie a PR to a feature's V-phase in its progress file, read its review notes, record addressed ones there"
   /kill-server [port|pid|all]: "stop a running doc-review preview server"
