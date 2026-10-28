@@ -21,6 +21,7 @@ paths:
 
 names:
   task_id:   "The TDD '#' column under '## Development plan' (e.g. T3); else the TaskList {id:}. No id → ask and stop; never invent one."
+  id_column: "The doc-review Progress tab shows a TDD's '### V<n>' phases INSTEAD of the task list, and matches batches: entries by the TDD '#' column. A TDD with V-phases but no '#' column therefore never shows 'batch N of M', even when the TaskList has ids — plan's 'Task ids' step adds the column first."
   worktree:  "<FeatureName>-<task_id>"
   branch:    "feature/<FeatureName>/<task_id>"
   base:      "the branch checked out in the engineer's main checkout when the task starts (their user branch), recorded once per task"
@@ -47,6 +48,7 @@ plan:
   - "Feature and task: arguments; else the feature whose progress file lists this session's id8 under `sessions`, and the Checkpoint `next`. Unclear → list candidates, ask and stop."
   - "Base: git -C <main checkout> branch --show-current. It must exist on origin (git ls-remote --heads origin <base>); if not, ask the engineer to push it and stop."
   - "Fresh base: git -C <main checkout> fetch origin <base>, then git rev-list --count HEAD..origin/<base>. Non-zero → ask the engineer to pull in their main checkout and stop — the worktree branches from local HEAD, so a stale checkout re-shows merged batches."
+  - "Task ids: the TDD has '### V<n>' headings under '## Development plan' but its task tables have no '#' column → before anything else, propose adding it as the first column of every V-phase table. Ids: the TaskList {id:} of the same task (match by title) when the TaskList has ids, so both files agree; else T1, T2 … across the whole plan. Show the id per row and wait for the engineer's OK, then edit the TDD (the feature folder is not in any repo). A TDD source of truth elsewhere (sources_of_truth, e.g. Confluence) → say the column must be added there too."
   - "Worktree: EnterWorktree(name: <worktree>) — the project settings branch it from HEAD and symlink the ignored folders. Then git branch -m <branch> so the branch name is stable."
   - "Batch plan: split the task's files from the TDD design into batches by batch_size. Show it as a numbered list (batch title, files) and wait for the engineer's OK; they may merge, split or reorder."
   - "Record (progress header, batches block): <task_id>: branch, base, plan (the batch titles), merged: 0, open_pr: null, prs: []. Set updated_at."
