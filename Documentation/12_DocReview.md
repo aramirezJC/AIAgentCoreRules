@@ -58,6 +58,12 @@ way, with its TDD and diagrams:
   merges it reads `batches done`. The task is matched by id: the TDD table's `#` column, or the
   task list's `{id:}`. TDD rows without a `#` column and multi-line task-list entries have no
   id, so they never show a batch.
+- **TDD sections.** Phase 1's "Sub-phase 1b" step lists each `### Section: <Name>` heading of
+  `Phase1_Intake.md` as a checklist. A section is checked when the TDD has a matching heading
+  (case, punctuation and `[Optional…]` ignored; a prefix such as `## Development plan` also
+  matches) whose body differs from the same section in `Templates/TDD_Template.md`, so a
+  pasted placeholder stays unchecked. Once Phase 1's handoff block is written, every section is
+  checked.
 - **Consistency findings.** Once the Gate 1 handoff block is written, its
   `consistency_findings` list (Sub-phase 1c's findings, each tagged ✅/⚠️/❌ with its outcome)
   is shown as a nested list under Phase 1's "Sub-phase 1c" step. Before that, or when the list
@@ -66,8 +72,8 @@ way, with its TDD and diagrams:
 - **Gate to pass next, in red.** This is the current phase's gate until its handoff block is
   written, then the next unfinished phase's.
 
-The tab refreshes whenever the progress file, the task list, the TDD or a CreateFeature phase
-file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
+The tab refreshes whenever the progress file, the task list, the TDD, the TDD template or a
+CreateFeature phase file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
 
 <<<<<<< Updated upstream
 ## Performance tab

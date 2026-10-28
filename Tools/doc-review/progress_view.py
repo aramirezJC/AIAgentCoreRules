@@ -13,6 +13,9 @@ same way session_lifecycle.py reads them. Sources:
                                           batch <merged + 1> of <len(plan)> on the task with that id
   - Progress.md phase_handoff block       "  consistency_findings: [...]" -> Sub-phase 1c's findings
                                           (each pre-tagged ✅/⚠️/❌ by the agent), nested under the "1c" step
+  - Phase*.md "### Section: <Name>"       a step's TDD section checklist (Sub-phase 1b); a section is checked when
+                                          its phase is completed, or the TDD's matching heading has a body that
+                                          differs from Processes/Templates/TDD_Template.md's
 """
 import re
 from pathlib import Path
@@ -27,6 +30,9 @@ CONSISTENCY_STEP_KEY = "1c"
 PHASE_KEY_LINE = re.compile(r"^  (\d+)_(\w+):\s*$")
 PHASE_FIELD_LINE = re.compile(r"^    (file|gate):\s*(.+?)\s*$")
 STEP_HEADING = re.compile(r"^## (.+?)\s*$")
+SECTION_HEADING = re.compile(r"^### Section:\s*(.+?)\s*$")
+MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+BRACKETED_TEXT = re.compile(r"\[[^\]]*\]|\([^)]*\)")
 SKIPPED_HEADING = re.compile(r"^(apply:|Gate \d|Router check)")
 STEP_KEY = re.compile(r"^(?:Sub-phase\s+(\d+[a-z])|(Step\s+\d+|Category\s+\d+))\b")
 PHASE_COMPLETED_LINE = re.compile(r'^\s*phase_completed:\s*"Phase\s+(\d+)\b')
@@ -63,9 +69,14 @@ def tdd_path(progress_path: Path) -> Path:
     return progress_path.with_name(progress_path.name[: -len("_Progress.md")] + "_TDD.md")
 
 
+def template_path(process_dir: Path) -> Path:
+    return process_dir.parent / "Templates" / "TDD_Template.md"
+
+
 def watched_paths(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -> List[Path]:
     """Every file the model is built from -- the tab re-renders when any of them changes."""
-    candidates = [progress_path, task_list_path(progress_path), tdd_path(progress_path), process_dir / "index.md"]
+    candidates = [progress_path, task_list_path(progress_path), tdd_path(progress_path), process_dir / "index.md",
+                  template_path(process_dir)]
     candidates += sorted(process_dir.glob("Phase*.md"))
     return [path for path in candidates if path.is_file()]
 
@@ -90,6 +101,9 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
     tdd = tdd_path(progress_path)
     dev_phases = _dev_phases(tdd.read_text()) if tdd.is_file() else []
+    tdd_bodies = _heading_bodies(tdd.read_text()) if tdd.is_file() else []
+    template = template_path(process_dir)
+    template_bodies = _heading_bodies(template.read_text()) if template.is_file() else []
     pull_requests = _pull_requests(progress_text)
     for dev_phase in dev_phases:
         dev_phase["pull_requests"] = [fetch_pr(number, progress_path.parent)
@@ -110,6 +124,8 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
         for step in steps:
             step["done"] = completed or (is_current and _step_mentioned(step, done_items))
             step["findings"] = consistency_findings if step["key"] == CONSISTENCY_STEP_KEY else []
+            for section in step["sections"]:
+                section["done"] = completed or _tdd_section_filled(section["title"], tdd_bodies, template_bodies)
         phases.append(
             {
                 "key": phase["key"],
@@ -170,8 +186,55 @@ def _steps(phase_path: Path) -> List[Dict]:
             title = heading.group(1)
             key_match = STEP_KEY.match(title)
             key = (key_match.group(1) or key_match.group(2)) if key_match else ""
-            steps.append({"title": title, "key": key})
+            steps.append({"title": title, "key": key, "sections": []})
+            continue
+        section = SECTION_HEADING.match(line)
+        if section and steps:
+            steps[-1]["sections"].append({"title": section.group(1)})
     return steps
+
+
+def _heading_bodies(markdown: str) -> List[Dict[str, str]]:
+    # Every "##".."######" heading (normalised) with its whitespace-collapsed body: the lines up to the
+    # next heading of the same or a higher level. Lines inside ``` fences are body, never headings.
+    lines = markdown.splitlines()
+    headings = []
+    in_fence = False
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        heading = MARKDOWN_HEADING.match(line) if not in_fence else None
+        if heading:
+            headings.append((index, len(heading.group(1)), heading.group(2)))
+    bodies = []
+    for position, (index, level, text) in enumerate(headings):
+        end = next((other for other, other_level, _ in headings[position + 1:] if other_level <= level), len(lines))
+        if level > 1:
+            bodies.append({"name": _normalised(text), "body": " ".join(" ".join(lines[index + 1:end]).split())})
+    return bodies
+
+
+def _normalised(text: str) -> str:
+    # "Edge Cases [Optional]" -> "edge cases"; "Development Plan — Stage Levels" -> "development plan stage levels"
+    return re.sub(r"[^a-z0-9]+", " ", BRACKETED_TEXT.sub("", text).lower()).strip()
+
+
+def _matching_body(name: str, bodies: List[Dict[str, str]]) -> Optional[str]:
+    # An exact heading first; else one whose words start the other's ("Development plan" for
+    # "Development Plan — Stage Levels", "Stage Level" for "Stage Levels").
+    wanted = _normalised(name)
+    exact = next((entry["body"] for entry in bodies if entry["name"] == wanted), None)
+    if exact is not None:
+        return exact
+    return next((entry["body"] for entry in bodies if entry["name"]
+                 and (wanted.startswith(entry["name"]) or entry["name"].startswith(wanted))), None)
+
+
+def _tdd_section_filled(name: str, tdd_bodies: List[Dict[str, str]], template_bodies: List[Dict[str, str]]) -> bool:
+    """Approximate by design: the TDD has the section with a body that is not the template's placeholder."""
+    body = _matching_body(name, tdd_bodies)
+    return bool(body) and body != _matching_body(name, template_bodies)
 
 
 def _step_mentioned(step: Dict, done_items: List[str]) -> bool:

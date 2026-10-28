@@ -87,7 +87,8 @@ PAGE_TEMPLATE = """<!doctype html>
   .mark.partial {{ color: #f0c674; }}
   .phase ul {{ list-style: none; margin: 6px 0 0; padding-left: 4px; font-size: 14px; }}
   .phase li.done {{ color: #b7bcc7; }}
-  /* Sub-phase 1c's consistency-review findings, nested under its step once Gate 1 is written. */
+  /* Sub-phase 1c's consistency-review findings, nested under its step once Gate 1 is written;
+     also Sub-phase 1b's TDD section checklist. */
   .phase ul.findings {{ list-style: none; margin: 4px 0 2px 20px; padding: 0; font-size: 13px; color: #b7bcc7; }}
   .phase ul.findings li {{ margin: 2px 0; }}
   .phase .stage {{ margin: 8px 0 0 4px; font-size: 13px; color: #9aa3b5; font-weight: 600; }}
@@ -253,6 +254,16 @@ PAGE_TEMPLATE = """<!doctype html>
         phase.steps.forEach((step) => {{
           const state = step.done ? "done" : "todo";
           parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title));
+          // Sub-phase 1b's TDD sections, checked once the TDD fills them in.
+          const sections = step.sections || [];
+          if (sections.length) {{
+            parts.push('<ul class="findings">');
+            sections.forEach((section) => {{
+              const sectionState = section.done ? "done" : "todo";
+              parts.push('<li class="' + sectionState + '">' + markHtml(sectionState) + escapeHtml(section.title) + '</li>');
+            }});
+            parts.push('</ul>');
+          }}
           const findings = step.findings || [];
           if (findings.length) {{
             parts.push('<ul class="findings">');

@@ -45,8 +45,9 @@ phases:
 """
 
 PHASE_FILES = {
-    "Phase1_Intake.md": "## apply: on-demand\n## Sub-phase 1a — GDD Conversion\n### Section: Objective\n"
-                        "## Sub-phase 1b — TDD Section-by-Section\n"
+    "Phase1_Intake.md": "## apply: on-demand\n## Sub-phase 1a — GDD Conversion\n"
+                        "## Sub-phase 1b — TDD Section-by-Section\n### Section: Objective\n### Section: Architecture\n"
+                        "### Section: Development Plan — Stage Levels\n### Section: Edge Cases\n"
                         "## Sub-phase 1c — Consistency and Gap Review\n"
                         "## Gate 1 — Intake Complete\n"
                         "## Router check (used by /end-session)\n",
@@ -168,6 +169,37 @@ BATCHES_YAML = """batches:                 # Phase 4: per task id, written by /p
     merged:  0
     open_pr: null
 next_field: "not part of the block"
+"""
+
+TEMPLATE_TDD_MD = """# Technical Design Document — [Feature Name]
+
+## Objective
+[Insert summary of the system]
+
+## Development plan
+
+### Stage Level (ie V0, V1 …)
+| # | Title |
+| --- | --- |
+| T1 | Sample task |
+
+## Edge Cases [Optional]
+| 1 | Sample edge case | |
+"""
+
+SECTIONS_TDD_MD = """# Demo TDD
+
+## Objective
+Saves the round so a crash resumes it.
+
+## Development Plan — Stage Levels
+### V0 — Core
+| # | Title |
+| --- | --- |
+| T1 | Contracts |
+
+## Edge Cases
+| 1 | Sample edge case | |
 """
 
 PULL_REQUESTS_YAML = """pull_requests:
@@ -371,6 +403,51 @@ class BuildModelTests(ProgressViewTestBase):
         self.write_progress("1_intake")
         model = self.model()
         self.assertEqual((model["feature"], model["status"], model["next"]), ("Demo", "in_progress", "Do the next thing"))
+
+
+class TddSectionTests(ProgressViewTestBase):
+    def setUp(self):
+        super().setUp()
+        (self.tmp / "Templates").mkdir()
+        (self.tmp / "Templates" / "TDD_Template.md").write_text(TEMPLATE_TDD_MD)
+
+    def sections(self):
+        steps = self.phase(self.model(), "1_intake")["steps"]
+        self.assertTrue(all(s["sections"] == [] for s in steps if s["key"] != "1b"))
+        return {s["title"]: s["done"] for s in next(s for s in steps if s["key"] == "1b")["sections"]}
+
+    def test_1b_lists_the_phase_file_sections_in_order(self):
+        self.write_progress("1_intake")
+        self.assertEqual(list(self.sections()), ["Objective", "Architecture", "Development Plan — Stage Levels",
+                                                  "Edge Cases"])
+
+    def test_section_is_checked_when_the_tdd_body_differs_from_the_template(self):
+        self.write_progress("1_intake")
+        self.doc_path.write_text(SECTIONS_TDD_MD)
+        self.assertEqual(self.sections(), {"Objective": True, "Architecture": False,
+                                           "Development Plan — Stage Levels": True, "Edge Cases": False})
+
+    def test_placeholder_copied_from_the_template_is_not_checked(self):
+        self.write_progress("1_intake")
+        self.doc_path.write_text(TEMPLATE_TDD_MD)
+        self.assertFalse(any(self.sections().values()))
+
+    def test_heading_prefix_matches_the_template_shape_and_ignores_fenced_headings(self):
+        self.write_progress("1_intake")
+        self.doc_path.write_text("## Development plan\n### Stage Level (ie V0)\n| T1 | Real task |\n"
+                                 "## Architecture\n```yaml\n## not a heading\n```\n")
+        sections = self.sections()
+        self.assertTrue(sections["Development Plan — Stage Levels"])
+        self.assertTrue(sections["Architecture"])
+
+    def test_completed_intake_checks_every_section(self):
+        self.write_progress("2_discovery", gates=["Phase 1 — Intake"])
+        self.assertTrue(all(self.sections().values()))
+
+    def test_template_is_watched(self):
+        self.write_progress("1_intake")
+        names = {path.name for path in watched_paths(self.progress_path, self.process_dir)}
+        self.assertIn("TDD_Template.md", names)
 
 
 class DetectionTests(ProgressViewTestBase):
