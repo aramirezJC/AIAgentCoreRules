@@ -52,6 +52,12 @@ way, with its TDD and diagrams:
 - **Task list.** When the TDD has no V-phases, tasks in `<Name>_TaskList.md` are listed under
   Phase 4 instead. Both task forms are read: the one-line `- {id:, status:, title:}` form and
   the multi-line `- task: "<text>"` form with an indented `status: "[x]"` line (no id).
+- **Batches.** When `/publish-batch` has planned a task's batches, the task shows a
+  `batch N of M` pill (N = `merged` + 1, M = the number of `plan` titles). The pill links the
+  batch's `open_pr` on GitHub, and hovering it shows the batch title. After the last batch
+  merges it reads `batches done`. The task is matched by id: the TDD table's `#` column, or the
+  task list's `{id:}`. TDD rows without a `#` column and multi-line task-list entries have no
+  id, so they never show a batch.
 - **Consistency findings.** Once the Gate 1 handoff block is written, its
   `consistency_findings` list (Sub-phase 1c's findings, each tagged ✅/⚠️/❌ with its outcome)
   is shown as a nested list under Phase 1's "Sub-phase 1c" step. Before that, or when the list

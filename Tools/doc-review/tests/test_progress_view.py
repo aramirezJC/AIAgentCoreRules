@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 TOOL_DIR = Path(__file__).resolve().parents[1]
@@ -133,6 +134,40 @@ Intro paragraph.
 | Title | Status |
 | --- | --- |
 | Not a task | [ ] |
+"""
+
+BATCHES_TDD_MD = """## Development Plan
+
+### V0 — Core
+
+| # | Title | Status |
+| --- | --- | --- |
+| T1 | Contracts | [x] |
+| T2 | Router | [~] |
+| T3 | Untouched | [ ] |
+"""
+
+BATCHES_YAML = """batches:                 # Phase 4: per task id, written by /publish-batch
+                         #   T9:
+                         #     plan: ["commented out"]
+  T1:
+    branch:  "feature/Demo/T1"
+    plan:    ["Contracts", "Tests"]
+    merged:  2
+    open_pr: null
+    prs:     [21, 22]
+  T2:
+    branch:  "feature/Demo/T2"
+    base:    "user/me/demo"
+    plan:    ["Router interface", 'Router impl', "Glue"]
+    merged:  1
+    open_pr: 31
+    prs:     [30, 31]
+  1:
+    plan:    ["Only batch"]
+    merged:  0
+    open_pr: null
+next_field: "not part of the block"
 """
 
 PULL_REQUESTS_YAML = """pull_requests:
@@ -278,6 +313,40 @@ class BuildModelTests(ProgressViewTestBase):
         self.assertEqual([[pr["number"] for pr in d["pull_requests"]] for d in dev_phases], [[11, 12], []])
         self.assertEqual({repo_dir for _, repo_dir in calls}, {self.feature_dir})
 
+    def write_batches(self):
+        self.write_progress("4_implementation")
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + BATCHES_YAML + "```\n")
+
+    def test_batches_show_batch_n_of_m_on_the_matching_tdd_task(self):
+        self.write_batches()
+        self.doc_path.write_text(BATCHES_TDD_MD)
+        model = build_model(self.progress_path, self.process_dir, pr_url=lambda n, d: f"https://gh/pull/{n}")
+        tasks = self.phase(model, "4_implementation")["dev_phases"][0]["tasks"]
+        self.assertEqual(tasks[1]["batch"], {"current": 2, "total": 3, "done": False, "title": "Router impl",
+                                             "open_pr": 31, "open_pr_url": "https://gh/pull/31"})
+        self.assertIsNone(tasks[2]["batch"])
+
+    def test_batches_are_done_when_every_planned_batch_merged(self):
+        self.write_batches()
+        self.doc_path.write_text(BATCHES_TDD_MD)
+        task = self.phase(self.model(), "4_implementation")["dev_phases"][0]["tasks"][0]
+        self.assertEqual(task["batch"], {"current": 2, "total": 2, "done": True, "title": "",
+                                         "open_pr": None, "open_pr_url": ""})
+
+    def test_batches_attach_to_task_list_ids_and_ignore_comment_lines(self):
+        self.write_batches()
+        (self.feature_dir / "Demo_TaskList.md").write_text(TASK_LIST_MD)
+        tasks = self.phase(self.model(), "4_implementation")["stages"][0]["tasks"]
+        self.assertEqual(tasks[0]["batch"]["title"], "Only batch")
+        self.assertEqual((tasks[0]["batch"]["current"], tasks[0]["batch"]["total"]), (1, 1))
+        self.assertEqual([t["batch"] for t in tasks[1:]], [None, None])
+
+    def test_no_batches_block_leaves_every_task_without_a_batch(self):
+        self.write_progress("4_implementation")
+        self.doc_path.write_text(BATCHES_TDD_MD)
+        tasks = self.phase(self.model(), "4_implementation")["dev_phases"][0]["tasks"]
+        self.assertEqual([t["batch"] for t in tasks], [None, None, None])
+
     def test_pr_refresh_stamp_only_when_prs_are_linked(self):
         self.write_progress("4_implementation")
         self.assertEqual(pr_refresh_stamp(self.progress_path), 0.0)
@@ -377,6 +446,7 @@ class PrNotesTests(unittest.TestCase):
     def setUp(self):
         self._real_gh_json = pr_notes._gh_json
         pr_notes._cache.clear()
+        pr_notes._repo_urls.clear()
         self.calls = 0
 
         def fake_gh_json(args, repo_dir):
@@ -388,6 +458,16 @@ class PrNotesTests(unittest.TestCase):
     def tearDown(self):
         pr_notes._gh_json = self._real_gh_json
         pr_notes._cache.clear()
+        pr_notes._repo_urls.clear()
+
+    def test_pr_url_comes_from_the_github_origin_remote(self):
+        remotes = {"/ssh": "git@github.com:acme/game.git\n", "/https": "https://github.com/acme/game\n",
+                   "/other": "https://gitlab.com/acme/game.git\n"}
+        with mock.patch.object(pr_notes.subprocess, "run",
+                               side_effect=lambda args, cwd, **_: mock.Mock(returncode=0, stdout=remotes[cwd])):
+            self.assertEqual(pr_notes.pr_url(5, Path("/ssh")), "https://github.com/acme/game/pull/5")
+            self.assertEqual(pr_notes.pr_url(6, Path("/https")), "https://github.com/acme/game/pull/6")
+            self.assertEqual(pr_notes.pr_url(7, Path("/other")), "")
 
     def test_notes_merge_comments_review_bodies_and_inline_comments_by_date(self):
         pr = pr_notes.fetch_pr_notes(7, Path("."))

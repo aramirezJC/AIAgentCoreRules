@@ -155,7 +155,9 @@ per_stage:
   assignee:          "Name of engineer responsible"
 ```
 
-Populate the task table. Each task row: Title | Task | Assignee | Status (unchecked `[ ]` by default).
+Populate the task table. Each task row: # | Title | Task | Assignee | Status (unchecked `[ ]` by default).
+`#` is the task id — T1, T2 … numbered across the whole plan, never reused or renumbered;
+/publish-batch and the doc-review Progress tab key on it.
 Title is a short, human-readable task name (a few words), ready to become the Jira ticket summary.
 
 Add as many stages as needed. The "Final Touches" stage is always included — see below.

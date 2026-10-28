@@ -105,6 +105,10 @@ PAGE_TEMPLATE = """<!doctype html>
   .dev-phase .note-meta a {{ color: #9aa3b5; }}
   .dev-phase .note-body {{ white-space: pre-wrap; color: #e4e6eb; }}
   .dev-phase .empty {{ color: #5c6577; margin: 4px 0 0 4px; }}
+  /* /publish-batch progress on a task: batch N of M, linked to the batch's open PR. */
+  .phase .pill.batch {{ background: #333944; color: #e4e6eb; }}
+  .phase .pill.batch.done {{ background: var(--ok); color: #10141c; }}
+  .phase .pill.batch a {{ color: #6cb6ff; }}
 {perf_css}
 </style>
 </head>
@@ -188,15 +192,27 @@ PAGE_TEMPLATE = """<!doctype html>
     return '<span class="mark ' + state + '">' + glyph + '</span>';
   }}
 
+  function batchHtml(batch) {{
+    if (!batch) return '';
+    if (batch.done) return ' <span class="pill batch done">batches done (' + batch.total + ')</span>';
+    const pr = batch.open_pr == null ? '' : ' · ' + (batch.open_pr_url
+      ? '<a href="' + escapeHtml(batch.open_pr_url) + '" target="_blank" rel="noopener">#' + escapeHtml(batch.open_pr) + '</a>'
+      : '#' + escapeHtml(batch.open_pr));
+    return ' <span class="pill batch" title="' + escapeHtml(batch.title) + '">batch ' + batch.current + ' of ' + batch.total + pr + '</span>';
+  }}
+
+  function taskHtml(task) {{
+    return '<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml((task.id ? task.id + ' · ' : '') + task.title)
+      + batchHtml(task.batch) + '</li>';
+  }}
+
   function devPhaseHtml(dev) {{
     const done = dev.tasks.filter((task) => task.status === "done").length;
     const allDone = dev.tasks.length > 0 && done === dev.tasks.length;
     const parts = ['<div class="dev-phase"><div class="stage">' + markHtml(allDone ? "done" : "todo") + escapeHtml(dev.title) + '</div>',
       '<details data-key="' + escapeHtml(dev.key) + ':tasks"' + (dev.open ? ' open' : '') + '><summary>Tasks ('
         + done + '/' + dev.tasks.length + ')</summary><ul>'];
-    dev.tasks.forEach((task) => {{
-      parts.push('<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml((task.id ? task.id + ' · ' : '') + task.title) + '</li>');
-    }});
+    dev.tasks.forEach((task) => parts.push(taskHtml(task)));
     const prs = dev.pull_requests || [];
     const noteCount = prs.reduce((sum, pr) => sum + pr.notes.length, 0);
     parts.push('</ul></details><details data-key="' + escapeHtml(dev.key) + ':prs"><summary>PR notes ('
@@ -250,9 +266,7 @@ PAGE_TEMPLATE = """<!doctype html>
         const devPhases = phase.dev_phases || [];
         (devPhases.length ? [] : phase.stages).forEach((stage) => {{
           parts.push('<div class="stage">' + escapeHtml(stage.title) + '</div><ul>');
-          stage.tasks.forEach((task) => {{
-            parts.push('<li class="' + task.status + '">' + markHtml(task.status) + escapeHtml(task.id + ' · ' + task.title) + '</li>');
-          }});
+          stage.tasks.forEach((task) => parts.push(taskHtml(task)));
           parts.push('</ul>');
         }});
         devPhases.forEach((dev) => parts.push(devPhaseHtml(dev)));
