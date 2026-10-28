@@ -87,6 +87,9 @@ Ask:
 
 ```yaml
 architecture_checks:
+  - "Before drafting, load the host SystemIndex's SystemPatterns entries that match the feature
+     (e.g. GemEventPattern, PrizeFlowPattern); the TDD is now the main design document, so pattern
+     guidance must apply here, not only in Phase 3."
   - Are the main classes/systems named?
   - Are the data flow and ownership clear?
   - "Note: the TDD is the feature's only design document. Capture as much as is known here,

@@ -119,6 +119,14 @@ phases:
     recommended_model: sonnet
 ```
 
+```yaml
+consumers:   # renaming or renumbering a phase means updating every one of these
+  progress_view: "Tools/doc-review/progress_view.py parses phase keys and files: step headings must match 'Step N —', 'Category N' or 'Sub-phase Na'; gates by `phase_completed: \"Phase N\"`"
+  progress_view_tests: "Tools/doc-review/tests/test_progress_view.py fixtures"
+  retrospective: "Phase8_Retrospective.md `phase_N_<name>` keys"
+  in_flight: "`current_phase` in every in-flight <Feature>_Progress.md"
+```
+
 ---
 
 ## Handoff Format
