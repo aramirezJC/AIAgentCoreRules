@@ -133,7 +133,13 @@ phase_handoff:
   key_decisions:     [decisions made this phase]
   carry_forward:     [information the next phase needs]
   open_items:        [anything deferred or unresolved]
+  consistency_findings:  # Phase 1 only — Sub-phase 1c's findings, each pre-tagged ✅/⚠️/❌
+    - "✅ or ⚠️ or ❌ <finding> — <outcome: acknowledged/reworked, one line why>"
 ```
+
+`consistency_findings` is rendered by the local doc-review preview server as a sub-item nested
+under Phase 1's "Sub-phase 1c — Consistency and Gap Review" step once this block is written —
+see `Systems/LocalDocReview.md` (host metadata repo) and `Tools/doc-review/progress_view.py`.
 
 ---
 

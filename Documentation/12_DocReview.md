@@ -52,6 +52,10 @@ way, with its TDD and diagrams:
 - **Task list.** When the TDD has no V-phases, tasks in `<Name>_TaskList.md` are listed under
   Phase 4 instead. Both task forms are read: the one-line `- {id:, status:, title:}` form and
   the multi-line `- task: "<text>"` form with an indented `status: "[x]"` line (no id).
+- **Consistency findings.** Once the Gate 1 handoff block is written, its
+  `consistency_findings` list (Sub-phase 1c's findings, each tagged ✅/⚠️/❌ with its outcome)
+  is shown as a nested list under Phase 1's "Sub-phase 1c" step. Before that, or when the list
+  is empty, the step shows nothing extra.
 - **Current phase.** Highlighted in blue.
 - **Gate to pass next, in red.** This is the current phase's gate until its handoff block is
   written, then the next unfinished phase's.

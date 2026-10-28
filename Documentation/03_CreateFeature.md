@@ -49,7 +49,26 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   OTA-configurable content), notes and future work. Each section is agreed with the engineer
   before moving on. The data reconciliation strategy cannot be left blank; if it is undecided it
   is marked TBD and logged as an open item.
-- **1c consistency and gap review**, **1d metrics**, **1e document generation**.
+  The Architecture section embeds each `Diagrams/*.mmd` diagram inline, each in its own
+  collapsible `<details><summary>Mermaid Diagram: <Name></summary>` block holding a fenced
+  `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
+  Diagrams are validated locally before they are embedded or edited, and the template's
+  placeholder text is replaced once the section has content (see [[TDD_Template]]).
+- **1c consistency and gap review** — findings are a numbered list, each tagged ✅ (passes),
+  ⚠️ (passes but needs attention) or ❌ (fails). For every ⚠️ or ❌ the engineer chooses to
+  **acknowledge and continue** or **rework now**, and the outcome is recorded beside the finding.
+  An acknowledged ❌ is logged as a Gate 1 open item with an owner; it does not block the gate.
+  The final list goes into the Gate 1 handoff's `consistency_findings` field, and the doc-review
+  [[12_DocReview#Progress tab|Progress tab]] shows it under the 1c step.
+- **1d metrics** — a one-time reminder of `/inaccuracy`, `/iteration` and `/end-session`. The
+  lane and title are already set by `/feature` or `/resume-work`, so this step no longer sets them.
+- **1e document generation**.
+- **1f external publish (optional)** — the agent asks whether to publish the TDD to Confluence
+  and its diagrams to Miro now. If yes, it loads [[ExternalDocPass|External Doc Pass]] and the
+  host's doc-conventions file, publishes the TDD, pushes each diagram to its Miro board in the
+  same pass (never before the Confluence page exists), embeds the board links in the page's
+  "Architecture Diagrams (Miro)" subsection, and records both pages in the progress file's
+  `sources_of_truth`. If no, it is not asked again; publishing can happen later from any phase.
 - **Pre-publish sweep** — before publishing, every decision changed in the session is grepped
   for across the TDD and its diagram sources, and earlier confirmed sections that contradict it are
   fixed (real design conflicts go to the engineer).
@@ -142,6 +161,7 @@ phase_handoff:
   key_decisions:     []
   carry_forward:     []   # what the next phase needs
   open_items:        []   # deferred or unresolved
+  consistency_findings: []  # Phase 1 only — 1c's ✅/⚠️/❌ findings with their outcome
 ```
 
 This block is appended to the feature's progress file **before** the session closes.

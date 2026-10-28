@@ -34,14 +34,30 @@ too. Remove either tag from this line if the document ends up not using it.
 [Insert summary of the system]
 
 ## Architecture
-[Insert architecture diagram and/or describe high level notes]
+[Describe the high-level components and how they interact. Replace this bracket entirely — do not
+leave it alongside the Architecture Diagrams subsection below once this section has real content.]
 
-### Architecture Diagrams (Miro) [Optional — only if the architecture includes diagrams]
+### Architecture Diagrams [Optional — only if the architecture includes diagrams]
 [Diagram sources live in `Diagrams/*.mmd` (classDiagram / sequenceDiagram / flowchart). Validate
 every diagram locally before embedding it here or pushing it to a board — see "Validating a local
-diagram" in [[ExternalDocPass]]. Publishing or updating a board follows the same file's "Diagrams
-reviewed on a board" section: iterate the local source against a local render, push once per
-Publish/Review pass, never per revision.]
+diagram" in [[ExternalDocPass]]. Embed each diagram inline, right here, in its own collapsible
+block so the document stays self-contained:
+
+<details>
+<summary>Mermaid Diagram: <Name></summary>
+
+<one line describing what this diagram shows>
+
+```mermaid
+<diagram source>
+```
+
+</details>
+
+Publishing to a Miro board follows the same file's "Diagrams reviewed on a board" section: iterate
+the local source against a local render, push once per Publish/Review pass, never per revision. Its
+Miro embed/frame links live in the page published to Confluence (see the host's doc-conventions
+file), not in this local Markdown copy.]
 
 ## Best Practices
 [Rules an implementer of this feature must follow, grouped by the strongest mechanism that can

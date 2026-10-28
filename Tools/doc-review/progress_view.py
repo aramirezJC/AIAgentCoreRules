@@ -9,6 +9,8 @@ same way session_lifecycle.py reads them. Sources:
   - <Name>_TDD.md (optional)              "### V<n> — ..." development phases and their task tables,
                                           nested under the implementation phase (replace the task list)
   - Progress.md pull_requests block       "  V0: [9923, 9930]" -> each PR's notes, fetched with gh (pr_notes.py)
+  - Progress.md phase_handoff block       "  consistency_findings: [...]" -> Sub-phase 1c's findings
+                                          (each pre-tagged ✅/⚠️/❌ by the agent), nested under the "1c" step
 """
 import re
 from pathlib import Path
@@ -18,6 +20,7 @@ import pr_notes
 
 CREATE_FEATURE_DIR = Path(__file__).resolve().parents[2] / "Processes" / "CreateFeature"
 IMPLEMENTATION_PHASE_KEY = "4_implementation"
+CONSISTENCY_STEP_KEY = "1c"
 
 PHASE_KEY_LINE = re.compile(r"^  (\d+)_(\w+):\s*$")
 PHASE_FIELD_LINE = re.compile(r"^    (file|gate):\s*(.+?)\s*$")
@@ -36,6 +39,8 @@ DEV_PHASE_HEADING = re.compile(r"^###\s+(V\d+[a-z]?)\b.*$")
 TABLE_SEPARATOR_ROW = re.compile(r"^[\s|:-]+$")
 MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
 PR_PHASE_LINE = re.compile(r"^\s+(V\d+[a-z]?):\s*\[([^\]]*)\]")
+CONSISTENCY_FINDINGS_LINE = re.compile(r"^\s{2}consistency_findings:\s*$")
+CONSISTENCY_FINDINGS_EMPTY_LINE = re.compile(r"^\s{2}consistency_findings:\s*\[\s*\]\s*$")
 
 
 def find_progress_file(doc_path: Path) -> Optional[Path]:
@@ -73,6 +78,7 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     current_key = _quoted_field(progress_text, "current_phase") or ""
     completed_numbers = {int(m.group(1)) for m in map(PHASE_COMPLETED_LINE.match, progress_text.splitlines()) if m}
     done_items = _checkpoint_done(progress_text)
+    consistency_findings = _consistency_findings(progress_text)
     task_list = task_list_path(progress_path)
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
     tdd = tdd_path(progress_path)
@@ -93,6 +99,7 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
         steps = _steps(process_dir / phase["file"])
         for step in steps:
             step["done"] = completed or (is_current and _step_mentioned(step, done_items))
+            step["findings"] = consistency_findings if step["key"] == CONSISTENCY_STEP_KEY else []
         phases.append(
             {
                 "key": phase["key"],
@@ -178,6 +185,25 @@ def _checkpoint_done(progress_text: str) -> List[str]:
             in_done = True
             continue
         if in_done:
+            item = DONE_ITEM_LINE.match(line)
+            if not item:
+                break
+            items.append(item.group(1))
+    return items
+
+
+def _consistency_findings(progress_text: str) -> List[str]:
+    """Sub-phase 1c's findings, each pre-tagged by the agent with a status emoji (✅/⚠️/❌), written
+    into the Gate 1 phase_handoff block once the gate is confirmed -- empty until then."""
+    items: List[str] = []
+    in_block = False
+    for line in progress_text.splitlines():
+        if CONSISTENCY_FINDINGS_EMPTY_LINE.match(line):
+            return []
+        if CONSISTENCY_FINDINGS_LINE.match(line):
+            in_block = True
+            continue
+        if in_block:
             item = DONE_ITEM_LINE.match(line)
             if not item:
                 break

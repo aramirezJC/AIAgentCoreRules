@@ -90,6 +90,15 @@ architecture_checks:
   - Are the main classes/systems named?
   - Are the data flow and ownership clear?
   - Note: detailed class design happens in Phase 3 — capture intent here, not implementation.
+  - "If diagrams exist (Diagrams/*.mmd), embed each one inline in this section under its own
+     collapsible <details><summary>Mermaid Diagram: <Name></summary> block holding a fenced
+     ```mermaid``` code block — do not just point to the file path in prose. A reference-only
+     mention is a stale-document artifact of iterating diagrams through the local preview server
+     without folding the result back into the TDD; the document must stay self-contained."
+  - "Validate a diagram locally (see 'Validating a local diagram' in [[ExternalDocPass]]) before
+     embedding it or editing an already-embedded one."
+  - "Replace the template's placeholder bracket text with real prose — no leftover
+     '[Insert architecture diagram...]' once the section has content."
 ```
 
 ---
@@ -266,20 +275,34 @@ consistency_checks:
   - Are the BI calls for this feature identified, even if not yet implemented?
 ```
 
-Present findings as a numbered list. Discuss each gap with the engineer until resolved or explicitly deferred with an owner and follow-up date.
+Present findings as a numbered list, each line prepended with a status emoji:
+
+```yaml
+finding_status:
+  "✅": "Passes cleanly — no action needed, listed for completeness."
+  "⚠️": "Passes but needs attention — a real gap or omission, but not necessarily wrong."
+  "❌": "Fails — a real conflict, contradiction, or missing required piece."
+```
+
+For every ⚠️ or ❌ finding, ask the engineer to either:
+- **acknowledge it and continue** — the current state is intentional, no rework needed, or
+- **rework it now** — fix it before moving on to 1d.
+
+Record the outcome next to the finding (`acknowledged` or `reworked`, one line on why). An
+acknowledged ❌ is not silently dropped: log it as an open item at Gate 1 with an owner, the same as
+a TBD. Do not block the gate on an acknowledged item — that is what acknowledging it means.
+
+Carry the finalized list (status emoji + finding + outcome, one string per line) into the Gate 1
+`phase_handoff` block's `consistency_findings` field (see Handoff Format in index.md). The preview
+server's Progress tab renders it as a sub-item under this step once that block is written.
 
 ---
 
 ## Sub-phase 1d — Metrics
 
-Session metrics are already running (SessionStart hook — see MetaRouter Session Lifecycle).
-Make sure the lane and title are recorded:
-
-```bash
-python3 <lifecycle script> set --lane feature --title "<FeatureName>"
-```
-
-Remind the engineer once:
+Session metrics are already running (SessionStart hook — see MetaRouter Session Lifecycle), and the
+lane/title are already set by `/resume-work` or `/feature` before this phase file loads. Remind the
+engineer once:
 - `/inaccuracy <reason>` immediately after correcting an agent mistake.
 - `/iteration <description>` when deliberately changing direction or refining scope.
 - `/end-session` at the end of every working session — each session of this feature gets its own metrics.
@@ -311,6 +334,24 @@ use_case_format:
   - id: 1
     description: "Scenario description"
     solution: "How it is handled (or TBD)"
+```
+
+---
+
+## Sub-phase 1f — External Publish (optional)
+
+Ask:
+> "Do you want to publish this TDD to Confluence and its architecture diagrams to Miro now?"
+
+```yaml
+if_yes:
+  - "Load [[ExternalDocPass]] and the host's doc-conventions file (e.g. ConfluenceDocs.md) before the first publish of this session — required even if a publish workflow was already set up in an earlier session."
+  - "Publish the TDD to Confluence per ExternalDocPass's Publish pass."
+  - "Push each diagram to its Miro board per 'Diagrams reviewed on a board', in the same pass — never before the Confluence page exists."
+  - "Embed the Miro board/frame links in the Confluence page's 'Architecture Diagrams (Miro)' subsection (see the host's doc-conventions file) on that same pass."
+  - "Record both pages in the progress file's `sources_of_truth` (kind, id, title, version)."
+if_no:
+  - "Skip. The engineer can publish later from any phase via [[ExternalDocPass]] — it is not re-asked automatically."
 ```
 
 ---

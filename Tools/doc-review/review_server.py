@@ -87,6 +87,9 @@ PAGE_TEMPLATE = """<!doctype html>
   .mark.partial {{ color: #f0c674; }}
   .phase ul {{ list-style: none; margin: 6px 0 0; padding-left: 4px; font-size: 14px; }}
   .phase li.done {{ color: #b7bcc7; }}
+  /* Sub-phase 1c's consistency-review findings, nested under its step once Gate 1 is written. */
+  .phase ul.findings {{ list-style: none; margin: 4px 0 2px 20px; padding: 0; font-size: 13px; color: #b7bcc7; }}
+  .phase ul.findings li {{ margin: 2px 0; }}
   .phase .stage {{ margin: 8px 0 0 4px; font-size: 13px; color: #9aa3b5; font-weight: 600; }}
   .phase .stage + ul {{ padding-left: 16px; }}
   .gate {{ margin-top: 8px; font-size: 13px; color: #9aa3b5; }}
@@ -233,7 +236,14 @@ PAGE_TEMPLATE = """<!doctype html>
           + escapeHtml(phase.title) + (phase.current ? ' <span class="pill current">current</span>' : '') + '</h2><ul>');
         phase.steps.forEach((step) => {{
           const state = step.done ? "done" : "todo";
-          parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title) + '</li>');
+          parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title));
+          const findings = step.findings || [];
+          if (findings.length) {{
+            parts.push('<ul class="findings">');
+            findings.forEach((finding) => parts.push('<li>' + escapeHtml(finding) + '</li>'));
+            parts.push('</ul>');
+          }}
+          parts.push('</li>');
         }});
         parts.push('</ul>');
         // The TDD's V-phases replace the task list when the TDD has them.

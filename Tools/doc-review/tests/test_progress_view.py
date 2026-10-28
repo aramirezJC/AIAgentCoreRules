@@ -45,7 +45,9 @@ phases:
 
 PHASE_FILES = {
     "Phase1_Intake.md": "## apply: on-demand\n## Sub-phase 1a — GDD Conversion\n### Section: Objective\n"
-                        "## Sub-phase 1b — TDD Section-by-Section\n## Gate 1 — Intake Complete\n"
+                        "## Sub-phase 1b — TDD Section-by-Section\n"
+                        "## Sub-phase 1c — Consistency and Gap Review\n"
+                        "## Gate 1 — Intake Complete\n"
                         "## Router check (used by /end-session)\n",
     "Phase2_Discovery.md": "## Load Rules\n## Explore the Codebase\n## Gate 2 — Discovery Report\n",
     "Phase3_Design.md": "## Step 1 — Design Proposal\n## Step 2 — Architecture Diagrams\n## Gate 3 — Design Approved\n",
@@ -139,8 +141,12 @@ PULL_REQUESTS_YAML = """pull_requests:
 """
 
 
-def _gate_block(label):
-    return f'```yaml\nphase_handoff:\n  phase_completed:   "{label}"\n  open_items: []\n```\n'
+def _gate_block(label, findings=()):
+    findings_yaml = ""
+    if findings:
+        items = "\n".join(f'    - "{finding}"' for finding in findings)
+        findings_yaml = f"\n  consistency_findings:\n{items}"
+    return f'```yaml\nphase_handoff:\n  phase_completed:   "{label}"\n  open_items: []{findings_yaml}\n```\n'
 
 
 class ProgressViewTestBase(unittest.TestCase):
@@ -162,7 +168,8 @@ class ProgressViewTestBase(unittest.TestCase):
 
     def write_progress(self, current, done=(), gates=()):
         done_text = "\n".join(f'    - "{item}"' for item in done)
-        text = PROGRESS_MD.format(current=current, done=done_text, gates="\n".join(_gate_block(g) for g in gates))
+        gate_blocks = [_gate_block(*g) if isinstance(g, tuple) else _gate_block(g) for g in gates]
+        text = PROGRESS_MD.format(current=current, done=done_text, gates="\n".join(gate_blocks))
         text = text.replace("  done:\n\n", "  done: []\n")  # no items -> the template's "done: []" form
         self.progress_path.write_text(text)
 
@@ -184,7 +191,8 @@ class BuildModelTests(ProgressViewTestBase):
     def test_steps_skip_apply_gate_router_and_subsections(self):
         self.write_progress("1_intake")
         titles = [s["title"] for s in self.phase(self.model(), "1_intake")["steps"]]
-        self.assertEqual(titles, ["Sub-phase 1a — GDD Conversion", "Sub-phase 1b — TDD Section-by-Section"])
+        self.assertEqual(titles, ["Sub-phase 1a — GDD Conversion", "Sub-phase 1b — TDD Section-by-Section",
+                                   "Sub-phase 1c — Consistency and Gap Review"])
 
     def test_completed_phases_are_those_with_a_handoff_block_and_all_their_steps_are_done(self):
         self.write_progress("3_design", gates=["Phase 1 — Intake", "Phase 2 — Discovery"])
@@ -275,6 +283,20 @@ class BuildModelTests(ProgressViewTestBase):
         self.assertEqual(pr_refresh_stamp(self.progress_path), 0.0)
         self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + PULL_REQUESTS_YAML + "```\n")
         self.assertGreater(pr_refresh_stamp(self.progress_path), 0.0)
+
+    def test_consistency_findings_are_nested_under_the_1c_step_once_the_gate_is_written(self):
+        findings = ["✅ No conflicts found", "⚠️ Final Touches gap acknowledged"]
+        self.write_progress("2_discovery", gates=[("Phase 1 — Intake", findings)])
+        steps = self.phase(self.model(), "1_intake")["steps"]
+        step_1c = next(s for s in steps if s["key"] == "1c")
+        self.assertEqual(step_1c["findings"], findings)
+        self.assertTrue(all(s["findings"] == [] for s in steps if s["key"] != "1c"))
+
+    def test_consistency_findings_are_empty_before_the_gate_is_written(self):
+        self.write_progress("1_intake")
+        steps = self.phase(self.model(), "1_intake")["steps"]
+        step_1c = next(s for s in steps if s["key"] == "1c")
+        self.assertEqual(step_1c["findings"], [])
 
     def test_header_fields(self):
         self.write_progress("1_intake")
