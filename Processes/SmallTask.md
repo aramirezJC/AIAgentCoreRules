@@ -16,6 +16,7 @@ fits_when:
   - "An existing example can be followed ('like xyz, but does abc')"
 escalate_when:
   - "Any fits_when condition breaks mid-task → stop, say so in one line, offer /feature"
+  - "Or offer a split: list two or more small tasks (each within fits_when), do the first here, and hand each remaining one off as a ready-to-run `claude \"/small-task …\"` command with self-contained context (files, formats, where to work)."
 lane_switch:
   - "Entering this lane from another one in the same session → offer the split as a choice first: continue here, or /new-session \"/small-task <ask>\". Relay the fresh-session offer `set` prints for a large session. The engineer decides."
 ```
@@ -49,6 +50,7 @@ steps:
     - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
+    - "Edits to a layer repo (AIAgentCoreRules, the host metadata repo): isolate with a worktree inside that repo (`git -C <layer> worktree add -b agent/<name> <layer>/.claude/worktrees/<name> HEAD`), not EnterWorktree, which isolates only the host project. Land with /land-worktree using `install.py --project <layer>`."
   5b_audit:   # checkpoint — do not start step 6 until it has run
     - "Run /audit on every changed file, including debug tooling and tests. Fix or report each violation."
     - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."

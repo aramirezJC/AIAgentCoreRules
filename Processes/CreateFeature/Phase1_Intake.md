@@ -315,16 +315,20 @@ With all TDD sections complete and reviewed, produce the output documents:
 
 **`[FeatureName]_TDD.md`** — fill `../Templates/TDD_Template.md` with all gathered content. Set version to `1.0.0`.
 
-**`[FeatureName]_TaskList.md`** — extract all tasks from all Development Plan stages in order:
+**`[FeatureName]_TaskList.md`** — extract all tasks from all Development Plan stages in order, one line per task:
 
 ```yaml
 task_list_format:
   - stage: "V0 — Core Loop"
     tasks:
-      - title: "Short task name (Jira summary)"
-        task: "Task description"
-        assignee: "Name"
-        status: "[ ]"
+      - {id: T1, status: "[ ]", title: "Short task name (Jira summary)", task: "Task description", assignee: "Name"}
+```
+
+```yaml
+task_list_rules:
+  id:     "T<n>, matching the TDD Development-plan '#' column. Every task has one: /publish-batch names branches feature/<FeatureName>/<id> and stops when a task has no id."
+  order:  "Keep id, status, title first and in that order — progress_view.py parses that one-line form."
+  status: "[ ] todo · [~] partial · [x] done"
 ```
 
 **`[FeatureName]_UseCases.md`** — compile all edge cases from the TDD plus any additional scenarios identified during 1b/1c:

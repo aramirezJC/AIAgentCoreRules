@@ -11,7 +11,10 @@ code. Smaller than a feature — no GDD, TDD or task list, and a single proposal
 - An existing example can be followed ("like xyz, but does abc").
 
 If any of these stops being true mid-task, the agent stops, says so in one line and offers
-`/feature <Name>`. It does not quietly turn a small task into a feature.
+`/feature <Name>`. It does not quietly turn a small task into a feature. It can offer a split
+instead: two or more small tasks that each fit, the first done in this session and each of the
+rest handed off as a ready-to-run `claude "/small-task …"` command with self-contained context
+(files, formats, where to work).
 
 When a session that started in another lane turns into a small task, the agent offers the split
 first: continue there, or open a fresh session with `/new-session "/small-task <ask>"`.
@@ -24,7 +27,7 @@ first: continue there, or open a fresh session with `/new-session "/small-task <
 | 2 | **Context** | Read the Systems entry for the owning system and any matching pattern, plus the entry of every system the change uses (sending or listening for messages, pushing or setting states, touching reward flows). Before writing any helper, tool, window, exporter, logger or importer, look for an existing one to extend: first in the host metadata (SystemIndex, Systems, SystemPatterns), then in the codebase (`codeindex.py`, `/discover`). Inspect the model example with the host's code index (`codeindex.py`) and read only the bodies being copied. If the change sends or listens for a message, read every listener's handler first. |
 | 3 | **Rules** | Coding Standards always; Architectural Principles for new classes or interfaces; Resource Management for subscriptions, timers and loads; Multi-Step Operations for async sequences; Testing Rules if tests are requested. |
 | 4 | **Propose** | List the files to create or modify, one line each. The agent waits for approval only when more than 2 files change or a public contract changes. A meta-review ticket or handoff note that already states Change and Done-when counts as the approved plan: the agent states the file list and proceeds, and waits only if its plan departs from it. The proposal always names the existing utility it extends and how it was found, or says none was found (with the searches) and asks whether there is an example to follow — in the same round-trip. An example the engineer points to that the metadata did not list becomes a retrospective proposal for a new index entry. |
-| 5 | **Implement** | Stop and Verify checks, then write the code. |
+| 5 | **Implement** | Stop and Verify checks, then write the code. Edits to a layer repo (AIAgentCoreRules or the host metadata repo) are isolated in a worktree inside that repo (`git -C <layer> worktree add …`), not with EnterWorktree, which isolates only the host project; they land with `/land-worktree` using `install.py --project <layer>`. |
 | 5b | **Audit** | Run `/audit` on every changed file, including debug tooling and tests. This is a checkpoint: verification doesn't start until it has run, and self-review is not a substitute. The retrospective flags a skipped audit. |
 | 6 | **Verify** | Run the host's compile check (`typecheck.py`). Tell the engineer how to try it (menu path, debug command, steps). When no C# changed (a Python tool, a skill, Markdown), run the changed tool against copies of real data instead and report what was exercised. |
 | 7 | **Close** | Offer `/end-session`. |

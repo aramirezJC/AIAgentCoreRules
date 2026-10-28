@@ -22,6 +22,10 @@ Assets/GitIgnoreAssets/Features/<FeatureName>/
   <FeatureName>_Progress.md      Resume state: gates passed and the current checkpoint
 ```
 
+Each task in the task list is one line with an id that matches the TDD development plan's `#`
+column — `- {id: T1, status: "[ ]", title: "..."}`. The preview's Progress tab parses that form,
+and `/publish-batch` names a task's branch after its id, so it stops on a task without one.
+
 ## The phases
 
 | # | Phase | Goal | Gate |
