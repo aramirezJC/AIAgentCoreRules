@@ -49,6 +49,8 @@ progress_file:
   on_gate:    "Append the phase_handoff block (below) under 'Gates Passed', set current_phase to the next phase, clear the Checkpoint section, update artifacts and the sources_of_truth versions."
   mid_phase:  "/checkpoint replaces the Checkpoint section — where work stopped and what comes next."
   on_resume:  "/resume-work <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
+  on_close:   "/close-feature <FeatureName> sets status abandoned, superseded, on_hold or complete (engineer picks; abandoned default) and appends to a '## Closed' history section. Checkpoint and Gates Passed are kept. Closed features are hidden from /active-features; `session_lifecycle.py features --closed` lists the reopenable ones."
+  on_reopen:  "/reopen-feature <FeatureName> returns abandoned, superseded or on_hold to in_progress and appends a reopen entry; complete is final. Resume afterwards with /resume-work."
 ```
 
 Write the gate block **before** closing the session. A gate that is confirmed in chat
