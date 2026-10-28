@@ -6,7 +6,7 @@ Resume state for the CreateFeature process. Written at every gate and by `/check
 ```yaml
 feature:        "[FeatureName]"
 current_phase:  "1_intake"          # phase key from CreateFeature/index.md
-status:         "in_progress"       # in_progress | at_gate | complete
+status:         "in_progress"       # in_progress | at_gate | complete | abandoned | superseded | on_hold (last three: /close-feature, undone by /reopen-feature)
 updated_at:     ""                  # ISO timestamp of the last write
 artifacts:      []                  # files in this folder the next phase needs, e.g. [FeatureName]_TDD.md
 sessions:       []                  # session folder names that worked on this feature — Phase 8 reads these
