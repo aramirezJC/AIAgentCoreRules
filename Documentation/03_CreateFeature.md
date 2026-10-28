@@ -14,11 +14,11 @@ personal, git-ignored path set in `CreateFeature/index.md`):
 ```
 Assets/GitIgnoreAssets/Features/<FeatureName>/
   <FeatureName>_GDD.md           AI-friendly copy of the source GDD
-  <FeatureName>_TDD.md           Technical design document
+  <FeatureName>_TDD.md           Technical design document — the only design doc; Phase 3 updates it
   <FeatureName>_TaskList.md      Ordered tasks from the development plan
   <FeatureName>_UseCases.md      Use cases and edge cases
   <FeatureName>_Discovery.md     Approved discovery report
-  <FeatureName>_Architecture.md  Approved class and sequence diagrams
+  Diagrams/*.mmd                 Diagram sources, embedded in the TDD
   <FeatureName>_Progress.md      Resume state: gates passed and the current checkpoint
 ```
 
@@ -32,7 +32,7 @@ and `/publish-batch` names a task's branch after its id, so it stops on a task w
 |---|---|---|---|
 | 1 | **Intake** | Convert the GDD into a TDD, task list, use cases and edge cases | All documents reviewed and approved; every TBD item has an owner |
 | 2 | **Discovery** | Load rules, explore the codebase, confirm every dependency is visible | Discovery report approved, with no missing source files |
-| 3 | **Design** | Propose architecture, class structure, public contracts, integration points and diagrams | Design explicitly approved — **no code is written before this gate** |
+| 3 | **Design** | Reconcile the TDD with Discovery: file plan, missing contracts, TBDs left for Phase 3, corrections — written back into the TDD | Design delta approved, or confirmed empty — **no code is written before this gate** |
 | 4 | **Implementation** | Write code file by file | Every file written, audited and acknowledged by the engineer |
 | 5 | **Unit Tests** | JSON deserialization, behavior and boundary tests traced to the use cases | All tests passing; deferred cases logged as follow-up tasks |
 | 6 | **Integration** | Wire into factories, registries and manifests; run generators | Project compiles; every integration step confirmed |
@@ -103,9 +103,17 @@ and **missing source** — a non-empty missing-source list blocks the gate.
 
 ### Phase 3 — Design
 
-A structural proposal (new and modified files, class structure, public contracts, integration
-steps, open questions), followed by two Mermaid diagrams: a class diagram and a sequence
-diagram. The engineer reviews and edits both before approving.
+A design delta, not a second design. The TDD is written in Phase 1, before Discovery reads the
+code, so this phase checks it against the Discovery report and fills only what is still open:
+a **File Plan** (task id, path, new/modified, responsibility) that Phase 4 works through, public
+contracts the TDD left out, a decision for every TBD left for Phase 3, and corrections where the
+code contradicts the TDD. A skip check comes first: when the TDD already covers all of that, the
+gate is a short confirmation and can close at the end of the Phase 2 session.
+
+Everything approved is written back into the TDD (version bump and Versions row), with the task
+list and use cases updated when a decision changes them. There is no separate
+`_Architecture.md` and no new diagrams: if the architecture changes, the existing `Diagrams/*.mmd`
+sources and their embedded copies in the TDD are updated and re-validated.
 
 ### Phase 4 — Implementation
 

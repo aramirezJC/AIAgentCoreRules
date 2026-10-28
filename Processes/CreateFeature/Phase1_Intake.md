@@ -89,7 +89,9 @@ Ask:
 architecture_checks:
   - Are the main classes/systems named?
   - Are the data flow and ownership clear?
-  - Note: detailed class design happens in Phase 3 — capture intent here, not implementation.
+  - "Note: the TDD is the feature's only design document. Capture as much as is known here,
+     including diagrams; Phase 3 only fills what is still open after Discovery (File Plan, missing
+     contracts, TBDs left for it) and updates these diagrams rather than drawing new ones."
   - "If diagrams exist (Diagrams/*.mmd), embed each one inline in this section under its own
      collapsible <details><summary>Mermaid Diagram: <Name></summary> block holding a fenced
      ```mermaid``` code block — do not just point to the file path in prose. A reference-only

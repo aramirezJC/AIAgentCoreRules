@@ -1,6 +1,6 @@
 # Technical Design Document — [Feature Name]
 
-> Fill all sections. This document is the output of Phase 1 and the input for Phase 2 Discovery and Phase 3 Design.
+> Fill all sections. This document is the output of Phase 1 and the input for Phase 2 Discovery. Phase 3 Design updates it in place (File Plan, resolved TBDs, diagram changes) — it is the feature's only design document.
 
 ---
 
@@ -58,6 +58,14 @@ Publishing to a Miro board follows the same file's "Diagrams reviewed on a board
 the local source against a local render, push once per Publish/Review pass, never per revision. Its
 Miro embed/frame links live in the page published to Confluence (see the host's doc-conventions
 file), not in this local Markdown copy.]
+
+### File Plan
+[Filled or completed in Phase 3 from the Discovery report; Phase 4 works through it task by task.
+May be partly filled in Phase 1 when the files are already known.]
+
+| Task | Path | New / Modified | Responsibility |
+|---|---|---|---|
+| T1 | | | |
 
 ## Best Practices
 [Rules an implementer of this feature must follow, grouped by the strongest mechanism that can

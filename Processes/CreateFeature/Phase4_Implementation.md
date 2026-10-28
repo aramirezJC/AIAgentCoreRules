@@ -35,7 +35,7 @@ run. Present each file to the engineer after writing it. Do not move to the next
 current one is acknowledged.
 
 After each acknowledgment, update the progress file's Checkpoint: add the file to `done`, marked
-`(audited)`, and set `next` to the following file from the design. Implementation is where a session most often
+`(audited)`, and set `next` to the following file from the TDD's File Plan. Implementation is where a session most often
 ends mid-phase.
 
 When a PR opens for one of the TDD's V-phases, run `/feature-pr <PR>`: it lists the PR under
