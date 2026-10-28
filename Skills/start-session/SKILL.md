@@ -17,6 +17,7 @@ step 0 and then their own `set` with a fixed lane — no separate `/start-sessio
 Lifecycle script (use the path from the Session tracking block if present):
 `GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py`
 
+
 ```yaml
 steps:
   - "Run: python3 <script> hook-start   # prints the tracking block; the folder is created by the set below"
@@ -46,3 +47,43 @@ e.g. an investigation into a crash is lane `investigation`, work type `bug_fix`.
 
 Do not ask the engineer to confirm the lane or work type unless the request is genuinely
 ambiguous; state the assumption in one line and continue (same rule as MetaRouter).
+
+## Codex session tracking
+
+The lifecycle tracker accepts Codex rollouts as well as Claude transcripts. In Codex,
+`CODEX_THREAD_ID` selects the exact thread; `--session-id` can select a known thread explicitly.
+It never picks the newest Codex thread. Missing or ambiguous rollouts fail without attaching
+another session's data. Rollouts are located below `$CODEX_HOME/sessions` (default
+`~/.codex/sessions`). Do not pass `unknown` or invent an ID.
+
+Run the existing commands from the host checkout:
+
+```bash
+python3 <lifecycle-script> hook-start
+python3 <lifecycle-script> set --lane other --work-type other --title "Session tooling"
+python3 <lifecycle-script> note --kind inaccuracy --source agent "Description of correction"
+python3 <lifecycle-script> compile
+```
+
+Use the appropriate lane/title for the actual task. `compile --final` belongs at session end.
+Session folders contain the agent type, notes, metrics and sanitized token reports. The existing
+session-support Codex parser supplies usage; cumulative token events must not be summed.
+Codex shell reads, including supported nested JavaScript exec commands, produce heuristic
+Bash rows in the router trace. Main-thread trace coverage does not imply complete child-agent
+trace coverage. Detailed standardized-operation attribution and comparison charts remain
+unavailable for Codex rather than showing misleading zeros. Token reports may still include
+child-agent telemetry supported by session-support.
+
+These parser changes do not install automatic hooks. Current Codex supports a trusted project
+`.codex/hooks.json` with `SessionStart`, `Stop` and `SessionEnd` command hooks calling
+`hook-start`, `hook-stop` and `hook-end`. Hook payloads supply `session_id` and `transcript_path`.
+Use the resolved lifecycle script path; preserve any existing hooks. Configure Stop with an
+adequate timeout (for example 30 seconds), and SessionEnd with its supported maximum of 3
+seconds. The Stop hook keeps metrics current even when closing a window does not end a thread.
+Trust/reload the project hooks in Codex before expecting automatic execution. No Claude hook
+execution is implied by a Codex skills installation.
+
+Reference: https://learn.chatgpt.com/docs/hooks . Transcript formats are not a stable hook API;
+keep synthetic regression fixtures and report parser failures as unavailable. Without a usable
+transcript, retain the sanitized usage report and `retro --path` HTML fallback.
+

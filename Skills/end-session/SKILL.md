@@ -38,12 +38,34 @@ steps:
   - "If the lane is not set: classify it now and run: python3 <script> set --lane <lane> --title \"<title>\""
   - "Feature lane, feature not complete: if work stopped partway through a phase, run /checkpoint first; if it stopped at a gate, confirm the gate block is in <FeatureName>_Progress.md."
   - "Run: python3 <script> compile --final     # prints the metrics.md path"
-  - "Read metrics.md. It has tokens, inaccuracies, iterations, the router trace and Runnable tool counts."
+  - "Read metrics.md when compilation succeeds. If tracking or compilation fails, use the HTML fallback below and continue closing the session."
 ```
 
 The router trace comes from the session transcript, not memory. Treat it as the record of
 what was actually loaded. Rows marked `Bash` are inferred from shell commands (a grep counts);
 rows marked `Read` are certain.
+
+
+### HTML fallback when tracking is unavailable
+
+Retrospective HTML rendering does not require session tracking. If `set` or `compile --final`
+fails because the transcript or session is unavailable, continue the retrospective and mark
+metrics and the router trace unavailable. Never invent a session folder or use another session's
+metrics. Save `<FeatureName>_<Phase>_Retro.md` in the feature working folder; for other lanes,
+save a uniquely named retrospective under the project's `GitIgnoreReports/Retrospectives/`.
+Then always render and open the saved Markdown with:
+
+```bash
+python3 <lifecycle script> retro --path "<saved-retrospective.md>" --open
+```
+
+This bypasses session lookup and writes a matching `.html` beside the Markdown without copying
+or renaming the source. Missing metrics do not block rendering; charts without data are omitted.
+The proposal buttons use `retro --path` too, so later `--mark` updates the original Markdown and
+re-renders its page. `--path` cannot be combined with `--folder` or `--from`. If compilation fails
+but the current session folder is known, use its actual retrospective path. Open any separately
+available sanitized usage report alongside the HTML; do not stop at opening Markdown alone.
+If rendering or opening fails, report that failure and link the saved artifacts.
 
 ## Step 2 — Retrospective, scaled by lane
 

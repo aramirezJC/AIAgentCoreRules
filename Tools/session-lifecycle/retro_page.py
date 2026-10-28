@@ -368,18 +368,21 @@ def token_charts(folder):
 
 # ---------------------------------------------------------------- render
 
-def mark_command(script_path, folder, number, status):
+def mark_command(script_path, folder, number, status, retro_path=None):
+    if retro_path:
+        return 'python3 "%s" retro --path "%s" --mark %d --status %s --note "<what changed>"' % (
+            script_path, retro_path, number, status)
     return 'python3 "%s" retro --folder "%s" --mark %d --status %s --note "<what changed>"' % (
         script_path, folder, number, status)
 
 
-def proposal_cards(items, script_path, folder):
+def proposal_cards(items, script_path, folder, retro_path=None):
     if not items:
         return "<p class=\"muted\">No proposals.</p>"
     cards = []
     for item in items:
         status = item["status"]
-        command = mark_command(script_path, folder, item["n"], "applied")
+        command = mark_command(script_path, folder, item["n"], "applied", retro_path)
         actions = ""
         if status == "pending":
             actions = ('<div class="actions"><button type="button" data-copy="%s">Copy “mark applied” command</button>'
@@ -399,8 +402,8 @@ def proposal_cards(items, script_path, folder):
     return "\n".join(cards)
 
 
-def render(retro_path, script_path, metrics_name="metrics.md"):
-    """Write retro.html next to retro.md; returns its path."""
+def render(retro_path, script_path, metrics_name="metrics.md", standalone=False):
+    """Write retro.html, or a matching .html for a standalone path; returns its path."""
     with open(retro_path, errors="replace") as handle:
         text = handle.read()
     folder = os.path.dirname(os.path.abspath(retro_path))
@@ -426,7 +429,7 @@ def render(retro_path, script_path, metrics_name="metrics.md"):
             continue   # shown as the badges on each proposal
         nav.append('<a href="#%s">%s</a>' % (anchor, html.escape(heading)))
         if heading.lower() == "proposed changes":
-            inner = proposal_cards(items, script_path, folder)
+            inner = proposal_cards(items, script_path, folder, os.path.abspath(retro_path) if standalone else None)
         elif content is None:
             inner = charts
         else:
@@ -450,7 +453,7 @@ def render(retro_path, script_path, metrics_name="metrics.md"):
         "{{STATE}}": json.dumps({"open": counts["pending"]}),
     }.items():
         page = page.replace(key, value)
-    out_path = os.path.join(folder, "retro.html")
+    out_path = os.path.splitext(os.path.abspath(retro_path))[0] + ".html" if standalone else os.path.join(folder, "retro.html")
     with open(out_path, "w") as handle:
         handle.write(page)
     return out_path
