@@ -85,7 +85,7 @@ phases:
 
   4_implementation:
     file: ./Phase4_Implementation.md
-    goal: Write code file-by-file with per-file engineer acknowledgment
+    goal: Write code file-by-file, published per task in small batch PRs (/publish-batch) the engineer reviews and merges
     gate: All files written and engineer-reviewed
     recommended_agent: general-purpose
     recommended_model: sonnet         # run /audit on each file before presenting it
@@ -144,7 +144,7 @@ expected_loads:
   - "this index and the phase file for the session's phase"
   - "the rule files the phase names (Phase 4 re-reads CodingStandards and ArchitecturalPrinciples)"
 expected_tools:
-  4_implementation: ["/audit per file, before it is presented", typecheck.py]
+  4_implementation: ["/audit per file, before it is presented", typecheck.py, "/publish-batch per batch of C# files"]
   5_unit_tests:     ["/audit on test files", typecheck.py]
   6_integration:    ["/audit on changed files", typecheck.py]
   7_verification:   ["/audit over all created and modified files"]
