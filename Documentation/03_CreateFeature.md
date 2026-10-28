@@ -173,6 +173,8 @@ being summarised. The progress file (`<FeatureName>_Progress.md`) does.
 | Each approved file in Phase 4 | The file is added to the checkpoint's `done` list and `next` is set |
 | `/checkpoint` | The checkpoint is replaced: done, in flight, next action, pending decisions, notes |
 | `/end-session` mid-phase | `/checkpoint` runs automatically first |
+| `/close-feature <Name> [reason]` | Status set to the picked closing status — `abandoned` (default), `superseded`, `on_hold` or `complete` — and an entry appended to the `Closed` history section; checkpoint and gate blocks are kept. The feature drops off `/active-features` |
+| `/reopen-feature <Name>` | Status returned to `in_progress` from `abandoned`, `superseded` or `on_hold` (never from `complete`) and a reopen entry appended; `/resume-work` then continues from the kept checkpoint |
 
 To continue in a new session, run **`/resume-work <FeatureName>`**. The agent:
 
