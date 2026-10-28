@@ -506,9 +506,31 @@ PERF_SCRIPT = """
         + escapeHtml((session.compiled_at || "").slice(0, 16).replace("T", " ")) + ' &middot; ' + escapeHtml(session.folder) + '</div>');
       parts.push(perfStack(session.categories, colors));
       parts.push(perfCategoryTable(session.categories, colors, false));
+      const d = session.doc_review;
+      if (d && (d.count || d.miro_confluence.count)) {
+        const commands = Object.entries(d.commands).map(([name, n]) => escapeHtml(name) + ' ×' + n).join(", ");
+        parts.push('<div class="meta">Doc review preview: ' + d.count + ' call(s)' + (commands ? ' (' + commands + ')' : '')
+          + ', ' + perfCompact(d.tokens) + ' tokens &middot; via Miro/Confluence ≈ ' + perfCompact(d.equivalent)
+          + ' tokens, ' + d.round_trips + ' round-trips &middot; Miro/Confluence MCP calls: ' + d.miro_confluence.count
+          + ', ' + perfCompact(d.miro_confluence.tokens) + ' tokens</div>');
+      }
     }
     parts.push('</details>');
     return parts.join("");
+  }
+
+  function perfDocReview(d, tile) {
+    // Estimates: preview calls as measured; Miro/Confluence = token_breakdown.MIRO_CONFLUENCE_BY_COMMAND per call.
+    if (!d || !(d.count || d.miro_confluence.count)) return '';
+    return '<h2>Doc review preview vs Miro/Confluence</h2><div class="perf-tiles">'
+      + tile("Preview tokens", perfCompact(d.tokens) + ' <span class="meta">' + d.count + ' calls</span>')
+      + tile("Same via Miro/Confluence", '≈ ' + perfCompact(d.equivalent) + ' <span class="meta">+' + d.round_trips + ' trips</span>')
+      + tile("Saved (est.)", perfCompact(Math.max(d.equivalent - d.tokens, 0)))
+      + tile("Miro/Confluence used", perfCompact(d.miro_confluence.tokens) + ' <span class="meta">' + d.miro_confluence.count + ' calls</span>')
+      + '</div><div class="meta">Preview: doc_review.py / mermaid_preview.py calls in ' + d.sessions + ' session(s). '
+      + 'Miro/Confluence estimate: averages of real MCP calls per operation (serve = page update + diagram upload, '
+      + 'comments = comment fetches, reply = comment post), listed in each retrospective\\'s savings note. '
+      + 'Used: measured Miro/Confluence MCP calls in ' + d.miro_confluence.sessions + ' session(s).</div>';
   }
 
   function renderPerf(id, src) {
@@ -527,6 +549,7 @@ PERF_SCRIPT = """
         '<h2>Distribution of session totals</h2><div class="perf-curve">' + perfBellCurve(o.totals)
           + '<div class="note">Bars: sessions per bin. Curve: normal fit to log10(tokens). Band: ±1σ. Dots: one per session.</div></div>',
         '<h2>Tokens by category, all sessions</h2>' + perfStack(o.categories, colors) + perfCategoryTable(o.categories, colors, true),
+        perfDocReview(o.doc_review, tile),
         '<h2>Sessions, newest first</h2>'];
       if (o.sessions > o.compiled) {
         parts.push('<div class="meta">' + (o.sessions - o.compiled) + ' session(s) without a compiled breakdown are listed but left out of the statistics.</div>');

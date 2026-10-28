@@ -103,6 +103,30 @@ class TestModel(PerfViewTestCase):
         overview = perf_view.build_model(self.root)["overview"]
         self.assertEqual((0, 0, 0.0, []), (overview["compiled"], overview["total"], overview["mean"], overview["categories"]))
 
+    def test_doc_review_block_defaults_to_zero_for_older_breakdowns(self):
+        self.write_three()
+        session = perf_view.build_model(self.root)["sessions"][0]
+        self.assertEqual((0, 0, 0, {"count": 0, "tokens": 0}),
+                         (session["doc_review"]["count"], session["doc_review"]["tokens"],
+                          session["doc_review"]["equivalent"], session["doc_review"]["miro_confluence"]))
+
+    def test_overview_sums_doc_review_and_measured_miro_confluence(self):
+        self.write_three()
+        with_preview = dict(breakdown(2000, 500), doc_review={
+            "count": 3, "tokens": 900, "equivalent": 40000, "round_trips": 6, "commands": {"serve": 2, "reply": 1},
+            "miro_confluence": {"count": 0, "tokens": 0}})
+        with_mcp = dict(breakdown(3000, 500), doc_review={
+            "count": 1, "tokens": 100, "equivalent": 2400, "round_trips": 2, "commands": {"comments": 1},
+            "miro_confluence": {"count": 4, "tokens": 25000}})
+        self.write_session("2026-10-04_0900_a", "ffffffff6", "2026-10-04T09:00:00-07:00", age_seconds=86400,
+                           ended_at="2026-10-04T10:00:00-07:00", breakdown=with_preview)
+        self.write_session("2026-10-05_0900_b", "gggggggg7", "2026-10-05T09:00:00-07:00", age_seconds=86400,
+                           ended_at="2026-10-05T10:00:00-07:00", breakdown=with_mcp)
+        doc_review = perf_view.build_model(self.root)["overview"]["doc_review"]
+        self.assertEqual((2, 4, 1000, 42400, 8), (doc_review["sessions"], doc_review["count"], doc_review["tokens"],
+                                                  doc_review["equivalent"], doc_review["round_trips"]))
+        self.assertEqual({"sessions": 1, "count": 4, "tokens": 25000}, doc_review["miro_confluence"])
+
 
 class TestServerTab(PerfViewTestCase):
     def test_no_sessions_means_no_tab(self):
@@ -128,6 +152,7 @@ class TestServerTab(PerfViewTestCase):
         page = review_server.build_page([self.doc], live=False)
         self.assertIn('class="perf-view"', page)
         self.assertIn("function renderPerf(", page)
+        self.assertIn("function perfDocReview(", page)
         source = json.loads(review_server._collect_sources(review_server._tabs([self.doc]))["d1"])
         self.assertIn("Runnable tools", source["standardized_names"])
 
