@@ -90,6 +90,42 @@ class CommentsReadyFilterTests(unittest.TestCase):
 
         self.assertEqual(len(result["threads"]), 3, "--status all must not drop any thread")
 
+    def test_comments_json_includesRepliesAndCreatedBy(self):
+        thread_id = self.add("The quick brown fox jumps over the lazy dog.", "open")
+        self.store.add_reply(thread_id, "agent", "done")
+
+        listed = run_comments(self.doc_path)["threads"][0]
+
+        self.assertEqual(listed["created_by"], "engineer")
+        self.assertEqual([(r["author"], r["text"]) for r in listed["replies"]],
+                         [("engineer", "comment on: The quick brown fox jumps over the lazy dog."), ("agent", "done")],
+                         "--json must carry the reply bodies, not just the thread id and status")
+        self.assertFalse(listed["follow_up"], "the agent spoke last -- nothing to follow up")
+
+    def test_comments_engineerFollowUpOnAddressedThread_isSelectedByOpenFilter(self):
+        thread_id = self.add("Another distinct sentence lives here for testing purposes.", "open")
+        self.store.add_reply(thread_id, "agent", "fixed")
+        self.store.set_status(thread_id, "addressed", "agent")
+        self.store.add_reply(thread_id, "engineer", "not quite, also rename it")
+        self.add("## Section Two", "resolved")
+
+        result = run_comments(self.doc_path, status="open")
+
+        self.assertEqual([t["id"] for t in result["threads"]], [thread_id],
+                         "an engineer reply after the agent's must surface under --status open")
+        self.assertTrue(result["threads"][0]["follow_up"])
+
+    def test_comments_textMode_printsLastReplyUnderThread(self):
+        thread_id = self.add("The quick brown fox jumps over the lazy dog.", "open")
+        self.store.add_reply(thread_id, "agent", "done")
+        self.store.add_reply(thread_id, "engineer", "one more thing")
+        args = argparse.Namespace(doc=str(self.doc_path), status="all", json=False)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cmd_comments(args)
+
+        self.assertIn("last reply (follow-up) engineer: one more thing", out.getvalue())
+
 
 class InlineMarkerTests(unittest.TestCase):
     """U6: a quick @CLAUDE note in the source is listed alongside sidecar threads."""

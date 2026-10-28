@@ -61,6 +61,8 @@ RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
 # CreateFeature working folders, relative to the project root (Processes/CreateFeature/index.md
 # working_folder). Override with SESSION_FEATURES_ROOT or --features-root.
 DEFAULT_FEATURES_DIR = os.path.join("Assets", "GitIgnoreAssets", "Features")
+REOPENABLE_STATUSES = ("abandoned", "superseded", "on_hold")   # set by /close-feature; /reopen-feature undoes them
+FINISHED_STATUSES = ("complete",) + REOPENABLE_STATUSES        # hidden from /active-features and the start hint
 CREATE_FEATURE_INDEX = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "..", "Processes", "CreateFeature", "index.md")
 # hook-stop recompiles at most this often; the Stop hook fires after every reply.
 STOP_COMPILE_INTERVAL_SECONDS = 120
@@ -551,6 +553,15 @@ def breakdown_lines(state):
     for name, saving in sorted(breakdown["savings"].items(), key=lambda item: -item[1]["tokens"]):
         lines.append("| %s | %d | %s | %d |" % (name, saving["count"], "{:,}".format(saving["tokens"]),
                                                 saving["round_trips"]))
+    doc_review = breakdown.get("doc_review") or {}
+    measured = doc_review.get("miro_confluence") or {}
+    if doc_review.get("count") or measured.get("count"):
+        lines += ["", "Doc review preview: %d call%s, ~%s tokens; the same operations through Miro/Confluence "
+                  "≈ %s tokens and %d round-trips. Miro/Confluence MCP calls this session: %d, ~%s tokens."
+                  % (doc_review.get("count", 0), "" if doc_review.get("count") == 1 else "s",
+                     "{:,}".format(doc_review.get("tokens", 0)), "{:,}".format(doc_review.get("equivalent", 0)),
+                     doc_review.get("round_trips", 0), measured.get("count", 0),
+                     "{:,}".format(measured.get("tokens", 0)))]
     return lines
 
 
@@ -698,7 +709,16 @@ def yaml_value(text, field):
 
 
 def active_features(project_dir, features_root=None):
-    """Every CreateFeature progress file whose status is not complete, newest first."""
+    """Every CreateFeature progress file that is neither complete nor closed, newest first."""
+    return scan_features(project_dir, features_root, lambda status: status not in FINISHED_STATUSES)
+
+
+def closed_features(project_dir, features_root=None):
+    """Features closed by /close-feature that /reopen-feature can still reopen, newest first."""
+    return scan_features(project_dir, features_root, lambda status: status in REOPENABLE_STATUSES)
+
+
+def scan_features(project_dir, features_root, keep):
     root = features_root or os.environ.get("SESSION_FEATURES_ROOT") or os.path.join(project_dir, DEFAULT_FEATURES_DIR)
     models = phase_models()
     found = []
@@ -711,7 +731,7 @@ def active_features(project_dir, features_root=None):
         with open(path, errors="replace") as handle:
             text = handle.read()
         status = yaml_value(text, "status") or "unknown"
-        if status == "complete":
+        if not keep(status):
             continue
         phase = yaml_value(text, "current_phase")
         found.append({"feature": yaml_value(text, "feature") or name, "phase": phase, "phase_label": phase_label(phase),
@@ -727,6 +747,19 @@ def resume_command(feature):
 
 
 def cmd_features(args):
+    if args.closed:
+        features = closed_features(current_project_dir(), args.features_root)
+        if args.json:
+            print(json.dumps(features, indent=2))
+            return 0
+        if not features:
+            print("No closed features to reopen.")
+            return 0
+        print("Closed features (%d):" % len(features))
+        for f in features:
+            print("- %s · %s · %s · updated %s" % (f["feature"], f["phase_label"], f["status"], f["updated_at"][:10] or "?"))
+            print("  reopen: /reopen-feature %s" % f["feature"])
+        return 0
     features = active_features(current_project_dir(), args.features_root)
     if args.json:
         print(json.dumps([dict(f, resume=resume_command(f)) for f in features], indent=2))
@@ -1063,9 +1096,11 @@ def main():
     sub.add_parser("hook-stop").set_defaults(func=cmd_hook_stop)
     sub.add_parser("hook-prompt").set_defaults(func=cmd_hook_prompt)
     sub.add_parser("hook-bash").set_defaults(func=cmd_hook_bash)
-    features = sub.add_parser("features", help="list CreateFeature features that are not complete (/active-features)")
+    features = sub.add_parser("features", help="list CreateFeature features that are not complete or closed (/active-features)")
     features.add_argument("--features-root", help="default <cwd>/%s, or $SESSION_FEATURES_ROOT" % DEFAULT_FEATURES_DIR)
     features.add_argument("--json", action="store_true")
+    features.add_argument("--closed", action="store_true",
+                          help="list features closed by /close-feature that can be reopened (%s)" % ", ".join(REOPENABLE_STATUSES))
     features.set_defaults(func=cmd_features)
     prune = sub.add_parser("prune-empty", help="delete session folders with no lane, notes, tokens or typed prompt")
     prune.add_argument("--dry-run", action="store_true")

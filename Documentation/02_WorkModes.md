@@ -79,6 +79,8 @@ Always-on checks that run before and after any code is generated:
 **Scope gate** — for any request for a tool, script, report or utility, the agent first asks
 whether the deliverable is a one-off answer or a reusable tool, and where it runs (Editor,
 runtime or CLI). It asks before exploring, because the wrong answer discards the exploration.
+It skips the question when the request names an existing tool to extend (e.g. "add a tab to the
+preview server") and says so in its scope restatement instead.
 
 **Before generating**
 - Every interface, class, enum and base type needed is located in source.

@@ -48,6 +48,7 @@ reload:
   - "Check the host's SystemIndex for an entry matching the system this feature lives in (not just the feature's own Discovery/Architecture docs) — read it too if one exists. A feature's own docs cover what changed; the SystemIndex entry covers the system's standing gotchas and may be stale, in which case propose updating it at /end-session."
   - "Checkpoint lists files in `done`: confirm they exist on disk (one ls / codeindex query). Do not re-read their bodies unless the next step needs them."
   - "For each entry in `sources_of_truth` (e.g. the Confluence TDD), fetch only its current version number. A version newer than the recorded one is drift: say what changed before continuing, and read the new version if the current phase works from it."
+  - "Doc-review comments: run python3 Tools/doc-review/doc_review.py servers once. For each running server on this feature's docs, run `doc_review.py comments <its doc>` (the first doc argument — every tab of a multi-doc server shares that one sidecar) and list open/ready threads under drift. Do not wait to be told a comment exists."
 ```
 
 ## Step 3 — Restate and confirm

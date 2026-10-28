@@ -99,7 +99,14 @@ de-duplicated total, for the average) in session.json. metrics.md renders them a
 the average/median/lane average, the standardized-operations share, and what saved tokens and
 round-trips. Each model call is counted once, here and in the token report (both de-duplicate by
 `message.id`); the charts compute every session's total from its transcript. A tool result costs
-its size × every later call that re-reads it. The savings assumptions are in `AVOIDED_BY_TOOL`.
+its size × every later call that re-reads it. The savings assumptions are in `AVOIDED_BY_TOOL`,
+and `MIRO_CONFLUENCE_BY_COMMAND` for doc-review preview calls. The breakdown's `doc_review` block
+holds the preview calls (count, tokens, per command), their Miro/Confluence estimate and
+round-trips, and the measured Miro/Confluence MCP calls (`miro_confluence`); metrics.md prints it as
+one line and the doc-review Performance tab charts it.
+To add a saving mechanism, add its name to `token_breakdown.SAVINGS` and fill `savings[name]` in
+`analyse()`; metrics.md (`session_lifecycle.py` `breakdown_lines`) and retro.html
+(`retro_page.savings_chart`) render every entry and its assumptions generically.
 
 retro.md stays the source of truth. A page opened from disk cannot write back, so each open
 proposal has a button that copies its `retro --mark … --status applied` command.

@@ -50,7 +50,8 @@ def cmd_comments(args: argparse.Namespace) -> None:
     data = SidecarStore(doc_path).load()
     threads = data["threads"]
     if args.status != "all":
-        threads = [thread for thread in threads if thread["status"] == args.status]
+        # A follow-up on an addressed thread keeps that status, so it is selected by any filter.
+        threads = [thread for thread in threads if thread["status"] == args.status or _has_follow_up(thread)]
 
     resolved = [_cli_resolved_thread(base_dir, thread) for thread in threads]
     markers = scan_inline_markers(base_dir, _marker_candidate_files(doc_path, data["threads"]))
@@ -206,7 +207,21 @@ def _cli_resolved_thread(base_dir: Path, thread: Dict) -> Dict:
     anchor = thread["anchor"]
     quote = anchor.get("quote", "") if anchor["kind"] == "text" else (anchor.get("label") or anchor.get("source_id", ""))
     resolution = resolve_thread(base_dir, thread)
-    return {"id": thread["id"], "status": thread["status"], "quote": quote, "resolution": resolution}
+    return {
+        "id": thread["id"],
+        "status": thread["status"],
+        "quote": quote,
+        "resolution": resolution,
+        "created_by": thread.get("created_by"),
+        "replies": thread.get("replies", []),
+        "follow_up": _has_follow_up(thread),
+    }
+
+
+def _has_follow_up(thread: Dict) -> bool:
+    # The engineer replied after the agent's last reply -- the thread needs another answer.
+    authors = [reply["author"] for reply in thread.get("replies", [])]
+    return bool(authors) and authors[-1] == "engineer" and "agent" in authors
 
 
 def _marker_candidate_files(doc_path: Path, threads: List[Dict]) -> List[str]:
@@ -237,8 +252,17 @@ def _print_text(resolved: List[Dict], markers: List[Dict]) -> None:
             heading = " > ".join(resolution.get("heading_path") or [])
             suffix = f" (was under: {heading})" if heading else ""
             print(f'ORPHANED {item["id"]} [{item["status"]}] "{quote}"{suffix}')
+        _print_last_reply(item)
     for marker in markers:
         print(f'[inline-marker] {marker["file"]}:{marker["line"]}: {marker["text"]}')
+
+
+def _print_last_reply(item: Dict) -> None:
+    if not item["replies"]:
+        return
+    last = item["replies"][-1]
+    follow_up = " (follow-up)" if item["follow_up"] else ""
+    print(f'    last reply{follow_up} {last["author"]}: {last["text"]}')
 
 
 def _truncate(text: str, limit: int = QUOTE_TRUNCATE_LENGTH) -> str:

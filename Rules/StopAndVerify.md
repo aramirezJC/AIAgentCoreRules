@@ -17,6 +17,7 @@ scope_gate:
   - "[SHAPE] Is the deliverable a one-off answer, or a reusable tool? Ask — do not infer."
   - "[SHAPE] If a tool: where does it run — Editor, runtime, or CLI? This constrains the assembly and the base class."
   - "[SHAPE] If exploration would already answer the question, say so and offer the answer first."
+  - "[SHAPE] Skip when the request names an existing tool to extend (e.g. 'add a tab to the preview server'): its location and reusability are already given; state that in the 1_scope restatement instead."
 ```
 
 Ask it as a plain question and wait. Do not resolve the ambiguity by building both, by planning

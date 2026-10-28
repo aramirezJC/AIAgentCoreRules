@@ -338,7 +338,8 @@ def savings_chart(breakdown):
     assumptions = breakdown.get("assumptions") or {}
     note = ("Guesstimates. Parallel calls: each extra call in one message saves a round-trip that would re-read the "
             "context. Subagents: what the subagent read stays out of the main context for every later call. "
-            "Partial reads: the unread part of the file × later calls. Runnable tools: each call is assumed to "
+            "Partial reads: the unread part of the file × later calls. Runnable tools, and doc_review.py against "
+            "doing the same through Miro/Confluence MCP calls: each call is assumed to "
             "replace %s." % "; ".join("%s ≈ %s tokens + %d round-trips" % (tool, compact(a["tokens"]), a["round_trips"])
                                       for tool, a in sorted(assumptions.items())))
     return (bar_rows(rows, maximum)
