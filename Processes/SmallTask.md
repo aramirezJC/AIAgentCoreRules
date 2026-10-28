@@ -37,6 +37,7 @@ steps:
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
     - "Anything broader than one targeted query → /discover, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
+    - "When the change consumes data written by another skill or tool (a progress block, a sidecar, ids), check that real feature data actually has the keys the consumer matches on, before 4_propose."
   3_rules:   # routing table, by what the change touches
     always:                    [../Rules/CodingStandards.md]
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
