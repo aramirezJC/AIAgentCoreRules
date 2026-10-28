@@ -9,6 +9,8 @@ same way session_lifecycle.py reads them. Sources:
   - <Name>_TDD.md (optional)              "### V<n> — ..." development phases and their task tables,
                                           nested under the implementation phase (replace the task list)
   - Progress.md pull_requests block       "  V0: [9923, 9930]" -> each PR's notes, fetched with gh (pr_notes.py)
+  - Progress.md batches block             "  T3:" -> branch, plan, merged, open_pr (written by /publish-batch);
+                                          batch <merged + 1> of <len(plan)> on the task with that id
   - Progress.md phase_handoff block       "  consistency_findings: [...]" -> Sub-phase 1c's findings
                                           (each pre-tagged ✅/⚠️/❌ by the agent), nested under the "1c" step
 """
@@ -41,6 +43,10 @@ MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
 PR_PHASE_LINE = re.compile(r"^\s+(V\d+[a-z]?):\s*\[([^\]]*)\]")
 CONSISTENCY_FINDINGS_LINE = re.compile(r"^\s{2}consistency_findings:\s*$")
 CONSISTENCY_FINDINGS_EMPTY_LINE = re.compile(r"^\s{2}consistency_findings:\s*\[\s*\]\s*$")
+BATCHES_LINE = re.compile(r"^batches:\s*(#.*)?$")
+BATCH_TASK_LINE = re.compile(r"^  (\S+?):\s*(#.*)?$")
+BATCH_FIELD_LINE = re.compile(r"^    (\w+):\s*(.*?)\s*$")
+QUOTED_ITEM = re.compile(r'"([^"]*)"|\'([^\']*)\'')
 
 
 def find_progress_file(doc_path: Path) -> Optional[Path]:
@@ -73,7 +79,8 @@ def pr_refresh_stamp(progress_path: Path) -> float:
 
 
 def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
-                fetch_pr: Callable[[int, Path], Dict] = pr_notes.fetch_pr_notes) -> Dict:
+                fetch_pr: Callable[[int, Path], Dict] = pr_notes.fetch_pr_notes,
+                pr_url: Callable[[int, Path], str] = pr_notes.pr_url) -> Dict:
     progress_text = progress_path.read_text()
     current_key = _quoted_field(progress_text, "current_phase") or ""
     completed_numbers = {int(m.group(1)) for m in map(PHASE_COMPLETED_LINE.match, progress_text.splitlines()) if m}
@@ -91,6 +98,9 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     in_progress = next((dev for dev in dev_phases if any(task["status"] != "done" for task in dev["tasks"])), None)
     for dev_phase in dev_phases:
         dev_phase["open"] = dev_phase is in_progress
+    batches = _batches(progress_text)
+    for task in [task for stage in stages for task in stage["tasks"]] + [task for dev in dev_phases for task in dev["tasks"]]:
+        task["batch"] = _batch_view(batches.get(task["id"]), progress_path.parent, pr_url)
 
     phases = []
     for phase in _index_phases(process_dir):
@@ -296,6 +306,51 @@ def _pull_requests(progress_text: str) -> Dict[str, List[int]]:
                 break
             links[entry.group(1)] = [int(n) for n in re.findall(r"\d+", entry.group(2))]
     return links
+
+
+def _batches(progress_text: str) -> Dict[str, Dict[str, str]]:
+    # batches:
+    #   T3:
+    #     plan:    ["Contracts", "Manager"]
+    #     merged:  1
+    #     open_pr: 9941
+    # Raw field strings per task id; comment and blank lines inside the block are skipped.
+    tasks: Dict[str, Dict[str, str]] = {}
+    in_block = False
+    current: Optional[Dict[str, str]] = None
+    for line in progress_text.splitlines():
+        if BATCHES_LINE.match(line):
+            in_block = True
+            continue
+        if not in_block or not line.strip() or line.strip().startswith("#"):
+            continue
+        task = BATCH_TASK_LINE.match(line)
+        if task:
+            current = tasks.setdefault(task.group(1).strip("\"'"), {})
+            continue
+        field = BATCH_FIELD_LINE.match(line)
+        if not field or current is None:
+            break
+        current[field.group(1)] = field.group(2)
+    return tasks
+
+
+def _batch_view(fields: Optional[Dict[str, str]], repo_dir: Path,
+                pr_url: Callable[[int, Path], str]) -> Optional[Dict]:
+    """Batch <merged + 1> of <len(plan)> for one task, or None when it has no batch plan yet."""
+    if not fields:
+        return None
+    plan = [double or single for double, single in QUOTED_ITEM.findall(fields.get("plan", ""))]
+    if not plan:
+        return None
+    merged_match = re.match(r"\d+", fields.get("merged", ""))
+    merged = min(int(merged_match.group(0)), len(plan)) if merged_match else 0
+    open_match = re.match(r"\d+", fields.get("open_pr", ""))
+    open_pr = int(open_match.group(0)) if open_match else None
+    done = merged == len(plan)
+    return {"current": merged + 1 if not done else len(plan), "total": len(plan), "done": done,
+            "title": "" if done else plan[merged], "open_pr": open_pr,
+            "open_pr_url": pr_url(open_pr, repo_dir) if open_pr is not None else ""}
 
 
 def _quoted_field(text: str, field: str) -> Optional[str]:
