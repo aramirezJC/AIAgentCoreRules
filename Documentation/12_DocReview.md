@@ -59,6 +59,24 @@ way, with its TDD and diagrams:
 The tab refreshes whenever the progress file, the task list, the TDD or a CreateFeature phase
 file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
 
+## Performance tab
+
+When the project has tracked sessions (`GitIgnoreReports/Sessions/`, or `$SESSION_REPORTS_ROOT`),
+a **Performance** tab is added last, on every served doc. It reads each session's `session.json`
+breakdown: the same estimated token-by-category numbers the retrospective charts.
+
+- **Overview.** Sessions, total tokens, average and median per session, standard deviation, and
+  the standardized-operations share.
+- **Bell curve.** A histogram of session totals with a normal curve fitted to log10(tokens). Totals
+  span orders of magnitude, so the axis is logarithmic. One dot per session; the active one is yellow.
+- **Tokens by category.** Total, average per session and share, across all sessions.
+- **Sessions, newest first.** One collapsible each, with its category table. The active session
+  (no `ended_at`, `session.json` written in the last hour) is highlighted and open.
+
+Sessions without a compiled breakdown are listed but left out of the statistics. The tab
+refreshes whenever a `session.json` changes; the active session is as fresh as its last compile
+(the Stop hook recompiles after replies).
+
 ## Tests
 
 ```bash

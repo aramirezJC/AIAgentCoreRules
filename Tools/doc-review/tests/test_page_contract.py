@@ -25,6 +25,12 @@ from review_server import MARKED_CDN, MERMAID_CDN, SVG_PAN_ZOOM_CDN, build_page 
 ALLOWED_CDN_HOSTS = ("https://cdnjs.cloudflare.com/", "https://cdn.jsdelivr.net/")
 STDLIB_DIR = Path(sysconfig.get_paths()["stdlib"]).resolve()
 LOCAL_MODULE_NAMES = {path.stem for path in TOOL_DIR.glob("*.py")}
+# Stdlib-only modules of other tools in this repo, shared rather than copied (perf_view.py must find the
+# same reports root and category names as session_lifecycle.py). Checked stdlib-only themselves below.
+IN_REPO_TOOL_MODULES = {
+    "project_root": TOOL_DIR.parent / "setup" / "project_root.py",
+    "token_breakdown": TOOL_DIR.parent / "session-lifecycle" / "token_breakdown.py",
+}
 
 
 def _imported_top_level_names(file_path: Path):
@@ -39,7 +45,7 @@ def _imported_top_level_names(file_path: Path):
 
 
 def _is_stdlib_or_local(name: str) -> bool:
-    if name in LOCAL_MODULE_NAMES:
+    if name in LOCAL_MODULE_NAMES or name in IN_REPO_TOOL_MODULES:
         return True
     spec = importlib.util.find_spec(name)
     if spec is None:
@@ -62,6 +68,16 @@ class StdlibOnlyImportsTests(unittest.TestCase):
                         _is_stdlib_or_local(name),
                         f"{file_path.name} imports {name!r}, which is neither stdlib nor a sibling "
                         "module -- this tool is meant to need no pip install",
+                    )
+
+    def test_inRepoToolModules_importOnlyStdlib(self):
+        for name, file_path in IN_REPO_TOOL_MODULES.items():
+            with self.subTest(module=name):
+                for imported in _imported_top_level_names(file_path):
+                    self.assertTrue(
+                        imported not in IN_REPO_TOOL_MODULES and _is_stdlib_or_local(imported)
+                        and imported not in LOCAL_MODULE_NAMES,
+                        f"{file_path.name} imports {imported!r}, which is not stdlib",
                     )
 
 
