@@ -145,7 +145,9 @@ one ~3k-token exploratory read plus 2 round-trips; the assumptions are listed on
 `AVOIDED_BY_TOOL`. Doc-review preview calls are compared with doing the same through Miro and
 Confluence (`MIRO_CONFLUENCE_BY_COMMAND`: serve ≈ 18.4k tokens + 3 round-trips, comments ≈ 2.4k + 2,
 reply ≈ 1.3k + 1, from averages of real MCP calls); the breakdown's `doc_review` block also measures
-the Miro/Confluence MCP calls a session really made.
+the Miro/Confluence MCP calls a session really made. To add a saving mechanism, add its name to
+`token_breakdown.SAVINGS` and fill `savings[name]` in `analyse()`; metrics.md and retro.html render
+every entry generically.
 
 Every claim points at a trace row, a logged note or a `file:line`.
 
