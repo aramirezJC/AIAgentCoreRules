@@ -112,6 +112,16 @@ checkpoint); the next file is not started until the current one is acknowledged.
 a test file, the agent reads `Rules/TestingRules.md` (and the host project's testing-setup rule,
 if it has one); the coding standards and architectural principles do not cover tests. For files with poll handlers, event listeners, or subscription-based updates: verification includes steady-state behavior (state unchanged across multiple ticks with no data change), not just post-action snapshots.
 
+**Batched publishing.** C# and related files are reviewed as small pull requests rather than in
+one large diff. Python tools and Markdown are exempt. Each task gets its own worktree and branch
+(`feature/<Name>/<task>`), cut from the engineer's user branch, and the engineer approves a plan
+that splits it into batches. Each batch is one concern, roughly ≤ 300 lines and ≤ 5 files.
+`/publish-batch` commits and pushes each batch, opens a PR against the user branch, and prints
+a table of every file added, modified or removed: its types, what changed and why. The engineer
+reviews on GitHub and runs the notes through `/feature-pr`. Merging the PR completes the batch
+and counts as the acknowledgment of its files, and only then does the next batch start. The
+progress file's `batches:` block records batch N of M for each task.
+
 ### Phase 5 — Unit Tests
 
 Three categories, each traced to a document from an earlier phase — no speculative tests:
@@ -191,6 +201,7 @@ being summarised. The progress file (`<FeatureName>_Progress.md`) does.
 | `/feature <Name>` | File created from the template; the session is added to its session list |
 | Every gate | The handoff block is appended; the current phase advances; the checkpoint is cleared; the session closes with a phase retro |
 | Each approved file in Phase 4 | The file is added to the checkpoint's `done` list and `next` is set |
+| `/publish-batch` in Phase 4 | The task's `batches:` entry is written (plan, merged count, open PR); each PR is also listed under `pull_requests`; a merged batch adds its files to `done` |
 | `/checkpoint` | The checkpoint is replaced: done, in flight, next action, pending decisions, notes |
 | `/end-session` mid-phase | `/checkpoint` runs automatically first |
 | `/close-feature <Name> [reason]` | Status set to the picked closing status — `abandoned` (default), `superseded`, `on_hold` or `complete` — and an entry appended to the `Closed` history section; checkpoint and gate blocks are kept. The feature drops off `/active-features` |
