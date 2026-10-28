@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Session lifecycle for Claude Code: start, note, compile, open.
+"""Session lifecycle for Claude Code and Codex: start, note, compile, open.
 
 One folder per session under the reports root (default: <project>/GitIgnoreReports/Sessions, where
 <project> is the main checkout found by Tools/setup/project_root.py — never the shell's cwd):
@@ -42,9 +42,11 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import retro_page
 import token_breakdown
+import codex_transcript
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "setup"))
 import project_root  # noqa: E402  shared with install.py
@@ -157,8 +159,15 @@ def locate_transcript(session_id, guess):
     """The guessed transcript path when it exists, else <session_id>.jsonl under any project
     folder. Claude Code files a transcript under the directory it was launched from, which is
     not the project root when a session starts in a subdirectory."""
-    if (guess and os.path.isfile(guess)) or not session_id:
+    if guess and os.path.isfile(guess):
+        if not codex_transcript.is_codex(guess) or (session_id and codex_transcript.matches(guess, session_id)):
+            return guess
+        guess = None
+    if not session_id:
         return guess
+    codex_path = codex_transcript.locate(session_id)
+    if codex_path:
+        return codex_path
     projects_root = os.path.join(os.path.expanduser("~"), ".claude", "projects")
     if os.path.isdir(projects_root):
         for name in sorted(os.listdir(projects_root)):
@@ -171,6 +180,9 @@ def locate_transcript(session_id, guess):
 def current_transcript(project_dir):
     """The running session: CLAUDE_CODE_SESSION_ID when set (exact, safe with concurrent
     sessions), else the newest Claude Code transcript for this project (a guess)."""
+    codex_id = os.environ.get("CODEX_THREAD_ID")
+    if codex_id:
+        return codex_id, codex_transcript.locate(codex_id)
     encoded = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(project_dir))
     sessions_dir = os.path.join(os.path.expanduser("~"), ".claude", "projects", encoded)
     env_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
@@ -189,6 +201,8 @@ def user_turns(transcript_path):
     """Prompts the engineer actually typed (tool results and meta entries excluded)."""
     if not transcript_path or not os.path.isfile(transcript_path):
         return 0
+    if codex_transcript.is_codex(transcript_path):
+        return codex_transcript.user_turns(transcript_path)
     count = 0
     with open(transcript_path, errors="replace") as handle:
         for line in handle:
@@ -219,6 +233,7 @@ def ensure_folder(root, session_id, transcript_path=None, project_dir=None):
     if not session_id or not transcript_path or not os.path.isfile(transcript_path):
         return None
     state ={"session_id": session_id, "transcript_path": transcript_path,
+             "agent": "codex" if codex_transcript.is_codex(transcript_path) else "claude",
              "project_dir": project_dir or current_project_dir(), "tracking_started_at": now_iso(),
              "started_at": transcript_started_at(transcript_path) or now_iso(),
              "name": None, "lane": None, "work_type": None, "title": None,
@@ -244,7 +259,7 @@ def resolve(args):
     root = reports_root(args)
     session_id = getattr(args, "session_id", None) or current_transcript(current_project_dir())[0]
     if not session_id:
-        sys.exit("No session id: pass --session-id, or run inside a Claude Code session.")
+        sys.exit("No session id: use CODEX_THREAD_ID, CLAUDE_CODE_SESSION_ID or --session-id.")
     # Never fall back to another session's folder: with concurrent sessions that edits the wrong one.
     try:
         folder = ensure_folder(root, session_id, project_dir=current_project_dir())
@@ -298,6 +313,12 @@ def import_roots(project_dir):
                 match = re.match(r"\s*@(\S+)", line)
                 if match:
                     imports.append(match.group(1))
+    agents = os.path.join(project_dir, "AGENTS.md")
+    if os.path.isfile(agents):
+        with open(agents) as handle:
+            for rel in re.findall(r"`([^`\n]+/Rules/MetaRouter\.md)`", handle.read()):
+                imports.append(rel)
+                roots.add(os.path.abspath(os.path.join(project_dir, os.path.dirname(os.path.dirname(rel)))))
     for rel in imports:
         parts = rel.split("/")
         top = os.path.join(project_dir, *parts[:2]) if len(parts) > 2 else os.path.join(project_dir, parts[0])
@@ -339,7 +360,7 @@ def router_trace(state, project_dir):
         with handle:
             for line in handle:
                 try:
-                    entry = json.loads(line)
+                    entry = codex_transcript.normalize(json.loads(line))
                 except ValueError:
                     continue
                 content = (entry.get("message") or {}).get("content")
@@ -428,15 +449,18 @@ def token_report(folder, state):
         from pathlib import Path
         cli = load_session_support()
         args = argparse.Namespace(project_config=Path(os.path.dirname(SESSION_SUPPORT)) / "project.example.json",
-                                  agent="claude", sessions_root=Path(os.path.dirname(transcript)), since=None)
+                                  agent=state.get("agent", "claude"), sessions_root=Path(os.path.dirname(transcript)), since=None)
         monitor = cli.load_monitor(args)
         monitor.explicit_rollout = Path(transcript)
-        session = cli.support_report(monitor, "current")["sessions"][0]
-        tokens_dir = os.path.join(folder, "tokens")
-        os.makedirs(tokens_dir, exist_ok=True)
-        for report in monitor.generated_session_reports("current", False):
-            with open(os.path.join(tokens_dir, report["filename"]), "w") as handle:
-                handle.write(report["content"])
+        # Parser state contains transcript content; retain only the sanitized reports.
+        with tempfile.TemporaryDirectory(prefix="session-report-cache-") as cache:
+            monitor.state_root = Path(cache)
+            session = cli.support_report(monitor, "current")["sessions"][0]
+            tokens_dir = os.path.join(folder, "tokens")
+            os.makedirs(tokens_dir, exist_ok=True)
+            for report in monitor.generated_session_reports("current", False):
+                with open(os.path.join(tokens_dir, report["filename"]), "w") as handle:
+                    handle.write(report["content"])
     except Exception as error:  # telemetry is best-effort; never fail the compile
         return {"available": False, "reason": "report failed: %s" % error}
     if session.get("id") != state["session_id"]:
@@ -467,6 +491,7 @@ def render(folder, state, project_dir):
         "| Field | Value |",
         "| --- | --- |",
         "| Session | `%s` |" % state["session_id"],
+        "| Agent | %s |" % state.get("agent", "claude"),
         "| Name | %s |" % (state.get("name") or "–"),
         "| Title | %s |" % (state.get("title") or "–"),
         "| Lane | %s |" % (state.get("lane") or "**not set**"),
@@ -502,7 +527,7 @@ def render(folder, state, project_dir):
     lines += ["", "## Work type changes", ""]
     lines += ["- `%s` %s → %s" % (item["at"][11:19], item["from"], item["to"])
               for item in state.get("work_type_history", [])] or ["- none"]
-    lines += ["", "## Router trace", "", "Always loaded via CLAUDE.md:", ""]
+    lines += ["", "## Router trace", "", "Host instruction imports (declared, not proof of a read):", ""]
     lines += ["- `%s`" % item for item in imports] or ["- none"]
     lines += ["", "Loaded on demand, in order:", "", "| # | Time | File | Via (Bash rows are heuristic) |", "| ---: | --- | --- | --- |"]
     lines += ["| %d | %s | `%s` | %s |" % (i + 1, item["at"], item["file"], item["via"]) for i, item in enumerate(loads)]
@@ -570,13 +595,17 @@ def compile_folder(folder, state, project_dir):
     state["transcript_path"] = locate_transcript(state["session_id"], state.get("transcript_path"))
     # A resumed session's transcript may predate tracking; report the real start.
     state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
+    state["agent"] = "codex" if codex_transcript.is_codex(state.get("transcript_path")) else "claude"
     state["tokens"] = token_report(folder, state)
     try:   # estimates for the retro charts; best-effort like the token report
+        if state["agent"] == "codex":
+            raise ValueError("Detailed cost attribution and comparison are not yet supported for Codex")
         state["breakdown"] = token_breakdown.analyse(state.get("transcript_path"), state["session_id"],
                                                      import_roots(project_dir)[1])
         state["comparison"] = session_comparison(folder, state)
     except Exception as error:
         state["breakdown"] = {"error": str(error)}
+        state.pop("comparison", None)
     state["compiled_at"] = now_iso()
     save_state(folder, state)
     render(folder, state, project_dir)
@@ -847,6 +876,9 @@ def cmd_hook_stop(args):
         compile_folder(folder, state, state.get("project_dir") or current_project_dir())
     except Exception as error:
         hook_log(args, "stop", hook, "ERROR %s" % error)   # successes are not logged: one per reply is noise
+    finally:
+        if codex_transcript.is_codex(hook.get("transcript_path")):
+            print("{}")  # Codex Stop hooks consume a JSON object, not context text.
     return 0
 
 
@@ -1040,8 +1072,15 @@ def checked_source(path):
 
 
 def cmd_retro(args):
-    folder = retro_folder(args)
-    retro_path = os.path.join(folder, "retro.md")
+    if args.path and args.source:
+        sys.exit("--path cannot be combined with --from")
+    if args.path:
+        retro_path = os.path.abspath(checked_source(args.path))
+        if os.path.splitext(retro_path)[1].lower() not in (".md", ".markdown"):
+            sys.exit("--path must name a Markdown retrospective (.md or .markdown)")
+    else:
+        folder = retro_folder(args)
+        retro_path = os.path.join(folder, "retro.md")
     if args.source:
         # MR-20261016-06: a background session cannot Write into the shared checkout; it writes
         # the retro to its job tmp dir and files it through this script.
@@ -1060,7 +1099,7 @@ def cmd_retro(args):
             sys.exit(str(error))
         with open(retro_path, "w") as handle:
             handle.write(text)
-    html_path = retro_page.render(retro_path, SCRIPT_PATH)
+    html_path = retro_page.render(retro_path, SCRIPT_PATH, standalone=bool(args.path))
     with open(retro_path) as handle:
         for item in retro_page.statuses(handle.read()):
             print("#%d %-8s %s%s" % (item["n"], item["status"], item["file"],
@@ -1114,7 +1153,7 @@ def main():
     for name, func in (("set", cmd_set), ("note", cmd_note), ("compile", cmd_compile),
                        ("open", cmd_open), ("path", cmd_path), ("retro", cmd_retro)):
         command = sub.add_parser(name)
-        command.add_argument("--session-id", help="defaults to $CLAUDE_CODE_SESSION_ID, else the newest transcript")
+        command.add_argument("--session-id", help="defaults to $CODEX_THREAD_ID or $CLAUDE_CODE_SESSION_ID; Claude-only legacy newest fallback")
         command.set_defaults(func=func)
         if name == "set":
             command.add_argument("--name", help="engineer-given session name; also names the folder")
@@ -1132,7 +1171,11 @@ def main():
         if name == "compile":
             command.add_argument("--final", action="store_true", help="mark /end-session as run")
         if name == "retro":
-            command.add_argument("--folder", help="another session's folder: path, folder name, or a unique part "
+            target = command.add_mutually_exclusive_group()
+            target.add_argument("--path", metavar="PATH",
+                                help="render an existing Markdown retrospective without session tracking; "
+                                     "write a matching .html beside it; supports --mark and --open")
+            target.add_argument("--folder", help="another session's folder: path, folder name, or a unique part "
                                                   "such as the session id's first 8 characters")
             command.add_argument("--mark", type=int, metavar="N", help="proposal number to update")
             command.add_argument("--status", choices=retro_page.STATUSES)

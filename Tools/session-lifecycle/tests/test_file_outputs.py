@@ -31,6 +31,46 @@ class RetroFromTests(RootTestCase):
         with open(self.source, "w") as handle:
             handle.write(RETRO)
 
+    def test_standalone_path_renders_without_tracking_or_metrics(self):
+        output = os.path.splitext(self.source)[0] + ".html"
+        result = self.run_script(["retro", "--session-id", "unknown", "--path", self.source], cwd=self.host)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(output) as handle:
+            page = handle.read()
+        self.assertIn("Retro", page)
+        self.assertIn("--path", page)
+        self.assertNotIn("Token charts", page)
+        self.assertNotIn('href="metrics.md"', page)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "retro.html")))
+        with open(self.source) as handle:
+            self.assertEqual(handle.read(), RETRO)
+
+    def test_standalone_path_marks_original_and_rerenders(self):
+        result = self.run_script(["retro", "--path", self.source, "--mark", "1",
+                                  "--status", "applied", "--note", "done"], cwd=self.host)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(self.source) as handle:
+            self.assertIn("#1 applied: done", handle.read())
+        self.assertTrue(os.path.isfile(os.path.splitext(self.source)[0] + ".html"))
+
+    def test_standalone_path_refuses_missing_empty_and_conflicting_sources(self):
+        for arguments in (["--path", self.source + ".missing"],
+                          ["--path", self.source, "--folder", FOLDER],
+                          ["--path", self.source, "--from", self.source]):
+            result = self.run_script(["retro"] + arguments, cwd=self.host)
+            self.assertNotEqual(result.returncode, 0)
+        non_markdown = os.path.join(self.tmp, "existing.html")
+        with open(non_markdown, "w") as handle:
+            handle.write("preserve")
+        result = self.run_script(["retro", "--path", non_markdown], cwd=self.host)
+        self.assertNotEqual(result.returncode, 0)
+        with open(non_markdown) as handle:
+            self.assertEqual(handle.read(), "preserve")
+        open(self.source, "w").close()
+        result = self.run_script(["retro", "--path", self.source], cwd=self.host)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(os.path.exists(os.path.splitext(self.source)[0] + ".html"))
+
     def test_retro_from_files_retro_and_renders_page(self):
         result = self.run_script(["retro", "--folder", FOLDER, "--from", self.source], cwd=self.host)
         self.assertEqual(result.returncode, 0, result.stderr)

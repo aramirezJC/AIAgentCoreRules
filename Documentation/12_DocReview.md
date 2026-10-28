@@ -59,6 +59,7 @@ way, with its TDD and diagrams:
 The tab refreshes whenever the progress file, the task list, the TDD or a CreateFeature phase
 file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
 
+<<<<<<< Updated upstream
 ## Performance tab
 
 When the project has tracked sessions (`GitIgnoreReports/Sessions/`, or `$SESSION_REPORTS_ROOT`),
@@ -82,6 +83,15 @@ breakdown: the same estimated token-by-category numbers the retrospective charts
 Sessions without a compiled breakdown are listed but left out of the statistics. The tab
 refreshes whenever a `session.json` changes; the active session is as fresh as its last compile
 (the Stop hook recompiles after replies).
+=======
+## Mermaid syntax and validation
+
+When preparing diagrams for this preview, avoid literal semicolons in sequence-diagram
+message text: Mermaid treats them as statement separators. Use commas, or encode an
+intentional semicolon as `#59;`. Validate diagrams with an available Mermaid renderer before
+claiming they render successfully. If renderer tooling or browser inspection is unavailable,
+report that limitation explicitly and request an engineer rendering check.
+>>>>>>> Stashed changes
 
 ## Tests
 

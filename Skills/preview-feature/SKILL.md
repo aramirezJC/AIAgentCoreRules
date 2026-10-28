@@ -23,6 +23,14 @@ steps:
   - "The server lives until the engineer stops it or the session ends. Offer to stop it when they are done (/kill-server)."
 ```
 
+## Mermaid syntax and validation
+
+When preparing diagrams for this preview, avoid literal semicolons in sequence-diagram
+message text: Mermaid treats them as statement separators. Use commas, or encode an
+intentional semicolon as `#59;`. Validate diagrams with an available Mermaid renderer before
+claiming they render successfully. If renderer tooling or browser inspection is unavailable,
+report that limitation explicitly and request an engineer rendering check.
+
 The Progress tab comes from the server itself (see Documentation/12_DocReview.md): phases,
 steps and gates from CreateFeature, completion from the progress file's handoff blocks, tasks from
 `<Name>_TaskList.md`, and the next gate in red. It refreshes on save, like every other tab.

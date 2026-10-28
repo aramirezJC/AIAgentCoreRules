@@ -27,6 +27,34 @@ objects merge key by key, lists of plain values are unioned, other values are se
 matched by command — an existing hook with the same command is left alone. Nothing is deleted:
 a skill link that points elsewhere is reported as a conflict and kept.
 
+
+## Codex setup
+
+Claude remains the default. Select Codex explicitly to link every layer's existing skill folders
+into `.agents/skills/` and create a minimal `AGENTS.md` only when it does not already exist:
+
+```bash
+python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py check --agent codex
+python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py install --agent codex
+```
+
+Use the actual externals folder spelling: both `GitIgnoredExternals/` and `GitIgnoreExternals/`
+are supported, but having both is reported as ambiguous. Pass `--project <host-root>` before the
+subcommand to select a host explicitly. `--agent both` configures both hosts; `--agent claude`
+is the default and preserves existing Claude behavior. Existing instruction files and skill
+link conflicts are preserved. `check` and `install --dry-run` do not write files.
+
+Codex invokes these skills as `$discover`, `$audit`, `$resume-work`, etc. Skill folders remain
+symlinks to the authoritative shared source. Codex normally detects new skills automatically;
+restart it if the skills do not appear. See [Build skills](https://learn.chatgpt.com/docs/build-skills).
+
+The Codex path does not merge `.claude/settings.json`, install Claude hooks, or create CLAUDE.md.
+The shared skill instructions still contain Claude-specific assumptions: adapt tool names to
+available equivalents, and use natural-language workflow requests where appropriate. Claude
+session metrics/transcript parsing and Claude session-launch commands are not made Codex-compatible
+by this installer. Do not claim those hooks or tracking ran in Codex. Existing AGENTS.md should
+state these host adaptations and any project-specific scope exceptions.
+
 ## Host layer fragment
 
 A host layer adds project-specific settings in `Setup/settings.host.json`, using the same shape
