@@ -14,6 +14,7 @@ import webbrowser
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import perf_view
 from anchor_resolver import resolve_thread
 from progress_view import build_model, find_progress_file, pr_refresh_stamp, watched_paths
 from sidecar_store import SidecarStore
@@ -101,6 +102,7 @@ PAGE_TEMPLATE = """<!doctype html>
   .dev-phase .note-meta a {{ color: #9aa3b5; }}
   .dev-phase .note-body {{ white-space: pre-wrap; color: #e4e6eb; }}
   .dev-phase .empty {{ color: #5c6577; margin: 4px 0 0 4px; }}
+{perf_css}
 </style>
 </head>
 <body>
@@ -259,12 +261,14 @@ PAGE_TEMPLATE = """<!doctype html>
       target.innerHTML = '<div class="error">' + escapeHtml(err && err.message ? err.message : err) + '</div>';
     }}
   }}
-
+{perf_script}
   function renderTab(id) {{
     if (tabKinds[id] === "md") {{
       renderMarkdown(id, sources[id]);
     }} else if (tabKinds[id] === "progress") {{
       renderProgress(id, sources[id]);
+    }} else if (tabKinds[id] === "perf") {{
+      renderPerf(id, sources[id]);
     }} else {{
       renderedSourceFor[id] = sources[id];
       renderDiagram(id, sources[id]);
@@ -353,6 +357,192 @@ LIVE_SCRIPT_TEMPLATE = """
   }}
   setInterval(pollState, {poll_interval_ms});
   pollState();
+"""
+
+# Performance tab. Not .format()ed, so braces are single; injected into PAGE_TEMPLATE as values.
+# Category colours = retro_page.py's dark --s1..--s5 (validated against #20242e), greys for the rest.
+PERF_CSS = """
+  .perf-view { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --n1: #6e6d68; --n2: #4e5260;
+               --curve: #3987e5; --active: #f0c674; background: #20242e; color: #e4e6eb; max-width: 960px; margin: 0 auto;
+               padding: 24px 32px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.4); box-sizing: border-box; line-height: 1.5; }
+  .perf-view h1 { margin: 0 0 4px; font-size: 22px; color: #fff; }
+  .perf-view h2 { margin: 22px 0 8px; font-size: 16px; color: #fff; }
+  .perf-view .meta { color: #9aa3b5; font-size: 13px; }
+  .perf-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 14px 0; }
+  .perf-tile { border: 1px solid #333944; border-radius: 6px; padding: 8px 12px; }
+  .perf-tile .label { color: #9aa3b5; font-size: 12px; }
+  .perf-tile .value { color: #fff; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .perf-curve svg { width: 100%; height: auto; display: block; }
+  .perf-curve text { fill: #9aa3b5; font-size: 11px; }
+  .perf-curve .note { color: #9aa3b5; font-size: 12px; margin-top: 4px; }
+  .perf-stack { display: flex; gap: 2px; height: 12px; margin: 8px 0; }
+  .perf-stack span { display: block; height: 100%; min-width: 2px; }
+  .perf-stack span:first-child { border-radius: 4px 0 0 4px; }
+  .perf-stack span:last-child { border-radius: 0 4px 4px 0; }
+  .perf-table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .perf-table th, .perf-table td { border-bottom: 1px solid #333944; padding: 4px 8px; text-align: right; }
+  .perf-table th:first-child, .perf-table td:first-child { text-align: left; }
+  .perf-table th { color: #9aa3b5; font-weight: 600; }
+  .perf-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .perf-session { border: 1px solid #333944; border-left: 4px solid #333944; border-radius: 6px; margin: 8px 0; padding: 6px 12px; }
+  .perf-session.active { border-left-color: var(--active); background: #2a2a24; }
+  .perf-session summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .perf-session summary .when { color: #9aa3b5; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .perf-session summary .title { color: #fff; flex: 1; min-width: 200px; }
+  .perf-session summary .total { color: #e4e6eb; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .perf-pill { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #333944; color: #e4e6eb; }
+  .perf-pill.active { background: var(--active); color: #10141c; }
+  .perf-view .empty { color: #5c6577; }
+"""
+
+PERF_SCRIPT = """
+  function perfCompact(n) {
+    const abs = Math.abs(n);
+    if (abs >= 1e9) return (n / 1e9).toFixed(2) + "B";
+    if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
+    if (abs >= 1e3) return (n / 1e3).toFixed(1) + "K";
+    return String(Math.round(n));
+  }
+
+  function perfPercent(share) {
+    return (100 * share).toFixed(1) + "%";
+  }
+
+  function perfColors(model) {
+    // Fixed order: standardized categories take --s1..--s5 by their token_breakdown.py order, the rest grey.
+    const colors = {};
+    model.standardized_names.forEach((name, i) => { colors[name] = "var(--s" + (i + 1) + ")"; });
+    let grey = 1;
+    model.overview.categories.forEach((category) => {
+      if (!(category.name in colors)) colors[category.name] = "var(--n" + Math.min(grey++, 2) + ")";
+    });
+    return colors;
+  }
+
+  function perfStack(categories, colors) {
+    const parts = categories.filter((c) => c.share > 0).map((c) =>
+      '<span style="flex:' + c.share + ';background:' + (colors[c.name] || "var(--n1)") + '" title="'
+        + escapeHtml(c.name + ": " + perfPercent(c.share)) + '"></span>');
+    return '<div class="perf-stack">' + parts.join("") + '</div>';
+  }
+
+  function perfCategoryTable(categories, colors, withAverage) {
+    const rows = categories.map((c) => '<tr><td><span class="perf-swatch" style="background:' + (colors[c.name] || "var(--n1)")
+      + '"></span>' + escapeHtml(c.name) + '</td><td>' + perfCompact(c.tokens) + '</td>'
+      + (withAverage ? '<td>' + perfCompact(c.average) + '</td>' : '') + '<td>' + perfPercent(c.share) + '</td></tr>');
+    return '<table class="perf-table"><tr><th>Category</th><th>Tokens</th>' + (withAverage ? '<th>Avg / session</th>' : '')
+      + '<th>Share</th></tr>' + rows.join("") + '</table>';
+  }
+
+  function perfBellCurve(points) {
+    // Session totals span orders of magnitude, so the normal curve is fitted to log10(tokens)
+    // (a log-normal fit) and drawn on a log axis; on a linear axis most of its area sits below zero.
+    if (points.length < 2) return '<div class="empty">Need two compiled sessions for a distribution.</div>';
+    const logs = points.map((p) => Math.log10(p.total));
+    const mu = logs.reduce((a, b) => a + b, 0) / logs.length;
+    const sigma = Math.sqrt(logs.reduce((a, b) => a + (b - mu) * (b - mu), 0) / logs.length) || 0.1;
+    const lo = Math.floor(Math.min(...logs, mu - 2.5 * sigma));
+    const hi = Math.ceil(Math.max(...logs, mu + 2.5 * sigma));
+    const W = 800, H = 260, left = 16, right = 16, top = 16, plotBottom = 200;
+    const x = (v) => left + (v - lo) / (hi - lo) * (W - left - right);
+    const pdf = (v) => Math.exp(-0.5 * ((v - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
+    const binWidth = 0.25;
+    const bins = {};
+    logs.forEach((v) => { const b = Math.floor(v / binWidth); bins[b] = (bins[b] || 0) + 1; });
+    // Histogram as a density, so its area matches the curve's.
+    const density = (count) => count / (logs.length * binWidth);
+    const yMax = 1.1 * Math.max(pdf(mu), ...Object.values(bins).map(density));
+    const y = (d) => plotBottom - d / yMax * (plotBottom - top);
+    const parts = ['<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Distribution of session token totals">'];
+    parts.push('<rect x="' + x(mu - sigma) + '" y="' + top + '" width="' + (x(mu + sigma) - x(mu - sigma)) + '" height="'
+      + (plotBottom - top) + '" fill="#3987e5" opacity="0.08"><title>±1σ: ' + perfCompact(10 ** (mu - sigma)) + ' – '
+      + perfCompact(10 ** (mu + sigma)) + ' tokens</title></rect>');
+    Object.entries(bins).forEach(([b, count]) => {
+      const x0 = x(b * binWidth) + 1, x1 = x((+b + 1) * binWidth) - 1;
+      parts.push('<rect x="' + x0 + '" y="' + y(density(count)) + '" width="' + Math.max(x1 - x0, 1) + '" height="'
+        + (plotBottom - y(density(count))) + '" rx="2" fill="#4e5260"><title>' + count + ' session' + (count === 1 ? '' : 's')
+        + ': ' + perfCompact(10 ** (b * binWidth)) + ' – ' + perfCompact(10 ** ((+b + 1) * binWidth)) + '</title></rect>');
+    });
+    const curve = [];
+    for (let i = 0; i <= 160; i++) {
+      const v = lo + (hi - lo) * i / 160;
+      curve.push((i ? "L" : "M") + x(v).toFixed(1) + "," + y(pdf(v)).toFixed(1));
+    }
+    parts.push('<path d="' + curve.join("") + '" fill="none" stroke="var(--curve)" stroke-width="2"/>');
+    parts.push('<line x1="' + x(mu) + '" x2="' + x(mu) + '" y1="' + top + '" y2="' + plotBottom
+      + '" stroke="#e4e6eb" stroke-dasharray="4 4" stroke-width="1"/>');
+    parts.push('<text x="' + (x(mu) + 4) + '" y="' + (top + 10) + '">typical ' + perfCompact(10 ** mu) + '</text>');
+    parts.push('<line x1="' + left + '" x2="' + (W - right) + '" y1="' + plotBottom + '" y2="' + plotBottom + '" stroke="#333944"/>');
+    for (let p = lo; p <= hi; p++) {
+      parts.push('<line x1="' + x(p) + '" x2="' + x(p) + '" y1="' + plotBottom + '" y2="' + (plotBottom + 4) + '" stroke="#5c6577"/>');
+      parts.push('<text x="' + x(p) + '" y="' + (plotBottom + 16) + '" text-anchor="middle">' + perfCompact(10 ** p) + '</text>');
+    }
+    // One dot per session under the axis; the active one is larger and labelled.
+    points.forEach((p, i) => {
+      const cx = x(logs[i]).toFixed(1);
+      const tip = '<title>' + escapeHtml(p.id + (p.active ? ' (active)' : '') + ': ' + perfCompact(p.total) + ' tokens') + '</title>';
+      parts.push('<g><circle cx="' + cx + '" cy="236" r="9" fill="transparent">' + tip + '</circle><circle cx="' + cx
+        + '" cy="236" r="' + (p.active ? 6 : 4) + '" fill="' + (p.active ? 'var(--active)' : '#9aa3b5') + '" stroke="#20242e" stroke-width="2"'
+        + ' opacity="' + (p.active ? 1 : 0.7) + '">' + tip + '</circle></g>');
+      if (p.active) parts.push('<text x="' + cx + '" y="254" text-anchor="middle" style="fill:var(--active)">active</text>');
+    });
+    parts.push('</svg>');
+    return parts.join("");
+  }
+
+  function perfSession(session, colors) {
+    const when = (session.started_at || "").slice(0, 16).replace("T", " ");
+    const parts = ['<details class="perf-session' + (session.active ? ' active' : '') + '" data-key="' + escapeHtml(session.folder) + '"'
+      + (session.active ? ' open' : '') + '><summary><span class="when">' + escapeHtml(when) + '</span>'
+      + '<span class="title">' + escapeHtml(session.title || session.folder) + '</span>'
+      + (session.active ? '<span class="perf-pill active">active</span>' : '')
+      + (session.lane ? '<span class="perf-pill">' + escapeHtml(session.lane) + '</span>' : '')
+      + '<span class="total">' + (session.compiled ? perfCompact(session.total) : '–') + '</span></summary>'];
+    if (!session.compiled) {
+      parts.push('<div class="empty">Token breakdown not compiled' + (session.error ? ': ' + escapeHtml(session.error) : ' yet') + '.</div>');
+    } else {
+      parts.push('<div class="meta">' + session.calls + ' model calls &middot; standardized operations '
+        + perfPercent(session.total ? session.standardized / session.total : 0) + ' &middot; compiled '
+        + escapeHtml((session.compiled_at || "").slice(0, 16).replace("T", " ")) + ' &middot; ' + escapeHtml(session.folder) + '</div>');
+      parts.push(perfStack(session.categories, colors));
+      parts.push(perfCategoryTable(session.categories, colors, false));
+    }
+    parts.push('</details>');
+    return parts.join("");
+  }
+
+  function renderPerf(id, src) {
+    const target = document.getElementById(id);
+    try {
+      const model = JSON.parse(src);
+      const o = model.overview;
+      const colors = perfColors(model);
+      const tile = (label, value) => '<div class="perf-tile"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
+      const parts = ['<h1>Session performance</h1><div class="meta">Estimated tokens per session (the retrospective\\'s breakdown) &middot; '
+        + escapeHtml(model.root) + '</div>',
+        '<div class="perf-tiles">' + tile("Sessions", o.compiled + (o.sessions > o.compiled ? ' <span class="meta">/ ' + o.sessions + '</span>' : ''))
+          + tile("Total tokens", perfCompact(o.total)) + tile("Average / session", perfCompact(o.mean))
+          + tile("Median", perfCompact(o.median)) + tile("Std deviation", perfCompact(o.stdev))
+          + tile("Standardized", perfPercent(o.total ? o.standardized / o.total : 0)) + '</div>',
+        '<h2>Distribution of session totals</h2><div class="perf-curve">' + perfBellCurve(o.totals)
+          + '<div class="note">Bars: sessions per bin. Curve: normal fit to log10(tokens). Band: ±1σ. Dots: one per session.</div></div>',
+        '<h2>Tokens by category, all sessions</h2>' + perfStack(o.categories, colors) + perfCategoryTable(o.categories, colors, true),
+        '<h2>Sessions, newest first</h2>'];
+      if (o.sessions > o.compiled) {
+        parts.push('<div class="meta">' + (o.sessions - o.compiled) + ' session(s) without a compiled breakdown are listed but left out of the statistics.</div>');
+      }
+      model.sessions.forEach((session) => parts.push(perfSession(session, colors)));
+      // A refresh rebuilds the tab; keep the collapsibles the engineer opened or closed by hand.
+      const openState = {};
+      target.querySelectorAll("details[data-key]").forEach((el) => { openState[el.dataset.key] = el.open; });
+      target.innerHTML = parts.join("");
+      target.querySelectorAll("details[data-key]").forEach((el) => {
+        if (el.dataset.key in openState) el.open = openState[el.dataset.key];
+      });
+    } catch (err) {
+      target.innerHTML = '<div class="error">' + escapeHtml(err && err.message ? err.message : err) + '</div>';
+    }
+  }
 """
 
 
@@ -541,6 +731,8 @@ def build_page(paths: List[Path], live: bool) -> str:
         live_head_extra=live_head_extra,
         live_module_script=live_module_script,
         live_sidebar_slot=live_sidebar_slot,
+        perf_css=PERF_CSS,
+        perf_script=PERF_SCRIPT,
     )
 
 
@@ -569,6 +761,11 @@ def _tabs(paths: List[Path]) -> List[Dict]:
                 "file": _relative_to_doc_folder(progress_path, base_dir) + "#progress",
             },
         )
+    reports_root = perf_view.find_reports_root(paths[0])
+    if reports_root is not None:
+        # Auto-added last, so the doc (or Progress) stays the first tab. Its file key is not a real file:
+        # nothing anchors comments to it, and it must never match a doc tab's key.
+        tabs.append({"title": "Performance", "kind": "perf", "path": reports_root, "file": "#performance"})
     for i, tab in enumerate(tabs):
         tab["id"] = f"d{i}"
     return tabs
@@ -601,6 +798,8 @@ def _collect_mtimes(tabs: List[Dict]) -> Dict[str, float]:
 def _tab_source(tab: Dict) -> str:
     if tab["kind"] == "progress":
         return json.dumps(build_model(tab["path"]))
+    if tab["kind"] == "perf":
+        return json.dumps(perf_view.build_model(tab["path"]))
     return tab["path"].read_text()
 
 
@@ -608,18 +807,22 @@ def _tab_mtime(tab: Dict) -> float:
     if tab["kind"] == "progress":
         newest_file = max(path.stat().st_mtime for path in watched_paths(tab["path"]))
         return max(newest_file, pr_refresh_stamp(tab["path"]))
+    if tab["kind"] == "perf":
+        return max(path.stat().st_mtime for path in perf_view.watched_paths(tab["path"]))
     return tab["path"].stat().st_mtime
 
 
 def _mtime_key(tab: Dict) -> str:
     # The Progress tab watches several files and may share its Progress.md path with a plain md tab,
     # so it gets its own key rather than colliding with that tab's.
-    return str(tab["path"]) + "#progress" if tab["kind"] == "progress" else str(tab["path"])
+    if tab["kind"] in ("progress", "perf"):
+        return str(tab["path"]) + "#" + tab["kind"]
+    return str(tab["path"])
 
 
 def _panel_html(i: int, tab: Dict) -> str:
     active = " active" if i == 0 else ""
-    css_class = {"md": "markdown", "progress": "progress-view"}.get(tab["kind"], "diagram")
+    css_class = {"md": "markdown", "progress": "progress-view", "perf": "perf-view"}.get(tab["kind"], "diagram")
     return f'<div class="panel{active}"><div class="{css_class}" id="d{i}"></div></div>'
 
 
