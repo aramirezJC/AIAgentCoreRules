@@ -5,17 +5,17 @@ Run from anywhere inside the host project (or one of its worktrees); the project
 main checkout of the git repository you are in. Override with --project.
 
 Subcommands:
-    install            Merge settings fragments into .claude/settings.json, link every layer's
-                       skills into .claude/skills/, create CLAUDE.md if it is missing.
+    install            Configure Claude (default), Codex, or both with --agent.
+                       Codex links skills into .agents/skills/ and creates AGENTS.md if missing.
                        Safe to re-run: only adds or updates what the fragments define.
-    check              Same as `install --dry-run`: report what install would change.
+    check              Same as `install --dry-run`; accepts --agent too.
     prepare-worktree   Symlink worktree.symlinkDirectories into a worktree Claude Code did not
                        create (for example one made by hand with `git worktree add`).
     worktrees          List the project's linked worktrees with branch, dirty state, and commits
                        ahead of the current branch (used by /land-worktree).
 
-Layers are the entries of <project>/GitIgnoredExternals/. Each layer may ship:
-    Skills/<name>/SKILL.md          linked to .claude/skills/<name>
+Layers are the entries of <project>/GitIgnoredExternals/ (or GitIgnoreExternals/). Each layer may ship:
+    Skills/<name>/SKILL.md          linked to the selected agent's skills directory
     Setup/settings.host.json        merged after this layer's Tools/setup/settings.core.json
 
 Merge rules: objects merge key by key, lists of plain values are unioned, other values are set.
@@ -64,9 +64,13 @@ def find_project_root(start):
 
 def find_layers(root):
     """Return [(name, linked_path)] with the core layer first."""
-    externals = os.path.join(root, EXTERNALS)
-    if not os.path.isdir(externals):
-        raise RuntimeError(f"{externals} not found — link AIAgentCoreRules first (Documentation/01_Setup.md)")
+    candidates = [os.path.join(root, name) for name in (EXTERNALS, "GitIgnoreExternals")]
+    present = [path for path in candidates if os.path.isdir(path)]
+    if len(present) > 1:
+        raise RuntimeError("both GitIgnoredExternals and GitIgnoreExternals exist — keep one layer directory")
+    if not present:
+        raise RuntimeError(f"{candidates[0]} or {candidates[1]} not found — link AIAgentCoreRules first (Documentation/01_Setup.md)")
+    externals = present[0]
     layers = []
     for name in sorted(os.listdir(externals)):
         path = os.path.join(externals, name)
@@ -141,7 +145,11 @@ def install_settings(root, layers, dry_run, log):
     settings = load_json(settings_path) if os.path.isfile(settings_path) else {}
     before = json.dumps(settings, sort_keys=True)
     for source, path in fragments(layers):
-        merge_value(settings, load_json(path), source, log)
+        fragment = load_json(path)
+        if path == CORE_FRAGMENT:
+            externals_name = os.path.basename(os.path.dirname(layers[0][1]))
+            fragment = json.loads(json.dumps(fragment).replace(EXTERNALS, externals_name))
+        merge_value(settings, fragment, source, log)
     if json.dumps(settings, sort_keys=True) == before or dry_run:
         return
     os.makedirs(os.path.dirname(settings_path), exist_ok=True)
@@ -156,8 +164,8 @@ def install_settings(root, layers, dry_run, log):
 # ---------------------------------------------------------------------------------------------
 # Skills and CLAUDE.md
 
-def install_skills(root, layers, dry_run, log):
-    skills_dir = os.path.join(root, ".claude", "skills")
+def install_skills(root, layers, dry_run, log, agent="claude"):
+    skills_dir = os.path.join(root, ".agents" if agent == "codex" else ".claude", "skills")
     claimed = {}
     for layer_name, layer_path in layers:
         layer_skills = os.path.join(layer_path, "Skills")
@@ -171,7 +179,7 @@ def install_skills(root, layers, dry_run, log):
                 continue
             claimed[skill] = layer_name
             link = os.path.join(skills_dir, skill)
-            target = os.path.relpath(os.path.join(root, EXTERNALS, layer_name, "Skills", skill), skills_dir)
+            target = os.path.relpath(os.path.join(layer_skills, skill), skills_dir)
             if os.path.lexists(link):
                 if os.path.realpath(link) != os.path.realpath(os.path.join(layer_skills, skill)):
                     log.append(f"skills: CONFLICT {link} exists and does not point at {layer_name} — left as is")
@@ -182,19 +190,41 @@ def install_skills(root, layers, dry_run, log):
                 os.symlink(target, link)
 
 
-def install_claude_md(root, dry_run, log):
+def install_claude_md(root, dry_run, log, imports=CORE_IMPORTS):
     path = os.path.join(root, "CLAUDE.md")
     if not os.path.isfile(path):
         log.append("CLAUDE.md: create with the core imports — add the host layer's always-on files below them")
         if not dry_run:
             with open(path, "w", encoding="utf-8") as handle:
-                handle.write("\n".join(CORE_IMPORTS) + "\n")
+                handle.write("\n".join(imports) + "\n")
         return
     with open(path, encoding="utf-8") as handle:
         lines = {line.strip() for line in handle}
-    for line in CORE_IMPORTS:
+    for line in imports:
         if line not in lines:
             log.append(f"CLAUDE.md: MISSING {line} — add it by hand")
+
+
+def install_agents_md(root, layers, dry_run, log):
+    path = os.path.join(root, "AGENTS.md")
+    if os.path.lexists(path):
+        return
+    core_path = os.path.relpath(layers[0][1], root).replace(os.sep, "/")
+    log.append("AGENTS.md: create with the core rule entry points")
+    if not dry_run:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(
+                "# Agent instructions\n\n"
+                "Before substantive work, read these source files in order:\n\n"
+                f"1. `{core_path}/Rules/MetaRouter.md`\n"
+                f"2. `{core_path}/Rules/StopAndVerify.md`\n"
+                f"3. `{core_path}/Rules/CoreTags.md`\n\n"
+                "Follow the router and resolve its relative paths against its Rules directory.\n"
+                "Use available filesystem reading tools when a dedicated Read tool is absent.\n"
+                "Invoke discovered skills with `$skill-name`; interpret Claude-specific tool names\n"
+                "using available equivalents. Do not assume Claude hooks, launch commands, or\n"
+                "session metrics work in Codex. Report unavailable tooling without inventing results.\n"
+            )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -289,16 +319,28 @@ def cmd_worktrees(args, root):
 def cmd_install(args, root):
     layers = find_layers(root)
     log = []
-    install_settings(root, layers, args.dry_run, log)
-    install_skills(root, layers, args.dry_run, log)
-    install_claude_md(root, args.dry_run, log)
+    agents = ("claude", "codex") if args.agent == "both" else (args.agent,)
+    for agent in agents:
+        if agent == "claude":
+            install_settings(root, layers, args.dry_run, log)
+            core_path = os.path.relpath(layers[0][1], root).replace(os.sep, "/")
+            imports = [f"@{core_path}/Rules/{name}.md" for name in ("MetaRouter", "StopAndVerify", "CoreTags")]
+            install_claude_md(root, args.dry_run, log, imports)
+        else:
+            install_agents_md(root, layers, args.dry_run, log)
+        install_skills(root, layers, args.dry_run, log, agent)
     header = "would change" if args.dry_run else "changed"
     print(f"project {root}  layers: {', '.join(name for name, _ in layers)}")
     print(f"{header}:" if log else "up to date — nothing to change")
     for line in log:
         print(f"  {line}")
     if log and not args.dry_run:
-        print("Restart Claude Code sessions in this project to pick up settings and new skills.")
+        if "claude" in agents:
+            print("Restart Claude Code sessions in this project to pick up settings and new skills.")
+        if "codex" in agents:
+            print("Codex skills are linked; restart Codex if they do not appear. Invoke with $skill-name.")
+    if "codex" in agents:
+        print("Codex: Claude hooks/settings were not installed for Codex; Claude-specific launchers and session tracking still require adaptation.")
     return 0
 
 
@@ -306,10 +348,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", help="host project root (default: main checkout of the current git repo)")
     sub = parser.add_subparsers(dest="command")
-    install = sub.add_parser("install", help="merge settings, link skills, create CLAUDE.md")
+    install = sub.add_parser("install", help="configure Claude, Codex, or both")
+    install.add_argument("--agent", choices=("claude", "codex", "both"), default="claude")
     install.add_argument("--dry-run", action="store_true")
     install.set_defaults(func=cmd_install)
-    sub.add_parser("check", help="install --dry-run").set_defaults(func=cmd_install, dry_run=True)
+    check = sub.add_parser("check", help="install --dry-run")
+    check.add_argument("--agent", choices=("claude", "codex", "both"), default="claude")
+    check.set_defaults(func=cmd_install, dry_run=True)
     prepare = sub.add_parser("prepare-worktree", help="symlink worktree.symlinkDirectories into a worktree")
     prepare.add_argument("path")
     prepare.set_defaults(func=cmd_prepare_worktree)

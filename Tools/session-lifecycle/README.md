@@ -1,6 +1,6 @@
 # Session Lifecycle
 
-Per-session metrics for Claude Code: tokens, logged inaccuracies and iterations, and a router
+Per-session metrics for Claude Code and Codex: tokens, logged inaccuracies and iterations, and a router
 trace (which rule and process files were loaded, in order, read from the session transcript).
 
 ## Output
@@ -128,8 +128,8 @@ question`, others map to themselves) and `work_type_source` is `"lane"`; once ex
 changes no longer touch it. Changes are kept in `work_type_history` and listed under *Work type
 changes*.
 
-`--session-id` defaults to `$CLAUDE_CODE_SESSION_ID` (set by Claude Code in the Bash tool), else the
-newest transcript for the project. An ID with no folder is an error — the script never falls
+`--session-id` defaults to `$CODEX_THREAD_ID` in Codex or `$CLAUDE_CODE_SESSION_ID` in Claude Code;
+only the legacy Claude path falls back to the newest transcript for the project. An ID with no folder is an error — the script never falls
 back to another session's folder.
 A session launched from a subdirectory has its transcript filed under that directory's
 `~/.claude/projects/<encoded-dir>/`, not the project root's. When the expected path is missing,
@@ -148,3 +148,65 @@ Hook subcommands always exit 0 so a failure never blocks a session.
   should still gain a `report --session-id` flag so other consumers get the same.
 - `Started` is the transcript's first entry; `Tracking since` is when the hook first ran (they differ
   for sessions resumed from before the hooks were installed).
+
+
+### HTML fallback when tracking is unavailable
+
+Retrospective HTML rendering does not require session tracking. If `set` or `compile --final`
+fails because the transcript or session is unavailable, continue the retrospective and mark
+metrics and the router trace unavailable. Never invent a session folder or use another session's
+metrics. Save `<FeatureName>_<Phase>_Retro.md` in the feature working folder; for other lanes,
+save a uniquely named retrospective under the project's `GitIgnoreReports/Retrospectives/`.
+Then always render and open the saved Markdown with:
+
+```bash
+python3 session_lifecycle.py retro --path "<saved-retrospective.md>" --open
+```
+
+This bypasses session lookup and writes a matching `.html` beside the Markdown without copying
+or renaming the source. Missing metrics do not block rendering; charts without data are omitted.
+The proposal buttons use `retro --path` too, so later `--mark` updates the original Markdown and
+re-renders its page. `--path` cannot be combined with `--folder` or `--from`. If compilation fails
+but the current session folder is known, use its actual retrospective path. Open any separately
+available sanitized usage report alongside the HTML; do not stop at opening Markdown alone.
+If rendering or opening fails, report that failure and link the saved artifacts.
+
+## Codex session tracking
+
+The lifecycle tracker accepts Codex rollouts as well as Claude transcripts. In Codex,
+`CODEX_THREAD_ID` selects the exact thread; `--session-id` can select a known thread explicitly.
+It never picks the newest Codex thread. Missing or ambiguous rollouts fail without attaching
+another session's data. Rollouts are located below `$CODEX_HOME/sessions` (default
+`~/.codex/sessions`). Do not pass `unknown` or invent an ID.
+
+Run the existing commands from the host checkout:
+
+```bash
+python3 <lifecycle-script> hook-start
+python3 <lifecycle-script> set --lane other --work-type other --title "Session tooling"
+python3 <lifecycle-script> note --kind inaccuracy --source agent "Description of correction"
+python3 <lifecycle-script> compile
+```
+
+Use the appropriate lane/title for the actual task. `compile --final` belongs at session end.
+Session folders contain the agent type, notes, metrics and sanitized token reports. The existing
+session-support Codex parser supplies usage; cumulative token events must not be summed.
+Codex shell reads, including supported nested JavaScript exec commands, produce heuristic
+Bash rows in the router trace. Main-thread trace coverage does not imply complete child-agent
+trace coverage. Detailed standardized-operation attribution and comparison charts remain
+unavailable for Codex rather than showing misleading zeros. Token reports may still include
+child-agent telemetry supported by session-support.
+
+These parser changes do not install automatic hooks. Current Codex supports a trusted project
+`.codex/hooks.json` with `SessionStart`, `Stop` and `SessionEnd` command hooks calling
+`hook-start`, `hook-stop` and `hook-end`. Hook payloads supply `session_id` and `transcript_path`.
+Use the resolved lifecycle script path; preserve any existing hooks. Configure Stop with an
+adequate timeout (for example 30 seconds), and SessionEnd with its supported maximum of 3
+seconds. The Stop hook keeps metrics current even when closing a window does not end a thread.
+Trust/reload the project hooks in Codex before expecting automatic execution. No Claude hook
+execution is implied by a Codex skills installation.
+
+Reference: https://learn.chatgpt.com/docs/hooks . Transcript formats are not a stable hook API;
+keep synthetic regression fixtures and report parser failures as unavailable. Without a usable
+transcript, retain the sanitized usage report and `retro --path` HTML fallback.
+
