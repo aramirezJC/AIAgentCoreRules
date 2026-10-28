@@ -72,26 +72,30 @@ process.]
 
 ## Development plan
 
+[The `#` column is the task id (T1, T2 …), unique across the whole plan and never renumbered.
+/publish-batch names the task's branch and PRs after it, and the doc-review Progress tab shows
+the task's batch progress next to it.]
+
 ### Stage Level (ie V0, V1 …)
 * **Level of effort:** [Insert t-shirt size plus estimate in days]
 
-| Title | Task | Assignee | **Status** |
-| --- | --- | --- | --- |
-| Sample task | Sample Task | Andrea Ramirez | [ ] |
-| Designer show and tell | Show and tell to designer! | Andrea Ramirez | [ ] |
+| # | Title | Task | Assignee | **Status** |
+| --- | --- | --- | --- | --- |
+| T1 | Sample task | Sample Task | Andrea Ramirez | [ ] |
+| T2 | Designer show and tell | Show and tell to designer! | Andrea Ramirez | [ ] |
 
 ### Final touches
 * **Level of effort:** At least 5 days.
 
-| Title | Task | Assignee | **Status** |
-| --- | --- | --- | --- |
-| Data reconciliation | Implement and validate data reconciliation strategy | Andrea Ramirez | [ ] |
-| CS gifting | Implement CS Gifting Strategy | Andrea Ramirez | [ ] |
-| BI calls | Add BI calls | Andrea Ramirez | [ ] |
-| Unit tests | Add Unit Tests | Andrea Ramirez | [ ] |
-| Design and support tools | Implement design and support tools | Andrea Ramirez | [ ] |
-| QA debug functionality | Implement QA Debug functionality | Andrea Ramirez | [ ] |
-| RST backport | Backport Systems to RST | Andrea Ramirez | [ ] |
+| # | Title | Task | Assignee | **Status** |
+| --- | --- | --- | --- | --- |
+| T3 | Data reconciliation | Implement and validate data reconciliation strategy | Andrea Ramirez | [ ] |
+| T4 | CS gifting | Implement CS Gifting Strategy | Andrea Ramirez | [ ] |
+| T5 | BI calls | Add BI calls | Andrea Ramirez | [ ] |
+| T6 | Unit tests | Add Unit Tests | Andrea Ramirez | [ ] |
+| T7 | Design and support tools | Implement design and support tools | Andrea Ramirez | [ ] |
+| T8 | QA debug functionality | Implement QA Debug functionality | Andrea Ramirez | [ ] |
+| T9 | RST backport | Backport Systems to RST | Andrea Ramirez | [ ] |
 
 ## Design And Support Tools
 List of tools and mechanisms that the feature will need long term. Following are some examples:
