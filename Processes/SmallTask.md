@@ -51,7 +51,7 @@ steps:
     - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
-    - "Edits to a layer repo (AIAgentCoreRules, the host metadata repo): isolate with a worktree inside that repo (`git -C <layer> worktree add -b agent/<name> <layer>/.claude/worktrees/<name> HEAD`), not EnterWorktree, which isolates only the host project. Land with /land-worktree using `install.py --project <layer>`. Before creating the worktree, run `git -C <layer> status --porcelain --untracked-files=no`; if the main checkout has uncommitted tracked changes, tell the engineer now — /land-worktree will refuse to merge until they are committed or stashed."
+    - "Edits to a layer repo (AIAgentCoreRules, the host metadata repo): isolate with a worktree inside that repo (`git -C <abs layer> worktree add -b agent/<name> <abs layer>/.claude/worktrees/<name> HEAD` — absolute paths: git -C resolves a relative path against the repo, not the cwd, and nests the worktree at <layer>/<layer>/), not EnterWorktree, which isolates only the host project. Land with /land-worktree using `install.py --project <layer>`. Before creating the worktree, run `git -C <layer> status --porcelain --untracked-files=no`; if the main checkout has uncommitted tracked changes, tell the engineer now — /land-worktree will refuse to merge until they are committed or stashed."
   5b_audit:   # checkpoint — do not start step 6 until it has run
     - "Run /audit on every changed file, including debug tooling and tests. Fix or report each violation."
     - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
