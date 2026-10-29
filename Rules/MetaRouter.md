@@ -140,6 +140,7 @@ routing:
   async_flows_queues_sequences:   [./MultyStepOperationsRules.md]
   write_or_modify_tests:          [./TestingRules.md]
   resource_management:            [./ResourceManagementRules.md]
+  classify_files_changed:         [./ChangeClassification.md]   # TDD Architecture file/type list · File Plan · NEW/MODIFIED/DELETED diagram colors
   refactor_or_review:             [./CodingStandards.md, ./ArchitecturalPrinciples.md]
   new_feature_multi_system:       [./CodingStandards.md, ./ArchitecturalPrinciples.md, ./MultyStepOperationsRules.md]
 ```

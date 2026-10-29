@@ -39,7 +39,7 @@ design_delta:
   file_plan:            # Phase 4 works through this list, task by task
     - task: "T1"
       path: "relative/path/FileName.cs"
-      kind: "new | modified"
+      kind: "🟢 New | 🟡 Modified | 🔴 Deleted"   # see [[ChangeClassification]]
       responsibility: "one-line description, or what changes and why"
   contracts:            # only what the TDD lacks
     - "ClassName : BaseClass, IInterface — public members the TDD did not specify"
@@ -64,9 +64,9 @@ The approved delta goes into the TDD, not a separate file.
 
 ```yaml
 write_back:
-  - "Add or update the Architecture section's 'File Plan' subsection (task | path | new/modified | responsibility)."
-  - "Fold new contracts into the Architecture section; replace each resolved TBD with its decision."
-  - "If the architecture changed (new or removed component, ownership or flow change), update the existing Diagrams/*.mmd source and its embedded copy in the TDD — validate it locally first (see 'Validating a local diagram' in [[ExternalDocPass]]). Do not add new diagrams in this phase."
+  - "Add or update the Architecture section's 'File Plan' subsection (task | path | Change | responsibility), Change using [[ChangeClassification]]'s 🟢/🟡/🔴 tags."
+  - "Fold new contracts into the Architecture section; replace each resolved TBD with its decision. Update the 'Files & Types Changed' list (see [[ChangeClassification]]) with exact paths now that Discovery has run."
+  - "If the architecture changed (new or removed component, ownership or flow change), update the existing Diagrams/*.mmd source and its embedded copy in the TDD — validate it locally first (see 'Validating a local diagram' in [[ExternalDocPass]]), keeping it on [[ChangeClassification]]'s colors if it is a structural diagram. Do not add new diagrams in this phase."
   - "Bump the TDD version (minor for a changed decision, patch for added detail) and add a Versions row."
   - "Update the task list and use cases if a decision changed a task or an edge case solution."
   - "If the TDD is published externally, the change goes out through [[ExternalDocPass]] — one pass, not per edit."

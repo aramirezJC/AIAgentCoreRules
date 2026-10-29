@@ -114,6 +114,12 @@ architecture_checks:
      embedding it or editing an already-embedded one."
   - "Replace the template's placeholder bracket text with real prose — no leftover
      '[Insert architecture diagram...]' once the section has content."
+  - "List every file/type the section names under a 'Files & Types Changed' subsection, classified
+     NEW/MODIFIED/DELETED per [[ChangeClassification]] — three-line summary (Nature, Reason,
+     Implementation) visible, anything deeper in a collapsible block. A type's exact path may still
+     be TBD before Phase 2 Discovery; classify it anyway."
+  - "Any structural diagram (class/component) uses [[ChangeClassification]]'s NEW/MODIFIED/DELETED
+     colors and legend — a process-flow diagram keeps its own separate palette, also defined there."
 ```
 
 ---

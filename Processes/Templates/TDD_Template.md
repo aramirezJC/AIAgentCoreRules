@@ -37,11 +37,35 @@ too. Remove either tag from this line if the document ends up not using it.
 [Describe the high-level components and how they interact. Replace this bracket entirely — do not
 leave it alongside the Architecture Diagrams subsection below once this section has real content.]
 
+### Files & Types Changed
+[Every file/type this section names, classified per [[ChangeClassification]]. Exact paths may still
+be TBD before Phase 2 Discovery — classify by type anyway. State "None for this feature" under an
+empty group rather than omitting it.]
+
+### 🟢 New
+
+#### `TypeOrFileName`
+- **Nature:** [one line]
+- **Reason:** [one line]
+- **Implementation:** [2–4 lines, concrete and checkable]
+
+<details>
+<summary>More detail</summary>
+
+[anything beyond the three lines above]
+</details>
+
+### 🟡 Modified
+
+### 🔴 Deleted
+
 ### Architecture Diagrams [Optional — only if the architecture includes diagrams]
 [Diagram sources live in `Diagrams/*.mmd` (classDiagram / sequenceDiagram / flowchart). Validate
 every diagram locally before embedding it here or pushing it to a board — see "Validating a local
-diagram" in [[ExternalDocPass]]. Embed each diagram inline, right here, in its own collapsible
-block so the document stays self-contained:
+diagram" in [[ExternalDocPass]]. A structural diagram (class/component) uses
+[[ChangeClassification]]'s NEW/MODIFIED/DELETED colors and legend; a process-flow diagram uses its
+own separate palette, also defined there. Embed each diagram inline, right here, in its own
+collapsible block so the document stays self-contained:
 
 <details>
 <summary>Mermaid Diagram: <Name></summary>
@@ -63,7 +87,7 @@ file), not in this local Markdown copy.]
 [Filled or completed in Phase 3 from the Discovery report; Phase 4 works through it task by task.
 May be partly filled in Phase 1 when the files are already known.]
 
-| Task | Path | New / Modified | Responsibility |
+| Task | Path | Change | Responsibility |
 |---|---|---|---|
 | T1 | | | |
 
