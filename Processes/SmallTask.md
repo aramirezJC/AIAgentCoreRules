@@ -30,6 +30,7 @@ steps:
   1_scope:
     - "If the request is a tool/script/report: StopAndVerify Scope Gate — ask one-off vs reusable, and Editor/runtime/CLI. Wait."
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
+    - "A question with no change → set --work-type question. If it later turns into a change, re-run `set --work-type <small_feature|other>` before 4_propose."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
     - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
