@@ -55,6 +55,7 @@ steps:
   5b_audit:   # checkpoint — do not start step 6 until it has run
     - "Run /audit on every changed file, including debug tooling and tests. Fix or report each violation."
     - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
+    - "No C# changed → skip /audit and say so; 6_verify's real-data run is the check."
   6_verify:
     - "Run typecheck.py. Report its result verbatim if it fails."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
