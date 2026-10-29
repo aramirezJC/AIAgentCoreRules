@@ -15,7 +15,12 @@ same way session_lifecycle.py reads them. Sources:
                                           (each pre-tagged ✅/⚠️/❌ by the agent), nested under the "1c" step
   - Phase*.md "### Section: <Name>"       a step's TDD section checklist (Sub-phase 1b); a section is checked when
                                           its phase is completed, or the TDD's matching heading has a body that
-                                          differs from Processes/Templates/TDD_Template.md's
+                                          differs from Processes/Templates/TDD_Template.md's and is not only
+                                          "[...]" placeholders
+  - Progress.md step_status block         "  1b: in_progress" -> the current phase's step states, recorded by the
+                                          agent (done | in_progress); replaces the checkpoint.done match when present
+  - Progress.md tdd_sections block        "  Architecture: drafting" -> section states (approved | drafting);
+                                          replaces the TDD-body check when present
 """
 import re
 from pathlib import Path
@@ -33,6 +38,7 @@ STEP_HEADING = re.compile(r"^## (.+?)\s*$")
 SECTION_HEADING = re.compile(r"^### Section:\s*(.+?)\s*$")
 MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 BRACKETED_TEXT = re.compile(r"\[[^\]]*\]|\([^)]*\)")
+PLACEHOLDER_TEXT = re.compile(r"\[[^\]]*\](?!\()")  # "[TBD]", but not a markdown link's "[text](url)"
 SKIPPED_HEADING = re.compile(r"^(apply:|Gate \d|Router check)")
 STEP_KEY = re.compile(r"^(?:Sub-phase\s+(\d+[a-z])|(Step\s+\d+|Category\s+\d+))\b")
 PHASE_COMPLETED_LINE = re.compile(r'^\s*phase_completed:\s*"Phase\s+(\d+)\b')
@@ -53,6 +59,9 @@ BATCHES_LINE = re.compile(r"^batches:\s*(#.*)?$")
 BATCH_TASK_LINE = re.compile(r"^  (\S+?):\s*(#.*)?$")
 BATCH_FIELD_LINE = re.compile(r"^    (\w+):\s*(.*?)\s*$")
 QUOTED_ITEM = re.compile(r'"([^"]*)"|\'([^\']*)\'')
+STATUS_ENTRY_LINE = re.compile(r"^  ([^\s#][^:]*?):\s*([\w-]+)\s*(?:#.*)?$")
+STEP_STATE_BY_STATUS = {"done": "done", "in_progress": "partial"}
+SECTION_STATE_BY_STATUS = {"approved": "done", "drafting": "partial"}
 
 
 def find_progress_file(doc_path: Path) -> Optional[Path]:
@@ -96,6 +105,8 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     current_key = _quoted_field(progress_text, "current_phase") or ""
     completed_numbers = {int(m.group(1)) for m in map(PHASE_COMPLETED_LINE.match, progress_text.splitlines()) if m}
     done_items = _checkpoint_done(progress_text)
+    step_statuses = _status_block(progress_text, "step_status")
+    section_statuses = _status_block(progress_text, "tdd_sections")
     consistency_findings = _consistency_findings(progress_text)
     task_list = task_list_path(progress_path)
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
@@ -122,10 +133,26 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
         is_current = phase["key"] == current_key
         steps = _steps(process_dir / phase["file"])
         for step in steps:
-            step["done"] = completed or (is_current and _step_mentioned(step, done_items))
+            # Recorded states win; without the block, fall back to the approximate checks. step_status
+            # only applies to the current phase -- "Step 1" exists in more than one phase file.
+            if completed:
+                step["state"] = "done"
+            elif step_statuses is not None:
+                names = [step["key"], step["title"], step["title"].split(" — ", 1)[-1]]
+                step["state"] = _recorded_state(step_statuses, names, STEP_STATE_BY_STATUS) if is_current else "todo"
+            else:
+                step["state"] = "done" if is_current and _step_mentioned(step, done_items) else "todo"
+            step["done"] = step["state"] == "done"
             step["findings"] = consistency_findings if step["key"] == CONSISTENCY_STEP_KEY else []
             for section in step["sections"]:
-                section["done"] = completed or _tdd_section_filled(section["title"], tdd_bodies, template_bodies)
+                if completed:
+                    section["state"] = "done"
+                elif section_statuses is not None:
+                    section["state"] = _recorded_state(section_statuses, [section["title"]], SECTION_STATE_BY_STATUS)
+                else:
+                    filled = _tdd_section_filled(section["title"], tdd_bodies, template_bodies)
+                    section["state"] = "done" if filled else "todo"
+                section["done"] = section["state"] == "done"
         phases.append(
             {
                 "key": phase["key"],
@@ -232,9 +259,39 @@ def _matching_body(name: str, bodies: List[Dict[str, str]]) -> Optional[str]:
 
 
 def _tdd_section_filled(name: str, tdd_bodies: List[Dict[str, str]], template_bodies: List[Dict[str, str]]) -> bool:
-    """Approximate by design: the TDD has the section with a body that is not the template's placeholder."""
+    """Approximate by design: the TDD has the section with a body that is not the template's placeholder
+    and is not only "[...]" placeholders (an agent reverting a section to "[TBD]")."""
     body = _matching_body(name, tdd_bodies)
-    return bool(body) and body != _matching_body(name, template_bodies)
+    if not body or not PLACEHOLDER_TEXT.sub("", body).strip(" .:;,-—|"):
+        return False
+    return body != _matching_body(name, template_bodies)
+
+
+def _status_block(progress_text: str, name: str) -> Optional[Dict[str, str]]:
+    # step_status:                      tdd_sections:
+    #   1b: in_progress                   Architecture: drafting
+    # Normalised name -> status, or None when the progress file has no such block (the tab then
+    # falls back to the approximate checks). Comment and blank lines inside the block are skipped.
+    header = re.compile(r"^" + re.escape(name) + r":\s*(#.*)?$")
+    statuses: Optional[Dict[str, str]] = None
+    for line in progress_text.splitlines():
+        if statuses is None:
+            if header.match(line):
+                statuses = {}
+            continue
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        entry = STATUS_ENTRY_LINE.match(line)
+        if not entry:
+            break
+        statuses[_normalised(entry.group(1).strip().strip("\"'"))] = entry.group(2).lower()
+    return statuses
+
+
+def _recorded_state(statuses: Dict[str, str], names: List[str], state_by_status: Dict[str, str]) -> str:
+    """done | partial | todo for the first of names the block lists; unlisted or unknown statuses are todo."""
+    status = next((statuses[key] for key in map(_normalised, names) if key and key in statuses), "")
+    return state_by_status.get(status, "todo")
 
 
 def _step_mentioned(step: Dict, done_items: List[str]) -> bool:

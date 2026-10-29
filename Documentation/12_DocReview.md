@@ -38,9 +38,11 @@ way, with its TDD and diagrams:
 - **Phases and steps.** Phases 1–8 and their gates come from `Processes/CreateFeature/index.md`.
   The steps are the `##` headings of each `Phase*.md` file.
 - **Green ✓.** A phase is complete when the progress file has a gate handoff block for it, and
-  then all its steps are checked. Steps of the current phase are checked when the checkpoint's
-  `done` list mentions them. That match is approximate. A skipped phase stays unchecked even
-  when later phases are done.
+  then all its steps are checked. Steps of the current phase come from the progress file's
+  `step_status:` block (`  1b: in_progress` shows `~`, `done` shows ✓), which the agent updates
+  as it starts and finishes each step. Keys are the step's key (`1b`, `Step 3`) or its title.
+  Without that block, a step is checked when the checkpoint's `done` list mentions it — an
+  approximate match. A skipped phase stays unchecked even when later phases are done.
 - **Development phases.** Each `### V<n> — …` heading under the TDD's `## Development plan`
   is listed under Phase 4 with two collapsibles. **Tasks** lists the rows of that phase's table
   as done (✓), partial (~) or not started (○), labelled by the Title column (else Task) with
@@ -59,11 +61,13 @@ way, with its TDD and diagrams:
   task list's `{id:}`. TDD rows without a `#` column and multi-line task-list entries have no
   id, so they never show a batch.
 - **TDD sections.** Phase 1's "Sub-phase 1b" step lists each `### Section: <Name>` heading of
-  `Phase1_Intake.md` as a checklist. A section is checked when the TDD has a matching heading
-  (case, punctuation and `[Optional…]` ignored; a prefix such as `## Development plan` also
-  matches) whose body differs from the same section in `Templates/TDD_Template.md`, so a
-  pasted placeholder stays unchecked. Once Phase 1's handoff block is written, every section is
-  checked.
+  `Phase1_Intake.md` as a checklist. The progress file's `tdd_sections:` block sets each one:
+  `drafting` (written, not yet agreed) shows `~`, `approved` (the engineer agreed it) shows ✓,
+  anything unlisted shows ○. Without that block the tab guesses: a section is checked when the
+  TDD has a matching heading (case, punctuation and `[Optional…]` ignored; a prefix such as
+  `## Development plan` also matches) whose body differs from the same section in
+  `Templates/TDD_Template.md` and is not only `[…]` placeholders such as `[TBD]`. Once Phase 1's
+  handoff block is written, every section is checked.
 - **Consistency findings.** Once the Gate 1 handoff block is written, its
   `consistency_findings` list (Sub-phase 1c's findings, each tagged ✅/⚠️/❌ with its outcome)
   is shown as a nested list under Phase 1's "Sub-phase 1c" step. Before that, or when the list

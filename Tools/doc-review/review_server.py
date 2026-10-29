@@ -252,14 +252,14 @@ PAGE_TEMPLATE = """<!doctype html>
         parts.push('<section class="' + classes.join(" ") + '"><h2>' + markHtml(phase.completed ? "done" : "todo")
           + escapeHtml(phase.title) + (phase.current ? ' <span class="pill current">current</span>' : '') + '</h2><ul>');
         phase.steps.forEach((step) => {{
-          const state = step.done ? "done" : "todo";
+          const state = step.state || (step.done ? "done" : "todo");
           parts.push('<li class="' + state + '">' + markHtml(state) + escapeHtml(step.title));
-          // Sub-phase 1b's TDD sections, checked once the TDD fills them in.
+          // Sub-phase 1b's TDD sections: approved (✓) / drafting (~) from tdd_sections, else checked once the TDD fills them in.
           const sections = step.sections || [];
           if (sections.length) {{
             parts.push('<ul class="findings">');
             sections.forEach((section) => {{
-              const sectionState = section.done ? "done" : "todo";
+              const sectionState = section.state || (section.done ? "done" : "todo");
               parts.push('<li class="' + sectionState + '">' + markHtml(sectionState) + escapeHtml(section.title) + '</li>');
             }});
             parts.push('</ul>');

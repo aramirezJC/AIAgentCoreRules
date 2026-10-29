@@ -23,6 +23,11 @@ batches:                            # Phase 4: per task id, written by /publish-
                                     #     merged:  1
                                     #     open_pr: 9941
                                     #     prs:     [9930, 9941]
+step_status:                        # current phase's steps by key (1a, Step 3, Category 2): in_progress | done; reset when a phase starts
+                                    #   1b: in_progress
+tdd_sections:                       # Sub-phase 1b: TDD section → drafting (written, not yet agreed) | approved (engineer agreed)
+                                    #   Objective: approved
+                                    #   Architecture: drafting
 ```
 
 ---

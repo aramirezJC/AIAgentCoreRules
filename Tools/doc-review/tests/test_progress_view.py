@@ -399,6 +399,30 @@ class BuildModelTests(ProgressViewTestBase):
         step_1c = next(s for s in steps if s["key"] == "1c")
         self.assertEqual(step_1c["findings"], [])
 
+    def append_yaml(self, block):
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\n" + block + "```\n")
+
+    def test_step_status_block_replaces_the_checkpoint_done_match(self):
+        self.write_progress("1_intake", done=["1c mentioned but not recorded"])
+        self.append_yaml("step_status:             # current phase only\n  1a: done\n  \"1b\": in_progress  # drafting\n"
+                         "  1z: done\nnext_field: \"not part of the block\"\n")
+        steps = self.phase(self.model(), "1_intake")["steps"]
+        self.assertEqual([(s["key"], s["state"], s["done"]) for s in steps],
+                         [("1a", "done", True), ("1b", "partial", False), ("1c", "todo", False)])
+
+    def test_step_status_matches_by_title_and_only_in_the_current_phase(self):
+        self.write_progress("3_design", gates=["Phase 1 — Intake", "Phase 2 — Discovery"])
+        self.append_yaml("step_status:\n  Step 1: done\n  Architecture diagrams: in_progress\n")
+        model = self.model()
+        self.assertEqual([s["state"] for s in self.phase(model, "3_design")["steps"]], ["done", "partial"])
+        self.assertTrue(all(s["state"] == "done" for s in self.phase(model, "2_discovery")["steps"]))
+        self.assertTrue(all(s["state"] == "todo" for s in self.phase(model, "4_implementation")["steps"]))
+
+    def test_empty_step_status_block_checks_nothing(self):
+        self.write_progress("1_intake", done=["1a converted"])
+        self.append_yaml("step_status:\n")
+        self.assertTrue(all(s["state"] == "todo" for s in self.phase(self.model(), "1_intake")["steps"]))
+
     def test_header_fields(self):
         self.write_progress("1_intake")
         model = self.model()
@@ -440,9 +464,30 @@ class TddSectionTests(ProgressViewTestBase):
         self.assertTrue(sections["Development Plan — Stage Levels"])
         self.assertTrue(sections["Architecture"])
 
+    def test_bracketed_placeholder_only_body_is_not_checked_but_a_link_is(self):
+        self.write_progress("1_intake")
+        self.doc_path.write_text("## Objective\n[TBD — pending engineer answers (see Checkpoint)]\n"
+                                 "## Architecture\n- [Design doc](https://example.com/doc)\n## Edge Cases\n[TBD]\n")
+        self.assertEqual(self.sections(), {"Objective": False, "Architecture": True,
+                                           "Development Plan — Stage Levels": False, "Edge Cases": False})
+
+    def section_states(self):
+        steps = self.phase(self.model(), "1_intake")["steps"]
+        return {s["title"]: s["state"] for s in next(s for s in steps if s["key"] == "1b")["sections"]}
+
+    def test_tdd_sections_block_replaces_the_tdd_body_check(self):
+        self.write_progress("1_intake")
+        self.doc_path.write_text(SECTIONS_TDD_MD)  # Objective and Development Plan have bodies
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\ntdd_sections:\n  Objective: approved\n"
+                                      "  \"Development Plan — Stage Levels\": drafting\n  Edge Cases: bogus\n```\n")
+        self.assertEqual(self.section_states(), {"Objective": "done", "Architecture": "todo",
+                                                 "Development Plan — Stage Levels": "partial", "Edge Cases": "todo"})
+
     def test_completed_intake_checks_every_section(self):
         self.write_progress("2_discovery", gates=["Phase 1 — Intake"])
         self.assertTrue(all(self.sections().values()))
+        self.progress_path.write_text(self.progress_path.read_text() + "\n```yaml\ntdd_sections:\n  Objective: drafting\n```\n")
+        self.assertTrue(all(state == "done" for state in self.section_states().values()))
 
     def test_template_is_watched(self):
         self.write_progress("1_intake")
