@@ -120,6 +120,9 @@ architecture_checks:
      be TBD before Phase 2 Discovery; classify it anyway."
   - "Any structural diagram (class/component) uses [[ChangeClassification]]'s NEW/MODIFIED/DELETED
      colors and legend — a process-flow diagram keeps its own separate palette, also defined there."
+  - "Declare a class's actionable methods (what it does); don't assert the specific integration/wiring
+     mechanism (e.g. which type implements a listener interface) unless the engineer has already
+     confirmed it — that's an implementation decision for a later phase."
 ```
 
 ---
