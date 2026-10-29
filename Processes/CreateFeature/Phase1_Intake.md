@@ -64,6 +64,16 @@ If there is no GDD and no planning material, skip to 1b and gather information t
 
 Work through each TDD section with the engineer. Do not proceed to the next section until the current one is agreed upon. Fill the TDD as you go.
 
+Record each section's state in the progress file's `tdd_sections:` block as you go — the doc-review
+Progress tab shows it (○ not started, ~ drafting, ✓ approved):
+
+```yaml
+tdd_sections:
+  - "Writing or revising a section in the TDD → `<Section>: drafting` (the '### Section:' name below)."
+  - "The engineer agrees the section → `<Section>: approved`. Never mark a section approved because text is in the TDD."
+  - "A section reverted to a placeholder → remove its entry."
+```
+
 ---
 
 ### Section: Objective
