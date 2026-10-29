@@ -159,7 +159,7 @@ Where to apply them, offered in this order:
 ```yaml
 fresh_session:   # default — this session's context is at its largest, and every edit re-reads it
   how: "Mark the approved proposals pending, then print (or run via /new-session):"
-  command: '/new-session "Apply proposals <N,M> from <retro.md path>: read only its Proposed changes table, apply each, then mark it with session_lifecycle.py retro --folder <id8> --mark <N> --status applied"'
+  command: '/new-session "Apply proposals <N,M> from <retro.md path>: read only its Proposed changes table, apply each, then mark it with session_lifecycle.py retro --folder <id8> --mark <N> --status applied. Run session_lifecycle.py from the host project root (it resolves GitIgnoreReports/Sessions from the cwd). Layer-repo edits go in a worktree: git -C <layer> worktree add -b agent/<name> <layer>/.claude/worktrees/<name> HEAD"'
   note: "The new session reads the retro's table, not this transcript. Record it as lane other."
 in_place:        # only for 1–2 one-line edits
   how: "Apply here, one file at a time, as below."

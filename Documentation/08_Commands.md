@@ -9,7 +9,7 @@ commands — see the host project's documentation.
 | Command | What it does |
 |---|---|
 | `/start-session [name]` | Starts or resumes tracking, names the session (folder and metrics heading) when a name is given, and records the lane and work type. Tracking itself is automatic via the SessionStart hook — use it to name a session or when tracking context was lost. The lane commands (`/small-task`, `/bug-fix`, `/feature`, `/resume-work`, `/run-investigation-mode`, `/generate-meta-review`) run its tracking start as their step 0, so you do not need it before them. |
-| `/end-session` | If the session worked in a worktree that still has work in it, first asks whether to land it and, on yes, runs `/land-worktree`. Then compiles metrics and the router trace, writes the retrospective scaled to the lane, opens both files, and proposes (not applies) rule improvements. |
+| `/end-session` | If the session worked in a worktree that still has work in it, first asks whether to land it and, on yes, runs `/land-worktree`. Then compiles metrics and the router trace, writes the retrospective scaled to the lane, opens both files, and proposes (not applies) rule improvements. The `/new-session` prompt it prints for applying proposals tells the new session to run `session_lifecycle.py` from the host project root and to edit layer repos in a `git -C <layer> worktree add` worktree. |
 | `/inaccuracy <what was wrong>` | *Engineer only.* Logs an agent mistake you just corrected. |
 | `/iteration <what changed>` | *Engineer only.* Logs a deliberate change of direction or scope. |
 
