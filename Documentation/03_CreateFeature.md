@@ -39,6 +39,11 @@ and `/publish-batch` names a task's branch after its id, so it stops on a task w
 | 7 | **Verification** | Final rules-compliance pass across every file | Engineer confirms the feature is complete |
 | 8 | **Retrospective** | Find discovery gaps, missing patterns, gotchas and process gaps; apply approved improvements | Every approved change written and confirmed |
 
+Renaming or renumbering a phase is not a one-file change: `progress_view.py` parses phase keys,
+step headings (`Step N —`, `Sub-phase Na`) and `phase_completed: "Phase N"` gates, its tests carry
+fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress files store
+`current_phase`. The `consumers:` block in the process index lists them all.
+
 ### Phase 1 — Intake
 
 - **1a GDD conversion** — if a GDD is provided, it is converted to Markdown in full, without
@@ -53,6 +58,9 @@ and `/publish-batch` names a task's branch after its id, so it stops on a task w
   OTA-configurable content), notes and future work. Each section is agreed with the engineer
   before moving on. The data reconciliation strategy cannot be left blank; if it is undecided it
   is marked TBD and logged as an open item.
+  Before the Architecture section is drafted, the host SystemIndex's SystemPatterns entries that
+  match the feature (e.g. GemEventPattern, PrizeFlowPattern) are loaded: the TDD is now the main
+  design document, so pattern guidance applies here, not only in Phase 3.
   The Architecture section embeds each `Diagrams/*.mmd` diagram inline, each in its own
   collapsible `<details><summary>Mermaid Diagram: <Name></summary>` block holding a fenced
   `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
