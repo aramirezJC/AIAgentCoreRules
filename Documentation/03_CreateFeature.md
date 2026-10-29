@@ -66,6 +66,9 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
   Diagrams are validated locally before they are embedded or edited, and the template's
   placeholder text is replaced once the section has content (see [[TDD_Template]]).
+  A class is described by its actionable methods (what it does); the wiring mechanism (e.g. which
+  type implements a listener interface) is left to a later phase unless the engineer has already
+  confirmed it.
 - **1c consistency and gap review** — findings are a numbered list, each tagged ✅ (passes),
   ⚠️ (passes but needs attention) or ❌ (fails). For every ⚠️ or ❌ the engineer chooses to
   **acknowledge and continue** or **rework now**, and the outcome is recorded beside the finding.
