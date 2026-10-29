@@ -79,7 +79,6 @@ way, with its TDD and diagrams:
 The tab refreshes whenever the progress file, the task list, the TDD, the TDD template or a
 CreateFeature phase file changes, and every 5 minutes while PRs are linked. Static mode includes the tab without refreshing.
 
-<<<<<<< Updated upstream
 ## Performance tab
 
 When the project has tracked sessions (`GitIgnoreReports/Sessions/`, or `$SESSION_REPORTS_ROOT`),
@@ -103,7 +102,15 @@ breakdown: the same estimated token-by-category numbers the retrospective charts
 Sessions without a compiled breakdown are listed but left out of the statistics. The tab
 refreshes whenever a `session.json` changes; the active session is as fresh as its last compile
 (the Stop hook recompiles after replies).
-=======
+
+**Feature scope.** Served from a feature folder (one with `<Name>_Progress.md`), the tab opens on
+that feature's sessions, with a **<Feature> / All sessions** toggle. A session belongs to the
+feature when its `session.json` is tagged with it — `session_lifecycle.py set --feature <Name>`,
+which /feature and /resume-work pass, and /small-task, /bug-fix and /run-investigation-mode pass
+when the work is for an in-progress feature — or when its folder is listed under `sessions:` in
+the Progress file (matched by the id8 suffix). To add a past session, run
+`set --session-id <id> --feature <Name>`. The tab also refreshes when the Progress file changes.
+
 ## Mermaid syntax and validation
 
 When preparing diagrams for this preview, avoid literal semicolons in sequence-diagram
@@ -111,7 +118,6 @@ message text: Mermaid treats them as statement separators. Use commas, or encode
 intentional semicolon as `#59;`. Validate diagrams with an available Mermaid renderer before
 claiming they render successfully. If renderer tooling or browser inspection is unavailable,
 report that limitation explicitly and request an engineer rendering check.
->>>>>>> Stashed changes
 
 ## Tests
 

@@ -428,6 +428,9 @@ PERF_CSS = """
   .perf-pill { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #333944; color: #e4e6eb; }
   .perf-pill.active { background: var(--active); color: #10141c; }
   .perf-view .empty { color: #5c6577; }
+  .perf-scope { display: inline-flex; border: 1px solid #333944; border-radius: 6px; overflow: hidden; margin: 10px 0 0; }
+  .perf-scope button { background: none; border: 0; color: #9aa3b5; font: inherit; font-size: 13px; padding: 4px 12px; cursor: pointer; }
+  .perf-scope button.on { background: #333944; color: #fff; }
 """
 
 PERF_SCRIPT = """
@@ -568,34 +571,53 @@ PERF_SCRIPT = """
       + 'Used: measured Miro/Confluence MCP calls in ' + d.miro_confluence.sessions + ' session(s).</div>';
   }
 
+  // Per tab: "feature" (only the served feature's sessions) or "all". Kept across live refreshes.
+  const perfScopes = {};
+
+  function perfScopeToggle(model, scope) {
+    const count = model.sessions.filter((s) => s.in_feature).length;
+    const button = (value, label) => '<button type="button" data-scope="' + value + '"' + (scope === value ? ' class="on"' : '')
+      + '>' + label + '</button>';
+    return '<div class="perf-scope">' + button("feature", escapeHtml(model.feature) + ' &middot; ' + count)
+      + button("all", 'All sessions &middot; ' + model.sessions.length) + '</div>';
+  }
+
   function renderPerf(id, src) {
     const target = document.getElementById(id);
     try {
       const model = JSON.parse(src);
-      const o = model.overview;
+      const scope = model.feature ? (perfScopes[id] || "feature") : "all";
+      const o = scope === "feature" ? model.feature_overview : model.overview;
+      const sessions = scope === "feature" ? model.sessions.filter((s) => s.in_feature) : model.sessions;
       const colors = perfColors(model);
       const tile = (label, value) => '<div class="perf-tile"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
       const parts = ['<h1>Session performance</h1><div class="meta">Estimated tokens per session (the retrospective\\'s breakdown) &middot; '
-        + escapeHtml(model.root) + '</div>',
+        + escapeHtml(model.root) + '</div>'
+        + (model.feature ? perfScopeToggle(model, scope)
+          + '<div class="meta">Feature sessions: tagged with set --feature, or listed under sessions: in the Progress file.</div>' : ''),
         '<div class="perf-tiles">' + tile("Sessions", o.compiled + (o.sessions > o.compiled ? ' <span class="meta">/ ' + o.sessions + '</span>' : ''))
           + tile("Total tokens", perfCompact(o.total)) + tile("Average / session", perfCompact(o.mean))
           + tile("Median", perfCompact(o.median)) + tile("Std deviation", perfCompact(o.stdev))
           + tile("Standardized", perfPercent(o.total ? o.standardized / o.total : 0)) + '</div>',
         '<h2>Distribution of session totals</h2><div class="perf-curve">' + perfBellCurve(o.totals)
           + '<div class="note">Bars: sessions per bin. Curve: normal fit to log10(tokens). Band: ±1σ. Dots: one per session.</div></div>',
-        '<h2>Tokens by category, all sessions</h2>' + perfStack(o.categories, colors) + perfCategoryTable(o.categories, colors, true),
+        '<h2>Tokens by category, ' + (scope === "feature" ? 'feature' : 'all') + ' sessions</h2>' + perfStack(o.categories, colors) + perfCategoryTable(o.categories, colors, true),
         perfDocReview(o.doc_review, tile),
         '<h2>Sessions, newest first</h2>'];
       if (o.sessions > o.compiled) {
         parts.push('<div class="meta">' + (o.sessions - o.compiled) + ' session(s) without a compiled breakdown are listed but left out of the statistics.</div>');
       }
-      model.sessions.forEach((session) => parts.push(perfSession(session, colors)));
+      if (!sessions.length) parts.push('<div class="empty">No sessions tagged with this feature yet.</div>');
+      sessions.forEach((session) => parts.push(perfSession(session, colors)));
       // A refresh rebuilds the tab; keep the collapsibles the engineer opened or closed by hand.
       const openState = {};
       target.querySelectorAll("details[data-key]").forEach((el) => { openState[el.dataset.key] = el.open; });
       target.innerHTML = parts.join("");
       target.querySelectorAll("details[data-key]").forEach((el) => {
         if (el.dataset.key in openState) el.open = openState[el.dataset.key];
+      });
+      target.querySelectorAll(".perf-scope button").forEach((el) => {
+        el.addEventListener("click", () => { perfScopes[id] = el.dataset.scope; renderPerf(id, src); });
       });
     } catch (err) {
       target.innerHTML = '<div class="error">' + escapeHtml(err && err.message ? err.message : err) + '</div>';
@@ -823,7 +845,9 @@ def _tabs(paths: List[Path]) -> List[Dict]:
     if reports_root is not None:
         # Auto-added last, so the doc (or Progress) stays the first tab. Its file key is not a real file:
         # nothing anchors comments to it, and it must never match a doc tab's key.
-        tabs.append({"title": "Performance", "kind": "perf", "path": reports_root, "file": "#performance"})
+        # With a Progress file the tab also scopes to that feature's sessions (perf_view.feature_filter).
+        tabs.append({"title": "Performance", "kind": "perf", "path": reports_root, "file": "#performance",
+                     "progress": progress_path})
     for i, tab in enumerate(tabs):
         tab["id"] = f"d{i}"
     return tabs
@@ -857,7 +881,7 @@ def _tab_source(tab: Dict) -> str:
     if tab["kind"] == "progress":
         return json.dumps(build_model(tab["path"]))
     if tab["kind"] == "perf":
-        return json.dumps(perf_view.build_model(tab["path"]))
+        return json.dumps(perf_view.build_model(tab["path"], progress_path=tab.get("progress")))
     return tab["path"].read_text()
 
 
@@ -866,7 +890,10 @@ def _tab_mtime(tab: Dict) -> float:
         newest_file = max(path.stat().st_mtime for path in watched_paths(tab["path"]))
         return max(newest_file, pr_refresh_stamp(tab["path"]))
     if tab["kind"] == "perf":
-        return max(path.stat().st_mtime for path in perf_view.watched_paths(tab["path"]))
+        watched = perf_view.watched_paths(tab["path"])
+        if tab.get("progress") is not None and tab["progress"].is_file():
+            watched.append(tab["progress"])   # its "sessions:" list changes which sessions are in the feature
+        return max(path.stat().st_mtime for path in watched)
     return tab["path"].stat().st_mtime
 
 
