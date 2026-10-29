@@ -222,10 +222,15 @@ being summarised. The progress file (`<FeatureName>_Progress.md`) does.
 | Every gate | The handoff block is appended; the current phase advances; the checkpoint is cleared; the session closes with a phase retro |
 | Each approved file in Phase 4 | The file is added to the checkpoint's `done` list and `next` is set |
 | `/publish-batch` in Phase 4 | The task's `batches:` entry is written (plan, merged count, open PR); each PR is also listed under `pull_requests`; a merged batch adds its files to `done` |
+| Each step started or acknowledged | `step_status:` records the current phase's steps as `in_progress` or `done`; in Sub-phase 1b, `tdd_sections:` records each TDD section as `drafting` or `approved`. The doc-review Progress tab shows these |
 | `/checkpoint` | The checkpoint is replaced: done, in flight, next action, pending decisions, notes |
 | `/end-session` mid-phase | `/checkpoint` runs automatically first |
 | `/close-feature <Name> [reason]` | Status set to the picked closing status — `abandoned` (default), `superseded`, `on_hold` or `complete` — and an entry appended to the `Closed` history section; checkpoint and gate blocks are kept. The feature drops off `/active-features` |
 | `/reopen-feature <Name>` | Status returned to `in_progress` from `abandoned`, `superseded` or `on_hold` (never from `complete`) and a reopen entry appended; `/resume-work` then continues from the kept checkpoint |
+
+All state the agent writes about a feature (`batches`, `pull_requests`, `step_status`,
+`tdd_sections`) is kept as top-level blocks in the progress file's header, not in separate
+files. A missing block is added just before the header's closing fence.
 
 To continue in a new session, run **`/resume-work <FeatureName>`**. The agent:
 
