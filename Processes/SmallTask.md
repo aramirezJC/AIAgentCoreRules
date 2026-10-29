@@ -52,13 +52,16 @@ steps:
     - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
+    - "In an EnterWorktree session, run git as plain single commands from the worktree cwd. The isolation guard refuses `cd … &&`, loops and `xargs` around git. Pass multiple SHAs to one `git cherry-pick` instead of looping."
     - "Edits to a layer repo (AIAgentCoreRules, the host metadata repo): isolate with a worktree inside that repo (`git -C <abs layer> worktree add -b agent/<name> <abs layer>/.claude/worktrees/<name> HEAD` — absolute paths: git -C resolves a relative path against the repo, not the cwd, and nests the worktree at <layer>/<layer>/), not EnterWorktree, which isolates only the host project. Land with /land-worktree using `install.py --project <layer>`. Before creating the worktree, run `git -C <layer> status --porcelain --untracked-files=no`; if the main checkout has uncommitted tracked changes, tell the engineer now — /land-worktree will refuse to merge until they are committed or stashed."
   5b_audit:   # checkpoint — do not start step 6 until it has run
     - "Run /audit on every changed file, including debug tooling and tests. Fix or report each violation."
     - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
     - "No C# changed → skip /audit and say so; 6_verify's real-data run is the check."
+    - "port_or_cherry_pick: porting already-reviewed commits to another branch (no hand-written C#) → skip /audit and CodingStandards and say so; verify with 6_verify's port_or_cherry_pick recipe."
   6_verify:
     - "Run typecheck.py. Report its result verbatim if it fails."
+    - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new`."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
   7_close:
