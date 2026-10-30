@@ -30,6 +30,7 @@ steps:
   - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash"
   - "  worktree is DIRTY → the agent left uncommitted work; show `git -C <worktree> status --short` and ask"
   - "  ahead is 0 → nothing to land; offer cleanup only"
+  - "  conflict markers in the branch's tree (`git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' <branch>`) → list the files and ask before merging. They may predate the agent's work (a stash pop committed with markers reached main in ac09f58); landing would carry them on."
   - "Show `git log --oneline HEAD..<branch>` and `git diff --stat HEAD...<branch>`."
   - "from_upstream > 0 → the worktree branched from the default branch, not from the target. Merging brings those upstream commits too. Offer instead: cherry-pick only the agent's commits (`git log --reverse --format=%H HEAD..<branch> --not <upstream>`). Engineer chooses."
   - "Merge without committing so the engineer tests first: `git merge --no-ff --no-commit <branch>` (or `--squash` when asked). On conflicts: list the files, stop, let the engineer resolve or abort."
