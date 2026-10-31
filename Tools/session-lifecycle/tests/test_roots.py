@@ -45,6 +45,8 @@ class RootTestCase(unittest.TestCase):
                         ignore=shutil.ignore_patterns("tests", "__pycache__"))
         shutil.copytree(os.path.join(TOOLS, "setup"), os.path.join(self.layer_real, "Tools", "setup"),
                         ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(os.path.join(TOOLS, "feature-state"), os.path.join(self.layer_real, "Tools", "feature-state"),
+                        ignore=shutil.ignore_patterns("tests", "__pycache__"))
         os.makedirs(os.path.join(self.host, "GitIgnoredExternals"))
         self.layer = os.path.join(self.host, "GitIgnoredExternals", "Layer")
         os.symlink(self.layer_real, self.layer)

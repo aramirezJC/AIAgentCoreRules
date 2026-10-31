@@ -225,7 +225,7 @@ class InlineMarkerTests(unittest.TestCase):
         self.diagrams_dir.mkdir()
         self.diagram_path = self.diagrams_dir / "flow.mmd"
 
-    def test_comments_withInlineMarkersInDocAndDiagram_listsBothAlongsideSidecarThreads(self):
+    def test_comments_leavesObsoleteInlineMarkersUntouchedAndDoesNotScanThem(self):
         self.doc_path.write_text(
             "# Design\n\n<!-- @CLAUDE: tighten this paragraph -->\n\nSome body text.\n"
         )
@@ -235,13 +235,9 @@ class InlineMarkerTests(unittest.TestCase):
         result = run_comments(self.doc_path, status="ready")
 
         self.assertEqual(result["threads"], [], "no threads exist yet -- the ready filter must find none")
-        markers_by_file = {m["file"]: m for m in result["inline_markers"]}
-        self.assertIn(self.doc_path.name, markers_by_file, "the doc's own inline marker must be discovered")
-        self.assertEqual(markers_by_file[self.doc_path.name]["text"], "tighten this paragraph")
-        diagram_rel = str(self.diagram_path.relative_to(self.tmp))
-        self.assertIn(diagram_rel, markers_by_file,
-                      "a diagram under Diagrams/ must be auto-discovered without being a comment anchor")
-        self.assertEqual(markers_by_file[diagram_rel]["text"], "rename node A")
+        self.assertNotIn("inline_markers", result)
+        self.assertIn("@CLAUDE", self.doc_path.read_text())
+        self.assertIn("@CLAUDE", self.diagram_path.read_text())
 
 
 PS_OUTPUT = """\

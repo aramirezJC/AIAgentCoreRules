@@ -28,6 +28,7 @@ LOCAL_MODULE_NAMES = {path.stem for path in TOOL_DIR.glob("*.py")}
 # Stdlib-only modules of other tools in this repo, shared rather than copied (perf_view.py must find the
 # same reports root and category names as session_lifecycle.py). Checked stdlib-only themselves below.
 IN_REPO_TOOL_MODULES = {
+    "feature_state": TOOL_DIR.parent / "feature-state" / "feature_state.py",
     "project_root": TOOL_DIR.parent / "setup" / "project_root.py",
     "token_breakdown": TOOL_DIR.parent / "session-lifecycle" / "token_breakdown.py",
 }
@@ -45,7 +46,7 @@ def _imported_top_level_names(file_path: Path):
 
 
 def _is_stdlib_or_local(name: str) -> bool:
-    if name in LOCAL_MODULE_NAMES or name in IN_REPO_TOOL_MODULES:
+    if name in LOCAL_MODULE_NAMES or name in IN_REPO_TOOL_MODULES or (TOOL_DIR.parent / "feature-state" / (name + ".py")).is_file():
         return True
     spec = importlib.util.find_spec(name)
     if spec is None:

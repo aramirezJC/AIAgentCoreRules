@@ -2,6 +2,10 @@
 
 # Phase 4 — Implementation
 
+State changes in this phase use the shared feature-state CLI described in index.md.
+Progress Markdown is generated; references to writing its fields mean tool operations.
+
+
 Goal: Write code file-by-file following the approved design. Present each file to the engineer before moving to the next.
 
 Implement in this order: **interfaces → concrete classes → integration glue.**

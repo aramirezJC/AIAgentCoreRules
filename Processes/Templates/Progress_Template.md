@@ -1,3 +1,9 @@
+# Generated Progress projection — legacy reference
+
+New features are initialized with `Tools/feature-state/feature_state.py create <feature-directory>`.
+The tool generates this human-facing view from state.json. Never instantiate or edit this
+legacy example as authoritative state. It remains a reference for migration and field meaning.
+
 # [FeatureName] — Progress
 
 Resume state for the CreateFeature process. Written at every gate and by `/checkpoint`; read by

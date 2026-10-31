@@ -4,9 +4,20 @@
 
 Interactive wizard for designing and implementing a new feature. Load one phase file at a time. Do not advance past any gate without explicit engineer confirmation.
 
+
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+
 ```yaml
 working_folder: "Assets/GitIgnoreAssets/Features/<FeatureName>/   # GDD, TDD, TaskList, UseCases, Discovery, Architecture docs"
-progress_file:  "<working_folder>/<FeatureName>_Progress.md        # resume state — template: ../Templates/Progress_Template.md"
+state_file:     "<working_folder>/state.json  # authoritative; shared feature-state CLI"
+progress_file:  "<working_folder>/<FeatureName>_Progress.md  # generated read-only view"
 session_metrics: "per session, in the Session tracking folder — see MetaRouter Session Lifecycle"
 ```
 
@@ -40,16 +51,18 @@ exceptions:
 
 ## Progress File — resuming across sessions
 
-Chat context does not survive a session end or a summary. The progress file does.
+Chat context does not survive a session end or a summary. Structured feature state does.
+The YAML instructions below describe logical state updates through the shared CLI; they do
+not authorize direct edits to generated Progress Markdown.
 
 ```yaml
 progress_file:
-  create:     "At the start of Phase 1, from ../Templates/Progress_Template.md, if it does not exist."
+  create:     "At the start of Phase 1, use feature-state create; never recreate an existing JSON or legacy feature."
   on_session: "Add the current session folder name (from the Session tracking block) to `sessions` the first time this session writes the file. Readers match entries by the id8 suffix, so a later lane rename does not break them."
   on_gate:    "Append the phase_handoff block (below) under 'Gates Passed', set current_phase to the next phase, clear the Checkpoint section, update artifacts and the sources_of_truth versions."
   mid_phase:  "/checkpoint replaces the Checkpoint section — where work stopped and what comes next."
   on_step:    "Starting a step (its key: 1a, Step 3, Category 2) → set it `in_progress` under `step_status:`; the engineer acknowledging it → `done`. When a phase starts, replace the block with only that phase's steps — keys like 'Step 1' repeat across phases. The doc-review Progress tab reads this block (and Sub-phase 1b's `tdd_sections:`) as the truth; a block that is missing falls back to guessing from checkpoint.done and the TDD text."
-  state_blocks: "Agent-written feature state (batches, pull_requests, step_status, tdd_sections) lives as top-level blocks in the header yaml, parsed line by line by Tools/doc-review/progress_view.py. A new kind of tracked state is a new block here, not a new file. Insert a missing block immediately before the header's closing ``` fence — never in the middle of another list such as sources_of_truth."
+  state_blocks: "Feature state (batches, pull_requests, step_status, tdd_sections) lives in state.json. Extend the shared versioned schema and validated commands for new state; never add authoritative Markdown blocks."
   on_resume:  "/resume-work <FeatureName> reads this file, reloads the current phase and its artifacts, and confirms with the engineer before continuing."
   on_close:   "/close-feature <FeatureName> sets status abandoned, superseded, on_hold or complete (engineer picks; abandoned default) and appends to a '## Closed' history section. Checkpoint and Gates Passed are kept. Closed features are hidden from /active-features; `session_lifecycle.py features --closed` lists the reopenable ones."
   on_reopen:  "/reopen-feature <FeatureName> returns abandoned, superseded or on_hold to in_progress and appends a reopen entry; complete is final. Resume afterwards with /resume-work."

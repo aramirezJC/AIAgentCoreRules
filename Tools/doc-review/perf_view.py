@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 TOOLS_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(TOOLS_DIR / "feature-state"))
+from feature_state import load_state
 sys.path.insert(0, str(TOOLS_DIR / "setup"))
 sys.path.insert(0, str(TOOLS_DIR / "session-lifecycle"))
 import project_root  # noqa: E402  shared with session_lifecycle.py, so both find the same reports root
@@ -79,6 +81,11 @@ def feature_filter(progress_path: Optional[Path]):
     """(feature name, id8s listed under "sessions:") from a <Name>_Progress.md; ("", set()) without one."""
     if progress_path is None:
         return "", set()
+    state_path = progress_path.parent / "state.json"
+    if state_path.is_file():
+        state = load_state(state_path.parent)
+        ids = {folder.rsplit("_", 1)[-1] for folder in state["sessions"]}
+        return state["feature"], ids
     try:
         text = progress_path.read_text()
     except OSError:

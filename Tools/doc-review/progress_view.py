@@ -1,7 +1,8 @@
 """Build the Progress tab's model: CreateFeature phases, their steps, and where a feature stands.
 
-Stdlib only, no PyYAML -- the progress, task-list and index files are matched line by line, the
-same way session_lifecycle.py reads them. Sources:
+Stdlib only. Migrated feature progression is loaded directly from state.json through the
+shared feature-state library; generated Progress Markdown is never parsed. The legacy
+standalone preview still supports line-based Markdown parsing. Document/process sources:
   - Processes/CreateFeature/index.md      phase keys, files and gate one-liners
   - Processes/CreateFeature/Phase*.md     steps = the "## " headings (minus apply/Gate/Router check)
   - <Name>_Progress.md                    current_phase, status, phase_handoff blocks, checkpoint.done
@@ -23,8 +24,12 @@ same way session_lifecycle.py reads them. Sources:
                                           replaces the TDD-body check when present
 """
 import re
+import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "feature-state"))
+from feature_state import load_state
 
 import pr_notes
 
@@ -66,7 +71,11 @@ SECTION_STATE_BY_STATUS = {"approved": "done", "drafting": "partial"}
 
 def find_progress_file(doc_path: Path) -> Optional[Path]:
     """The first <Name>_Progress.md next to the served doc, or None if it is not a feature doc."""
-    matches = sorted(doc_path.resolve().parent.glob("*_Progress.md"))
+    folder = doc_path.resolve() if doc_path.is_dir() else doc_path.resolve().parent
+    if (folder / "state.json").is_file():
+        state = load_state(folder)
+        return folder / (state["feature"] + "_Progress.md")
+    matches = sorted(folder.glob("*_Progress.md"))
     return matches[0] if matches else None
 
 
@@ -84,7 +93,7 @@ def template_path(process_dir: Path) -> Path:
 
 def watched_paths(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -> List[Path]:
     """Every file the model is built from -- the tab re-renders when any of them changes."""
-    candidates = [progress_path, task_list_path(progress_path), tdd_path(progress_path), process_dir / "index.md",
+    candidates = [progress_path.parent / "state.json", progress_path, task_list_path(progress_path), tdd_path(progress_path), process_dir / "index.md",
                   template_path(process_dir)]
     candidates += sorted(process_dir.glob("Phase*.md"))
     return [path for path in candidates if path.is_file()]
@@ -93,7 +102,9 @@ def watched_paths(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR) -
 def pr_refresh_stamp(progress_path: Path) -> float:
     """Start of the current PR refresh window when Progress.md links PRs, else 0 -- folded into the
     tab's mtime so PR comments posted on GitHub reach the page without any local file changing."""
-    if not _pull_requests(progress_path.read_text()):
+    state_file = progress_path.parent / "state.json"
+    requests = load_state(state_file.parent)["pull_requests"] if state_file.is_file() else _pull_requests(progress_path.read_text())
+    if not requests:
         return 0.0
     return float(pr_notes.refresh_window() * pr_notes.REFRESH_SECONDS)
 
@@ -101,13 +112,23 @@ def pr_refresh_stamp(progress_path: Path) -> float:
 def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
                 fetch_pr: Callable[[int, Path], Dict] = pr_notes.fetch_pr_notes,
                 pr_url: Callable[[int, Path], str] = pr_notes.pr_url) -> Dict:
-    progress_text = progress_path.read_text()
+    state_file = progress_path.parent / "state.json"
+    state = load_state(state_file.parent) if state_file.is_file() else None
+    progress_text = "" if state is not None else progress_path.read_text()
     current_key = _quoted_field(progress_text, "current_phase") or ""
     completed_numbers = {int(m.group(1)) for m in map(PHASE_COMPLETED_LINE.match, progress_text.splitlines()) if m}
     done_items = _checkpoint_done(progress_text)
     step_statuses = _status_block(progress_text, "step_status")
     section_statuses = _status_block(progress_text, "tdd_sections")
     consistency_findings = _consistency_findings(progress_text)
+    if state is not None:
+        current_key = state["current_phase"]
+        completed_numbers = {int(match.group(1)) for gate in state["gates"]
+                             if (match := re.match(r"Phase (\d+)\b", gate.get("phase_completed", "")))}
+        done_items = state["checkpoint"].get("done", [])
+        step_statuses = state["step_status"]
+        section_statuses = state["tdd_sections"]
+        consistency_findings = [item for gate in state["gates"] for item in gate.get("consistency_findings", [])]
     task_list = task_list_path(progress_path)
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
     tdd = tdd_path(progress_path)
@@ -115,17 +136,30 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     tdd_bodies = _heading_bodies(tdd.read_text()) if tdd.is_file() else []
     template = template_path(process_dir)
     template_bodies = _heading_bodies(template.read_text()) if template.is_file() else []
-    pull_requests = _pull_requests(progress_text)
+    if state is not None:
+        displayed = dev_phases if dev_phases else stages
+        known_ids = {task["id"] for stage in displayed for task in stage["tasks"]}
+        additional = [dict(task, title=task.get("title") or task.get("task") or task["id"])
+                      for task in state["tasks"] if task["id"] not in known_ids]
+        if additional:
+            if dev_phases:
+                dev_phases.append({"key": "additional", "title": "Additional tracked tasks", "tasks": additional})
+            else:
+                stages.append({"title": "Tracked tasks", "tasks": additional})
+    pull_requests = state["pull_requests"] if state is not None else _pull_requests(progress_text)
     for dev_phase in dev_phases:
         dev_phase["pull_requests"] = [fetch_pr(number, progress_path.parent)
                                       for number in pull_requests.get(dev_phase["key"], [])]
+    batches = state["batches"] if state is not None else _batches(progress_text)
+    task_states = {task["id"]: task["status"] for task in state["tasks"]} if state is not None else {}
+    for task in [task for stage in stages for task in stage["tasks"]] + [task for dev in dev_phases for task in dev["tasks"]]:
+        if state is not None:
+            task["status"] = task_states.get(task["id"], "todo")
+        task["batch"] = _batch_view(batches.get(task["id"]), progress_path.parent, pr_url)
     # The V-phase in progress starts with its tasks expanded: the first one with an unfinished task.
     in_progress = next((dev for dev in dev_phases if any(task["status"] != "done" for task in dev["tasks"])), None)
     for dev_phase in dev_phases:
         dev_phase["open"] = dev_phase is in_progress
-    batches = _batches(progress_text)
-    for task in [task for stage in stages for task in stage["tasks"]] + [task for dev in dev_phases for task in dev["tasks"]]:
-        task["batch"] = _batch_view(batches.get(task["id"]), progress_path.parent, pr_url)
 
     phases = []
     for phase in _index_phases(process_dir):
@@ -167,11 +201,12 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
             }
         )
 
+    field = lambda key: state.get(key, "") if state is not None else _quoted_field(progress_text, key)
     return {
-        "feature": _quoted_field(progress_text, "feature") or progress_path.stem,
-        "status": _quoted_field(progress_text, "status") or "",
-        "updated_at": _quoted_field(progress_text, "updated_at") or "",
-        "next": _quoted_field(progress_text, "next") or "",
+        "feature": field("feature") or progress_path.stem,
+        "status": field("status") or "",
+        "updated_at": field("updated_at") or "",
+        "next": state["checkpoint"].get("next", "") if state is not None else field("next") or "",
         "current_phase": current_key,
         "next_gate_phase": _next_gate_phase(phases),
         "phases": phases,
@@ -460,12 +495,13 @@ def _batch_view(fields: Optional[Dict[str, str]], repo_dir: Path,
     """Batch <merged + 1> of <len(plan)> for one task, or None when it has no batch plan yet."""
     if not fields:
         return None
-    plan = [double or single for double, single in QUOTED_ITEM.findall(fields.get("plan", ""))]
+    raw_plan = fields.get("plan", "")
+    plan = raw_plan if isinstance(raw_plan, list) else [double or single for double, single in QUOTED_ITEM.findall(raw_plan)]
     if not plan:
         return None
-    merged_match = re.match(r"\d+", fields.get("merged", ""))
+    merged_match = re.match(r"\d+", str(fields.get("merged", "")))
     merged = min(int(merged_match.group(0)), len(plan)) if merged_match else 0
-    open_match = re.match(r"\d+", fields.get("open_pr", ""))
+    open_match = re.match(r"\d+", str(fields.get("open_pr", "")))
     open_pr = int(open_match.group(0)) if open_match else None
     done = merged == len(plan)
     return {"current": merged + 1 if not done else len(plan), "total": len(plan), "done": done,

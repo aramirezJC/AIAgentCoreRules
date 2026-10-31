@@ -6,6 +6,17 @@ argument-hint: "<FeatureName> [reason]"
 
 # Close Feature
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+After the engineer chooses status and supplies a reason, use `close` with `status`, `reason`, `session`, and `superseded_by` when applicable. The tool preserves checkpoint/gates and appends closure history.
+
+
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
 MetaRouter.md). Lifecycle script (path from the Session tracking block, else):
 `GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py`

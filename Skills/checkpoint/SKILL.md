@@ -6,6 +6,17 @@ argument-hint: "[FeatureName] [note]"
 
 # Checkpoint
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+Use `checkpoint` with the replacement checkpoint and synchronized step/section state. The tool stamps updated_at. Never create a replacement state for a legacy feature; migrate explicitly first.
+
+
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
 MetaRouter.md). The progress file lives in the feature's working folder — see
 `Processes/CreateFeature/index.md` ("Progress File").
@@ -13,7 +24,7 @@ MetaRouter.md). The progress file lives in the feature's working folder — see
 ```yaml
 steps:
   - "Feature name: the first word of $ARGUMENTS, else the session title (feature lane), else ask and stop."
-  - "Progress file: <working_folder>/<FeatureName>_Progress.md. If missing, create it from Processes/Templates/Progress_Template.md."
+  - "Feature state: <working_folder>/state.json. Legacy Progress only: report explicit migration required. Neither exists: initialize through create."
   - "Add the current session folder name (Session tracking block) to `sessions` if no entry ends in the same id8 (a lane change may have renamed it)."
   - "Replace the Checkpoint section with the state of the current phase, from this conversation only:"
   - "  done:              steps / files finished and engineer-acknowledged this phase"

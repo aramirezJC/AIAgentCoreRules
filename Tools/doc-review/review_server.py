@@ -366,6 +366,7 @@ LIVE_SCRIPT_TEMPLATE = """
     try {{
       const res = await fetch("/api/state");
       const state = await res.json();
+      if (state.topology && state.topology !== window.projectTopology) {{ location.reload(); return; }}
       document.dispatchEvent(new CustomEvent("docreview:state", {{ detail: {{ threads: state.threads }} }}));
       const changedIds = [];
       for (const [id, path] of Object.entries(tabPaths)) {{
@@ -779,8 +780,8 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
 
-def build_page(paths: List[Path], live: bool) -> str:
-    tabs = _tabs(paths)
+def build_page(paths: List[Path], live: bool, tabs: Optional[List[Dict]] = None) -> str:
+    tabs = _tabs(paths) if tabs is None else tabs
     tab_buttons = "\n".join(
         f'<button class="tab{" active" if i == 0 else ""}" data-i="{i}">{html.escape(tab["title"])}</button>'
         for i, tab in enumerate(tabs)
@@ -886,6 +887,8 @@ def _collect_mtimes(tabs: List[Dict]) -> Dict[str, float]:
 
 
 def _tab_source(tab: Dict) -> str:
+    if "content" in tab:
+        return tab["content"]
     if tab["kind"] == "progress":
         return json.dumps(build_model(tab["path"]))
     if tab["kind"] == "perf":
@@ -894,6 +897,8 @@ def _tab_source(tab: Dict) -> str:
 
 
 def _tab_mtime(tab: Dict) -> float:
+    if "content" in tab:
+        return hash(tab["content"])
     if tab["kind"] == "progress":
         newest_file = max(path.stat().st_mtime for path in watched_paths(tab["path"]))
         return max(newest_file, pr_refresh_stamp(tab["path"]))
@@ -906,6 +911,8 @@ def _tab_mtime(tab: Dict) -> float:
 
 
 def _mtime_key(tab: Dict) -> str:
+    if "content" in tab:
+        return tab["file"]
     # The Progress tab watches several files and may share its Progress.md path with a plain md tab,
     # so it gets its own key rather than colliding with that tab's.
     if tab["kind"] in ("progress", "perf"):

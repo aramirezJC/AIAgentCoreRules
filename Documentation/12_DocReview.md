@@ -12,7 +12,7 @@ and svg-pan-zoom load from CDNs in the browser.
 |---|---|
 | `doc_review.py serve <doc.md> [<diagram.mmd>...] [--port N] [--open]` | Live server. One tab per file, live reload on save, in-page comments. Prints the URL |
 | `doc_review.py serve <doc.md> ... --static [--output PATH] [--open]` | Writes a single HTML preview (default `_doc_review_preview.html` next to the doc). No server, no comments |
-| `doc_review.py comments <doc.md> [--status actionable\|open\|ready\|addressed\|resolved\|all] [--json]` | Lists comment threads resolved to `file:line`, plus inline `@CLAUDE:` markers. The default, `actionable`, lists open and ready threads plus follow-ups and ends with a `N threads hidden` line for the rest; use `--status all` to see every thread. Text mode prints each thread's original comment and, when there are replies, the last one (author and text) under it, so agents rarely need `--json`; `--json` carries `created_by`, the full `replies` list (author, text, at), `follow_up` and the `hidden` count. A follow-up (the engineer replied after an agent reply) is selected by every `--status` filter, so a reply on an addressed thread still shows under `--status open` |
+| `doc_review.py comments <doc.md> [--status actionable\|open\|ready\|addressed\|resolved\|all] [--json]` | Lists comment threads resolved to `file:line`. Obsolete inline source markers are not scanned. The default, `actionable`, lists open and ready threads plus follow-ups and ends with a `N threads hidden` line for the rest; use `--status all` to see every thread. Text mode prints each thread's original comment and, when there are replies, the last one (author and text) under it, so agents rarely need `--json`; `--json` carries `created_by`, the full `replies` list (author, text, at), `follow_up` and the `hidden` count. A follow-up (the engineer replied after an agent reply) is selected by every `--status` filter, so a reply on an addressed thread still shows under `--status open` |
 | `doc_review.py reply <doc.md> <thread_id> "<message>" [--status addressed]` | Adds an agent reply, optionally marking the thread addressed |
 | `doc_review.py servers [--json]` | Lists the running live servers: pid, URL, doc and folder. Only the Python server process, not the shell that launched it |
 | `doc_review.py stop [--port N \| --pid N \| --all]` | Stops a live server (SIGTERM). With no selector it stops the only one running and refuses when there are several. Used by `/kill-server` |
@@ -131,3 +131,30 @@ node Tools/doc-review/tests/smoke/review_ui_smoke.js   # needs Chrome + puppetee
 ---
 
 ← [[11_Contributing|Contributing]] · [[00_Overview|Overview]]
+
+## Persistent project preview
+
+Run from the project root:
+
+```bash
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh start
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh status
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh stop
+```
+
+Pass `--project /path/to/project` when running elsewhere. Start prints the existing URL if
+already running. Runtime PID, URL and log files live in the project's `.doc-review/`. The
+launcher verifies the server's project and PID before stopping it, and uses Python locking
+rather than requiring an external `flock` command. The detached process survives agent sessions.
+
+`doc_review.py serve-project <project> [--features-root ROOT] [--port N] [--open]` is the
+foreground entry point. Home lists active features. Selection is encoded as `?feature=Name`,
+so browser windows can review different features independently. Fixed tabs are Home, Plan, TDD,
+GDD, Class Diagram, Flow Diagram and LLM Performance; absent artifacts show placeholders.
+Migrate legacy features explicitly using the feature-state tool before reviewing them.
+
+Feature comments live in `<feature-directory>/review.json`, independent of the selected document.
+Each thread retains its relative `anchor.file`, text/diagram anchor, replies and status. Use
+`doc_review.py comments <feature-directory>` and `doc_review.py reply <feature-directory> <id>
+"message" --status addressed`. Standalone document preview retains its existing document sidecar.
+The CLI no longer collects inline `@CLAUDE` markers; existing source markers remain untouched.

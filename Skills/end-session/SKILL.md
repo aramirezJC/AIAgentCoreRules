@@ -5,6 +5,17 @@ description: Close the session - compile token metrics and the router trace, wri
 
 # End Session
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+Read current phase through the state tool. Mid-phase closure calls checkpoint; gate closure verifies the JSON gate record before compiling metrics.
+
+
 Lifecycle script (use the path from the Session tracking block if present):
 `GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py`
 

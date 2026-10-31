@@ -43,6 +43,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import retro_page
 import token_breakdown
@@ -50,6 +51,8 @@ import codex_transcript
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "setup"))
 import project_root  # noqa: E402  shared with install.py
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "feature-state"))
+from feature_state import load_state as load_feature_state
 
 SCRIPT_PATH = os.path.abspath(__file__)
 REPORTS_DIR = "GitIgnoreReports"
@@ -755,18 +758,26 @@ def scan_features(project_dir, features_root, keep):
         return found
     for name in sorted(os.listdir(root)):
         path = os.path.join(root, name, "%s_Progress.md" % name)
-        if not os.path.isfile(path):
+        state_path = os.path.join(root, name, "state.json")
+        if not os.path.isfile(path) and not os.path.isfile(state_path):
             continue
-        with open(path, errors="replace") as handle:
-            text = handle.read()
-        status = yaml_value(text, "status") or "unknown"
+        state = load_feature_state(Path(state_path).parent) if os.path.isfile(state_path) else None
+        text = ""
+        if state is None:
+            with open(path, errors="replace") as handle:
+                text = handle.read()
+        value = lambda key: state.get(key, "") if state is not None else yaml_value(text, key)
+        status = value("status") or "unknown"
         if not keep(status):
             continue
-        phase = yaml_value(text, "current_phase")
-        found.append({"feature": yaml_value(text, "feature") or name, "phase": phase, "phase_label": phase_label(phase),
-                      "status": status, "updated_at": yaml_value(text, "updated_at"),
-                      "in_flight": yaml_value(text, "in_flight"), "next": yaml_value(text, "next"),
-                      "model": models.get(phase), "progress_file": path})
+        phase = value("current_phase")
+        checkpoint = state.get("checkpoint", {}) if state is not None else {}
+        found.append({"feature": value("feature") or name, "phase": phase, "phase_label": phase_label(phase),
+                      "status": status, "updated_at": value("updated_at"),
+                      "in_flight": checkpoint.get("in_flight", value("in_flight")),
+                      "next": checkpoint.get("next", value("next")),
+                      "model": models.get(phase), "progress_file": path,
+                      "state_file": state_path, "migration_required": state is None})
     return sorted(found, key=lambda f: f["updated_at"], reverse=True)
 
 
@@ -803,6 +814,8 @@ def cmd_features(args):
             print("  in flight: %s" % f["in_flight"])
         if f["next"]:
             print("  next: %s" % f["next"])
+        if f.get("migration_required"):
+            print("  migration required: run the feature-state migrate command explicitly")
         print("  resume: %s" % resume_command(f))
     return 0
 

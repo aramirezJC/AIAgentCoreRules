@@ -6,6 +6,17 @@ argument-hint: "[plan|publish|status|finish] [FeatureName] [task id]"
 
 # Publish Batch
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+Use `batch` for batch state, `pr` for PR linkage, and `checkpoint` for acknowledgments/session membership. If writes are unavailable, supply the operation and payload for the engineer; never suggest pasting generated Markdown.
+
+
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
 MetaRouter.md). Run commands from the project root, or from the task's worktree once it exists.
 
