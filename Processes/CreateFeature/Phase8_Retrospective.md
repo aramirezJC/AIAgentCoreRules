@@ -2,6 +2,10 @@
 
 # Phase 8 — Retrospective
 
+State changes in this phase use the shared feature-state CLI described in index.md.
+Progress Markdown is generated; references to writing its fields mean tool operations.
+
+
 Goal: Extract durable improvements from this feature's implementation cycle. Every answer that becomes a rule, pattern, or system entry reduces cost and back-and-forth on the next feature.
 
 This phase is a conversation — the agent reviews the session, proposes concrete changes, and the engineer confirms before anything is written.

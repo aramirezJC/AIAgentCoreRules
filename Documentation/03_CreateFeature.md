@@ -265,3 +265,18 @@ loads only what the current phase needs.
 ---
 
 ← [[02_WorkModes|Work Modes and Routing]] · [[00_Overview|Overview]] · [[04_BugFix|Bug Fix Process]] →
+
+
+## Structured feature state
+
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+
+Lifecycle skills retain engineer approvals while using these validated operations.
+Home and active-feature listings share per-feature JSON state; no central registry is authoritative.

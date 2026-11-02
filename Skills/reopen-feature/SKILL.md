@@ -6,6 +6,17 @@ argument-hint: "[FeatureName] [reason]"
 
 # Reopen Feature
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+Use `reopen` with `reason` and `session`. Complete remains final; do not resume automatically.
+
+
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
 MetaRouter.md). Lifecycle script (path from the Session tracking block, else):
 `GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py`

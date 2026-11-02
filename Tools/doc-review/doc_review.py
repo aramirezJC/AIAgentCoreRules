@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import pr_notes
-from anchor_resolver import resolve_thread, scan_inline_markers
+from anchor_resolver import resolve_thread
 from review_server import render_static, serve_doc
 from sidecar_store import SidecarStore
 
@@ -46,20 +46,24 @@ def cmd_serve(args: argparse.Namespace) -> None:
         serve_doc(paths, port=args.port, open_browser=args.open)
 
 
+def cmd_serve_project(args):
+    from project_server import serve_project
+    serve_project(Path(args.project), features_root=args.features_root, port=args.port, open_browser=args.open)
+
+
 def cmd_comments(args: argparse.Namespace) -> None:
     doc_path = Path(args.doc)
-    base_dir = doc_path.parent
-    data = SidecarStore(doc_path).load()
+    base_dir = doc_path if doc_path.is_dir() else doc_path.parent
+    data = SidecarStore(doc_path, feature=doc_path.is_dir()).load()
     threads = [thread for thread in data["threads"] if _matches_status(thread, args.status)]
     hidden = len(data["threads"]) - len(threads)
 
     resolved = [_cli_resolved_thread(base_dir, thread) for thread in threads]
-    markers = scan_inline_markers(base_dir, _marker_candidate_files(doc_path, data["threads"]))
 
     if args.json:
-        print(json.dumps({"threads": resolved, "inline_markers": markers, "hidden": hidden}, indent=2))
+        print(json.dumps({"threads": resolved, "hidden": hidden}, indent=2))
     else:
-        _print_text(resolved, markers)
+        _print_text(resolved)
         if hidden:
             print(f"{hidden} threads hidden by --status {args.status} -- --status all to list them")
 
@@ -75,10 +79,10 @@ def _matches_status(thread: Dict, status: str) -> bool:
 
 def cmd_reply(args: argparse.Namespace) -> None:
     doc_path = Path(args.doc)
-    store = SidecarStore(doc_path)
+    store = SidecarStore(doc_path, feature=doc_path.is_dir())
     try:
         if args.status == "addressed":
-            _validate_if_diagram(doc_path.parent, store, args.thread_id)
+            _validate_if_diagram(doc_path if doc_path.is_dir() else doc_path.parent, store, args.thread_id)
         store.add_reply(args.thread_id, "agent", args.message)
         if args.status:
             store.set_status(args.thread_id, args.status, "agent")
@@ -156,7 +160,7 @@ def parse_server_processes(ps_output: str) -> List[Dict]:
         if len(parts) < 2 or not parts[0].isdigit() or Path(parts[1]).name in SHELL_NAMES:
             continue
         script_index = next((i for i, part in enumerate(parts) if part.endswith("doc_review.py")), None)
-        if script_index is None or parts[script_index + 1: script_index + 2] != ["serve"] or "--static" in parts:
+        if script_index is None or parts[script_index + 1: script_index + 2] not in (["serve"], ["serve-project"]) or "--static" in parts:
             continue
         doc = parts[script_index + 2] if len(parts) > script_index + 2 else ""
         servers.append({"pid": int(parts[0]), "doc": doc})
@@ -235,19 +239,7 @@ def _has_follow_up(thread: Dict) -> bool:
     return bool(authors) and authors[-1] == "engineer" and "agent" in authors
 
 
-def _marker_candidate_files(doc_path: Path, threads: List[Dict]) -> List[str]:
-    # comments takes only <doc>, so marker scanning auto-discovers diagrams via the project's
-    # own Diagrams/ convention (ConfluenceDocs.md) rather than requiring them to be re-listed;
-    # any other anchored file is picked up once a thread has pointed at it.
-    files = {doc_path.name}
-    diagrams_dir = doc_path.parent / "Diagrams"
-    if diagrams_dir.is_dir():
-        files.update(str(p.relative_to(doc_path.parent)) for p in diagrams_dir.glob("*.mmd"))
-    files.update(thread["anchor"]["file"] for thread in threads)
-    return sorted(files)
-
-
-def _print_text(resolved: List[Dict], markers: List[Dict]) -> None:
+def _print_text(resolved: List[Dict]) -> None:
     for item in resolved:
         resolution = item["resolution"]
         quote = _truncate(item["quote"])
@@ -264,8 +256,6 @@ def _print_text(resolved: List[Dict], markers: List[Dict]) -> None:
             suffix = f" (was under: {heading})" if heading else ""
             print(f'ORPHANED {item["id"]} [{item["status"]}] "{quote}"{suffix}')
         _print_last_reply(item)
-    for marker in markers:
-        print(f'[inline-marker] {marker["file"]}:{marker["line"]}: {marker["text"]}')
 
 
 def _print_last_reply(item: Dict) -> None:
@@ -327,6 +317,13 @@ def main() -> None:
     pr_notes_parser.add_argument("--repo-dir", default=".", help="a folder inside the PR's git repository")
     pr_notes_parser.add_argument("--json", action="store_true")
     pr_notes_parser.set_defaults(func=cmd_pr_notes)
+
+    project_parser = subparsers.add_parser("serve-project", help="Persistent project feature preview")
+    project_parser.add_argument("project")
+    project_parser.add_argument("--features-root")
+    project_parser.add_argument("--port", type=int)
+    project_parser.add_argument("--open", action="store_true")
+    project_parser.set_defaults(func=cmd_serve_project)
 
     args = parser.parse_args()
     args.func(args)

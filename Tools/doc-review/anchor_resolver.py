@@ -10,11 +10,6 @@ import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-INLINE_MARKER_PATTERNS = {
-    ".md": re.compile(r"<!--\s*@CLAUDE:\s*(.*?)-->", re.DOTALL),
-    ".mmd": re.compile(r"%%\s*@CLAUDE:\s*(.*)"),
-}
-
 TAG_PATTERN = re.compile(r"<[^>\n]+>")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*)$")
 LINK_PATTERN = re.compile(r"\[([^\]\n]*)\]\([^)\n]*\)")
@@ -115,20 +110,6 @@ def resolve_thread(base_dir: Path, thread: Dict) -> Dict:
     if anchor["kind"] == "text":
         return resolve_text_anchor(base_dir, anchor)
     return resolve_diagram_anchor(base_dir, anchor)
-
-
-def scan_inline_markers(base_dir: Path, files: List[str]) -> List[Dict]:
-    """Scan the given files for inline @CLAUDE markers (.md HTML comments, .mmd %% comments)."""
-    markers = []
-    for rel_path in files:
-        file_path = base_dir / rel_path
-        pattern = INLINE_MARKER_PATTERNS.get(file_path.suffix)
-        if not pattern or not file_path.is_file():
-            continue
-        text = file_path.read_text()
-        for match in pattern.finditer(text):
-            markers.append({"file": rel_path, "line": _line_at(text, match.start()), "text": match.group(1).strip()})
-    return markers
 
 
 def _resolve_edge(lines: List[str], edge: Dict) -> Optional[int]:

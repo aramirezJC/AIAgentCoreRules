@@ -2,6 +2,10 @@
 
 # Phase 4 — Implementation
 
+State changes in this phase use the shared feature-state CLI described in index.md.
+Progress Markdown is generated; references to writing its fields mean tool operations.
+
+
 Goal: Write code file-by-file following the approved design. Present each file to the engineer before moving to the next.
 
 Implement in this order: **interfaces → concrete classes → integration glue.**
@@ -41,6 +45,19 @@ ends mid-phase.
 When a PR opens for one of the TDD's V-phases, run `/feature-pr <PR>`: it lists the PR under
 `pull_requests` in the progress file, so the doc-review Progress tab shows its review notes, and
 records each addressed note in this feature's Checkpoint.
+
+## Before Marking a Batch Merged
+
+Compare the approved new-source inventory, including each Unity `.meta` file, with Git's
+tracked files and the PR/commit changed-file names. Use `git ls-files --error-unmatch -- <paths>`
+to check tracking and `git diff --name-only <base>...<head>` or `git show --name-only <commit>`
+to check inclusion. If an approved file was included by an earlier commit or PR, record that
+evidence rather than requiring it in the latest commit again.
+
+Record any omitted file as unresolved integration in the checkpoint; do not mark the batch
+fully merged or complete merely because the local test tree passes or a merge was reported.
+Run this check whether the engineer or the agent created the commit. Verification does not
+authorize staging, committing or pushing changes.
 
 ---
 

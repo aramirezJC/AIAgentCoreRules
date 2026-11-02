@@ -15,6 +15,53 @@ SessionEnd hook compiles it, and `/end-session` adds a retrospective. Hook setup
 `GitIgnoreReports/SessionAnalysis.html`: a token bell curve, issue heat maps, proposed changes
 with their status, and what to improve next. See `Tools/session-analysis/README.md`.
 
+## Feature State and Persistent Preview
+
+Feature lifecycle skills use a shared Python tool to read and update one feature at a time.
+Each feature directory contains authoritative `state.json`, with a versioned schema,
+revision checks, validated lifecycle transitions, locked atomic updates, and focused reads
+that avoid loading unrelated features into agent context. Progress Markdown is a generated
+view; agents must not edit it or the JSON directly. Home and lifecycle commands derive the
+active-feature list from those files rather than maintaining a separate registry.
+
+The persistent localhost preview server runs independently of agent sessions, once per
+project. Home lists active features; selecting one populates Plan, TDD, GDD, Class Diagram,
+Flow Diagram, and LLM Performance. Missing artifacts show placeholders. Feature selection
+is scoped to the browser URL, so separate windows can review different features.
+
+Comments live in each feature's `review.json`, with target-file paths, anchors, replies and
+statuses. They remain separate between features and independent of which document is opened
+first. Inline `@CLAUDE` source-marker scanning has been removed; existing markers are left
+untouched. Standalone document review remains available.
+
+From a host project using the `GitIgnoreExternals/AIAgentCoreRules` layout:
+
+```bash
+# Explicit migration: inspect the dry-run report before applying.
+python3 GitIgnoreExternals/AIAgentCoreRules/Tools/feature-state/feature_state.py migrate --root Assets/GitIgnoreAssets/Features
+python3 GitIgnoreExternals/AIAgentCoreRules/Tools/feature-state/feature_state.py migrate --root Assets/GitIgnoreAssets/Features --apply
+
+# Start or reuse the project's server; status prints its URL when running.
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh start
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh status
+bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh stop
+```
+
+Adjust the external-root spelling for the host project. The launcher also accepts
+`--project <path>`. It retains project-local runtime metadata and logs, verifies process
+ownership before stopping, and reuses an existing healthy instance on repeated starts.
+
+Legacy features require explicit migration. The importer preserves original progress and
+comment sidecars in backups, records provenance, merges comments into the feature store,
+and refuses ambiguous or conflicting data. Already migrated features are skipped without
+overwriting subsequent state updates. The preview labels legacy features as requiring
+migration until conversion succeeds.
+
+See [Feature State](Documentation/13_FeatureState.md),
+[Document Review](Documentation/12_DocReview.md), and the
+[agent state protocol](Processes/FeatureState.md) for commands, migration limits and lifecycle
+payloads. The [tool README](Tools/feature-state/README.md) includes focused-read and update examples.
+
 ## Documentation
 
 `Documentation/` holds Confluence-ready pages describing the framework (overview, setup, work
@@ -32,7 +79,10 @@ session hooks and worktree settings into `.claude/settings.json`, and is safe to
 - `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
 - `feature` — enters `Processes/CreateFeature`.
 - `checkpoint`, `resume-work` — save and restore feature progress across sessions via
-  `<FeatureName>_Progress.md` in the feature's working folder.
+  the shared feature-state tool and per-feature `state.json`; `<FeatureName>_Progress.md`
+  is generated for human review.
+- `active-features`, `close-feature`, `reopen-feature` — list and manage feature lifecycle state.
+- `start-preview-server`, `kill-server` — open and manage the persistent project preview.
 - `discover` — subagent survey that returns a compact map.
 - `audit` — rules compliance report for C# files.
 - `land-worktree` — merge an agent worktree's branch into the current branch, test, then

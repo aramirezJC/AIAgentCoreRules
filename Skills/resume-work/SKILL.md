@@ -6,6 +6,17 @@ argument-hint: "[FeatureName]"
 
 # Resume Work
 
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+Read state through the tool (header fields, checkpoint, gates, sources and artifacts), register this session through checkpoint, then retain the explicit restate-and-confirm step. Read comments with `doc_review.py comments <feature-directory>` even if no server is currently running.
+
+
 Named `resume-work`, not `resume`, so it does not collide with the built-in `/resume` command.
 
 Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` folder that holds
@@ -18,7 +29,7 @@ steps:
   - "Step 0 — /start-session: if no 'Session tracking' block is in context, run: python3 Tools/session-lifecycle/session_lifecycle.py hook-start, and use the lifecycle script and session_id it prints below. If the engineer named the session, add --name \"<name>\" to the set."
   - "If $ARGUMENTS names a feature: progress file is <working_folder>/<FeatureName>_Progress.md (working_folder from Processes/CreateFeature/index.md)."
   - "If $ARGUMENTS is empty: pick one (below), then continue this step with the chosen feature — do not stop after the list."
-  - "If the file does not exist: say so and offer /feature <FeatureName> to start it. Stop."
+  - "If state.json is absent but legacy Progress exists, report explicit migration required and stop; if neither exists, offer /feature <FeatureName> and stop."
   - "Run: python3 <lifecycle script> set --lane feature --title \"<FeatureName>\" --feature \"<FeatureName>\" --phase <current_phase>"
   - "This session is for current_phase only (one session per phase, see CreateFeature/index.md). If the session already holds work for another feature or phase, suggest starting a fresh one."
   - "Add the current session folder name to `sessions` in the progress file."
@@ -41,14 +52,14 @@ pick:
 ```yaml
 reload:
   - "Read: Processes/CreateFeature/index.md"
-  - "Read: the progress file in full."
+  - "Read: the selected feature state through the tool; use focused sections where possible."
   - "Read: the phase file for current_phase."
   - "Read: the rule files that phase depends on — for Phase 2 and later, the load_rules list in Phase2_Discovery.md, using [FeatureName]_Discovery.md to decide the conditional ones."
   - "Read: the artifacts the current phase works from (e.g. TDD and TaskList for Phase 1–3, Architecture and Discovery for Phase 4, UseCases for Phase 5). Skip ones it does not use."
   - "Check the host's SystemIndex for an entry matching the system this feature lives in (not just the feature's own Discovery/Architecture docs) — read it too if one exists. A feature's own docs cover what changed; the SystemIndex entry covers the system's standing gotchas and may be stale, in which case propose updating it at /end-session."
   - "Checkpoint lists files in `done`: confirm they exist on disk (one ls / codeindex query). Do not re-read their bodies unless the next step needs them."
   - "For each entry in `sources_of_truth` (e.g. the Confluence TDD), fetch only its current version number. A version newer than the recorded one is drift: say what changed before continuing, and read the new version if the current phase works from it."
-  - "Doc-review comments: run python3 Tools/doc-review/doc_review.py servers once. For each running server on this feature's docs, run `doc_review.py comments <its doc>` (the first doc argument — every tab of a multi-doc server shares that one sidecar) and list open/ready threads under drift. Do not wait to be told a comment exists."
+  - "Doc-review comments: run `python3 Tools/doc-review/doc_review.py comments <feature-directory>` and list open/ready threads under drift. Feature comments are independent of the running server and selected tab. Do not wait to be told a comment exists."
 ```
 
 ## Step 3 — Restate and confirm

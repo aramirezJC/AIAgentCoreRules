@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 TOOLS_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(TOOLS_DIR / "feature-state"))
+from feature_state import load_state
 sys.path.insert(0, str(TOOLS_DIR / "setup"))
 sys.path.insert(0, str(TOOLS_DIR / "session-lifecycle"))
 import project_root  # noqa: E402  shared with session_lifecycle.py, so both find the same reports root
@@ -79,6 +81,11 @@ def feature_filter(progress_path: Optional[Path]):
     """(feature name, id8s listed under "sessions:") from a <Name>_Progress.md; ("", set()) without one."""
     if progress_path is None:
         return "", set()
+    state_path = progress_path.parent / "state.json"
+    if state_path.is_file():
+        state = load_state(state_path.parent)
+        ids = {folder.rsplit("_", 1)[-1] for folder in state["sessions"]}
+        return state["feature"], ids
     try:
         text = progress_path.read_text()
     except OSError:
@@ -132,6 +139,7 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
         "ended_at": state.get("ended_at") or "",
         "compiled_at": state.get("compiled_at") or "",
         "active": not state.get("ended_at") and now - state_path.stat().st_mtime < ACTIVE_WINDOW_SECONDS,
+        "usage": _usage(state.get("tokens") or {}),
         "compiled": bool(total),
         "error": breakdown.get("error") or "",
         "total": total,
@@ -141,6 +149,13 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
         "doc_review": _doc_review(breakdown.get("doc_review") or {}),
         "sort_key": (_timestamp(started_at), state_path.parent.name),
     }
+
+
+def _usage(tokens: Dict) -> Dict:
+    total = tokens.get("total_tokens") if tokens.get("available") else None
+    turns = tokens.get("turns") if tokens.get("available") else None
+    return {"total": total, "turns": turns,
+            "per_turn": total / turns if total is not None and turns else None}
 
 
 def _doc_review(block: Dict) -> Dict:
@@ -167,6 +182,9 @@ def _overview(sessions: List[Dict]) -> Dict:
         for category in session["categories"]:
             if category["name"] not in category_names:
                 category_names.append(category["name"])
+    recorded = [session["usage"] for session in sessions if session["usage"]["total"] is not None]
+    paired = [usage for usage in recorded if usage["turns"]]
+    recorded_turns = sum(usage["turns"] for usage in paired)
     grand_total = sum(totals)
     categories = []
     for name in category_names:
@@ -175,6 +193,9 @@ def _overview(sessions: List[Dict]) -> Dict:
         categories.append({"name": name, "tokens": tokens, "average": tokens / len(compiled),
                            "share": tokens / grand_total if grand_total else 0.0})
     return {
+        "usage": {"sessions": len(recorded), "total": sum(usage["total"] for usage in recorded) if recorded else None,
+                  "turns": sum(usage["turns"] for usage in recorded if usage["turns"] is not None) if any(usage["turns"] is not None for usage in recorded) else None,
+                  "per_turn": sum(usage["total"] for usage in paired) / recorded_turns if recorded_turns else None},
         "sessions": len(sessions),
         "compiled": len(compiled),
         "total": grand_total,

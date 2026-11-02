@@ -366,6 +366,7 @@ LIVE_SCRIPT_TEMPLATE = """
     try {{
       const res = await fetch("/api/state");
       const state = await res.json();
+      if (state.topology && state.topology !== window.projectTopology) {{ location.reload(); return; }}
       document.dispatchEvent(new CustomEvent("docreview:state", {{ detail: {{ threads: state.threads }} }}));
       const changedIds = [];
       for (const [id, path] of Object.entries(tabPaths)) {{
@@ -528,6 +529,13 @@ PERF_SCRIPT = """
     return parts.join("");
   }
 
+  function perfUsage(usage) {
+    const value = (n) => n == null ? 'Unavailable' : Number(n).toLocaleString(undefined, {maximumFractionDigits: 1});
+    return '<div class="perf-tiles">' + [['Total tokens (recorded)', usage.total], ['Turns', usage.turns],
+      ['Average tokens / turn', usage.per_turn]].map(([label, n]) =>
+      '<div class="perf-tile"><div class="label">' + label + '</div><div class="value">' + value(n) + '</div></div>').join('') + '</div>';
+  }
+
   function perfSession(session, colors) {
     const when = (session.started_at || "").slice(0, 16).replace("T", " ");
     const parts = ['<details class="perf-session' + (session.active ? ' active' : '') + '" data-key="' + escapeHtml(session.folder) + '"'
@@ -535,7 +543,8 @@ PERF_SCRIPT = """
       + '<span class="title">' + escapeHtml(session.title || session.folder) + '</span>'
       + (session.active ? '<span class="perf-pill active">active</span>' : '')
       + (session.lane ? '<span class="perf-pill">' + escapeHtml(session.lane) + '</span>' : '')
-      + '<span class="total">' + (session.compiled ? perfCompact(session.total) : '–') + '</span></summary>'];
+      + '<span class="total">' + (session.usage.total != null ? perfCompact(session.usage.total) : session.compiled ? perfCompact(session.total) : '–') + '</span></summary>'];
+    parts.push(perfUsage(session.usage));
     if (!session.compiled) {
       parts.push('<div class="empty">Token breakdown not compiled' + (session.error ? ': ' + escapeHtml(session.error) : ' yet') + '.</div>');
     } else {
@@ -605,7 +614,7 @@ PERF_SCRIPT = """
         perfDocReview(o.doc_review, tile),
         '<h2>Sessions, newest first</h2>'];
       if (o.sessions > o.compiled) {
-        parts.push('<div class="meta">' + (o.sessions - o.compiled) + ' session(s) without a compiled breakdown are listed but left out of the statistics.</div>');
+        parts.push('<div class="meta">' + (o.sessions - o.compiled) + ' session(s) without a compiled breakdown are listed but left out of the estimated breakdown statistics.</div>');
       }
       if (!sessions.length) parts.push('<div class="empty">No sessions tagged with this feature yet.</div>');
       sessions.forEach((session) => parts.push(perfSession(session, colors)));
@@ -771,8 +780,8 @@ class ReviewRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
 
-def build_page(paths: List[Path], live: bool) -> str:
-    tabs = _tabs(paths)
+def build_page(paths: List[Path], live: bool, tabs: Optional[List[Dict]] = None) -> str:
+    tabs = _tabs(paths) if tabs is None else tabs
     tab_buttons = "\n".join(
         f'<button class="tab{" active" if i == 0 else ""}" data-i="{i}">{html.escape(tab["title"])}</button>'
         for i, tab in enumerate(tabs)
@@ -878,6 +887,8 @@ def _collect_mtimes(tabs: List[Dict]) -> Dict[str, float]:
 
 
 def _tab_source(tab: Dict) -> str:
+    if "content" in tab:
+        return tab["content"]
     if tab["kind"] == "progress":
         return json.dumps(build_model(tab["path"]))
     if tab["kind"] == "perf":
@@ -886,6 +897,8 @@ def _tab_source(tab: Dict) -> str:
 
 
 def _tab_mtime(tab: Dict) -> float:
+    if "content" in tab:
+        return hash(tab["content"])
     if tab["kind"] == "progress":
         newest_file = max(path.stat().st_mtime for path in watched_paths(tab["path"]))
         return max(newest_file, pr_refresh_stamp(tab["path"]))
@@ -898,6 +911,8 @@ def _tab_mtime(tab: Dict) -> float:
 
 
 def _mtime_key(tab: Dict) -> str:
+    if "content" in tab:
+        return tab["file"]
     # The Progress tab watches several files and may share its Progress.md path with a plain md tab,
     # so it gets its own key rather than colliding with that tab's.
     if tab["kind"] in ("progress", "perf"):

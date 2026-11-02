@@ -22,9 +22,10 @@ ALLOWED_STATUSES_BY_ACTOR = {
 
 
 class SidecarStore:
-    def __init__(self, doc_path: Path):
+    def __init__(self, doc_path: Path, feature: bool = False):
         self._doc_path = doc_path
-        self._sidecar_path = doc_path.parent / (doc_path.name + ".review.json")
+        self._sidecar_path = doc_path / "review.json" if feature else doc_path.parent / (doc_path.name + ".review.json")
+        self._feature = feature
 
     def load(self) -> Dict:
         # Reads never lock: the atomic rename in _write_atomic guarantees a reader only ever
@@ -65,7 +66,7 @@ class SidecarStore:
 
     def _read(self) -> Dict:
         if not self._sidecar_path.is_file():
-            return {"version": SCHEMA_VERSION, "doc": self._doc_path.name, "threads": []}
+            return {"version": SCHEMA_VERSION, "feature" if self._feature else "doc": self._doc_path.name, "threads": []}
         return json.loads(self._sidecar_path.read_text())
 
     def _mutate(self, mutate):

@@ -2,6 +2,10 @@
 
 # Phase 1 — Intake
 
+State changes in this phase use the shared feature-state CLI described in index.md.
+Progress Markdown is generated; references to writing its fields mean tool operations.
+
+
 Goal: Convert the GDD into a complete TDD and supporting documents. Work section by section with the engineer. Do not skip or summarize — each TDD section must be explicitly addressed before moving to the next.
 
 Output files produced by this phase:
@@ -11,7 +15,7 @@ outputs:
   - "[FeatureName]_TaskList.md   — ordered actionable items from the Development Plan"
   - "[FeatureName]_UseCases.md   — use cases and edge cases table"
   - "[FeatureName]_GDD.md        — AI-friendly version of the source GDD (if provided)"
-  - "[FeatureName]_Progress.md   — created first, from ../Templates/Progress_Template.md (see index.md 'Progress File')"
+  - "[FeatureName]_Progress.md   — generated first by feature-state create (see index.md 'Progress File')"
 ```
 
 Intake is the longest phase and often spans sessions. After each TDD section is agreed, suggest

@@ -5,23 +5,24 @@ description: Open a CreateFeature feature's documentation in the local doc-revie
 
 # Start Preview Server
 
-Read only: opens the docs, never edits them. Run from the project root.
+Open the persistent project preview without editing feature documents or migrating data.
+Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
 
-```yaml
-paths:
-  features_root: "$SESSION_FEATURES_ROOT, else Assets/GitIgnoreAssets/Features"
-  feature_dir:   "<features_root>/<Name>"
-  server:        "GitIgnoredExternals/AIAgentCoreRules/Tools/doc-review/doc_review.py"
-
-steps:
-  - "No name → list the folders under features_root that contain a <Name>_Progress.md, ask which one, and wait."
-  - "Name with no matching folder → list the folder names, ask, and wait. Do not guess a close match."
-  - "Main doc: the first that exists of <Name>_TDD.md, <Name>_GDD.md, <Name>_Progress.md. It must be passed first: the server keys the Progress tab and the comment sidecar off it."
-  - "Diagrams: <feature_dir>/Diagrams/*.mmd sorted by name, skipping *.miro.mmd (copies prepared for Miro)."
-  - "Run in the background (Bash run_in_background) — the server blocks: python3 <server> serve <main doc> <diagrams...> --open"
-  - "Read the first line of its output — the URL — and report it with the tabs: Progress (when <Name>_Progress.md exists), the main doc (say when it fell back from the TDD), each diagram, and any skipped files."
-  - "The server lives until the engineer stops it or the session ends. Offer to stop it when they are done (/kill-server)."
-```
+1. Run `bash <tools>/doc-review/preview-control.sh start --project <project-root>`.
+   It reuses the managed server if already healthy and prints its URL. The server is
+   independent of this LLM session; do not stop it at session end.
+2. No name: open the returned Home URL. A name: use the exact feature directory under
+   `$SESSION_FEATURES_ROOT`, otherwise `Assets/GitIgnoreAssets/Features`.
+   If no match exists, list the available feature names and ask; never guess.
+3. Open the returned URL with `?feature=<URL-encoded-name>` when a feature was supplied.
+   Use available browser-opening tools, reporting failures without claiming it opened.
+4. Report the URL and fixed tabs: Home, Plan, TDD, GDD, Class Diagram, Flow Diagram,
+   LLM Performance. Missing content shows a placeholder. Legacy features display migration
+   required; starting the preview never implicitly migrates them.
+5. Feature comments live in `<feature-directory>/review.json`, independent of the current
+   tab or first document. Read with `doc_review.py comments <feature-directory>`.
+6. To explicitly stop this project's managed server use `$kill-server` or
+   `bash <tools>/doc-review/preview-control.sh stop --project <project-root>`.
 
 ## Mermaid syntax and validation
 
@@ -30,7 +31,3 @@ message text: Mermaid treats them as statement separators. Use commas, or encode
 intentional semicolon as `#59;`. Validate diagrams with an available Mermaid renderer before
 claiming they render successfully. If renderer tooling or browser inspection is unavailable,
 report that limitation explicitly and request an engineer rendering check.
-
-The Progress tab comes from the server itself (see Documentation/12_DocReview.md): phases,
-steps and gates from CreateFeature, completion from the progress file's handoff blocks, tasks from
-`<Name>_TaskList.md`, and the next gate in red. It refreshes on save, like every other tab.

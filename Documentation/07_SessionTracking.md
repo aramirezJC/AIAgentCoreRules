@@ -297,3 +297,18 @@ Reference: https://learn.chatgpt.com/docs/hooks . Transcript formats are not a s
 keep synthetic regression fixtures and report parser failures as unavailable. Without a usable
 transcript, retain the sanitized usage report and `retro --path` HTML fallback.
 
+
+
+## Structured feature state
+
+## Authoritative feature state
+
+Read `Processes/FeatureState.md` for the shared tool contract. `state.json` is authoritative;
+Progress Markdown is generated. All legacy references below to editing progress mean tool
+operations, never direct Markdown/JSON edits. Use focused `get`, revision-checked mutations,
+and explicit migration for legacy features. Preserve engineer approval gates.
+
+
+
+Lifecycle skills retain engineer approvals while using these validated operations.
+Home and active-feature listings share per-feature JSON state; no central registry is authoritative.
