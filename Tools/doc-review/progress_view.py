@@ -131,8 +131,9 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
         completed_numbers = {int(match.group(1)) for gate in state["gates"]
                              if (match := re.match(r"Phase (\d+)\b", gate.get("phase_completed", "")))}
         done_items = state["checkpoint"].get("done", [])
-        step_statuses = state["step_status"]
-        section_statuses = state["tdd_sections"]
+        # Same key shape as _status_block: _recorded_state looks names up normalised.
+        step_statuses = {_normalised(key): str(value).lower() for key, value in state["step_status"].items()}
+        section_statuses = {_normalised(key): str(value).lower() for key, value in state["tdd_sections"].items()}
         consistency_findings = [item for gate in state["gates"] for item in gate.get("consistency_findings", [])]
     task_list = task_list_path(progress_path)
     stages = _task_stages(task_list.read_text()) if task_list.is_file() else []
