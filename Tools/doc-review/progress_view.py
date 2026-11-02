@@ -109,6 +109,11 @@ def pr_refresh_stamp(progress_path: Path) -> float:
     return float(pr_notes.refresh_window() * pr_notes.REFRESH_SECONDS)
 
 
+def _state_task_id(task_id: str) -> str:
+    # Older TDD/TaskList rows number tasks "1"; state.json ids are "T1" (legacy_migration imports them so).
+    return "T" + task_id if task_id.isdigit() else task_id
+
+
 def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
                 fetch_pr: Callable[[int, Path], Dict] = pr_notes.fetch_pr_notes,
                 pr_url: Callable[[int, Path], str] = pr_notes.pr_url) -> Dict:
@@ -138,7 +143,7 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     template_bodies = _heading_bodies(template.read_text()) if template.is_file() else []
     if state is not None:
         displayed = dev_phases if dev_phases else stages
-        known_ids = {task["id"] for stage in displayed for task in stage["tasks"]}
+        known_ids = {_state_task_id(task["id"]) for stage in displayed for task in stage["tasks"]}
         additional = [dict(task, title=task.get("title") or task.get("task") or task["id"])
                       for task in state["tasks"] if task["id"] not in known_ids]
         if additional:
@@ -154,7 +159,7 @@ def build_model(progress_path: Path, process_dir: Path = CREATE_FEATURE_DIR,
     task_states = {task["id"]: task["status"] for task in state["tasks"]} if state is not None else {}
     for task in [task for stage in stages for task in stage["tasks"]] + [task for dev in dev_phases for task in dev["tasks"]]:
         if state is not None:
-            task["status"] = task_states.get(task["id"], "todo")
+            task["status"] = task_states.get(_state_task_id(task["id"]), "todo")
         task["batch"] = _batch_view(batches.get(task["id"]), progress_path.parent, pr_url)
     # The V-phase in progress starts with its tasks expanded: the first one with an unfinished task.
     in_progress = next((dev for dev in dev_phases if any(task["status"] != "done" for task in dev["tasks"])), None)
