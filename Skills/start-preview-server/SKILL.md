@@ -9,8 +9,11 @@ Open the persistent project preview without editing feature documents or migrati
 Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
 
 1. Run `bash <tools>/doc-review/preview-control.sh start --project <project-root>`.
-   It reuses the managed server if already healthy and prints its URL. The server is
-   independent of this LLM session; do not stop it at session end.
+   It reuses the managed server if already healthy and prints its URL. If any
+   `Tools/doc-review/*.py` or `Tools/feature-state/*.py` file changed since that server started,
+   it restarts it instead and prints `restarted (tool code changed)` before the new URL — the
+   port may change, so report the new URL. The server is independent of this LLM session; do
+   not stop it at session end.
 2. No name: open the returned Home URL. A name: use the exact feature directory under
    `$SESSION_FEATURES_ROOT`, otherwise `Assets/GitIgnoreAssets/Features`.
    If no match exists, list the available feature names and ask; never guess.

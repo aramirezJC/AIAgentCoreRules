@@ -143,7 +143,10 @@ bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh sto
 ```
 
 Pass `--project /path/to/project` when running elsewhere. Start prints the existing URL if
-already running. Runtime PID, URL and log files live in the project's `.doc-review/`. The
+already running — unless any `Tools/doc-review/*.py` or `Tools/feature-state/*.py` file is newer
+than the server's recorded start time. Python never reloads modules, so start then stops the
+stale server, prints `restarted (tool code changed)`, and starts a fresh one (the port may change;
+use the URL printed after that line). Runtime PID, URL and log files live in the project's `.doc-review/`. The
 launcher verifies the server's project and PID before stopping it, and uses Python locking
 rather than requiring an external `flock` command. The detached process survives agent sessions.
 

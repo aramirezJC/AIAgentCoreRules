@@ -11,6 +11,9 @@ import sys
 import time
 from urllib.request import urlopen
 
+# Python never reloads modules, so a long-running server keeps serving the code it started with.
+TOOL_DIRS = (Path(__file__).parent, Path(__file__).parent.parent / 'feature-state')
+
 
 def healthy(state, project):
     try:
@@ -19,6 +22,30 @@ def healthy(state, project):
         return data.get('project') == str(project) and data.get('pid') == state['pid']
     except (OSError, ValueError, KeyError):
         return False
+
+
+def tool_code_mtime(tool_dirs=None):
+    return max((path.stat().st_mtime for directory in tool_dirs or TOOL_DIRS for path in directory.glob('*.py')), default=0.0)
+
+
+def stale(state, state_path, tool_dirs=None):
+    # Servers started before 'started' was recorded fall back to when server.json was written.
+    try:
+        started = state.get('started') or state_path.stat().st_mtime
+    except OSError:
+        return False
+    return tool_code_mtime(tool_dirs) > started
+
+
+def stop(state, project, state_path):
+    os.kill(state['pid'], signal.SIGTERM)
+    for _ in range(40):
+        if not healthy(state, project):
+            break
+        time.sleep(.1)
+    else:
+        raise RuntimeError('Preview did not stop; runtime metadata retained')
+    state_path.unlink(missing_ok=True)
 
 
 def control(action, project):
@@ -40,26 +67,23 @@ def control(action, project):
             return
         if action == 'stop':
             if running:
-                os.kill(state['pid'], signal.SIGTERM)
-                for _ in range(40):
-                    if not healthy(state, project):
-                        break
-                    time.sleep(.1)
-                else:
-                    raise RuntimeError('Preview did not stop; runtime metadata retained')
-                state_path.unlink(missing_ok=True)
+                stop(state, project, state_path)
             print('Stopped' if running else 'No managed preview running')
             return
-        if running:
+        if running and not stale(state, state_path):
             print(state['url'])
             return
+        if running:
+            stop(state, project, state_path)
+            print('restarted (tool code changed)')
         log_path = runtime / 'server.log'
+        started = time.time()
         with log_path.open('w') as log:
             process = subprocess.Popen([sys.executable, str(Path(__file__).with_name('doc_review.py')), 'serve-project', str(project)], stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         for _ in range(60):
             lines = log_path.read_text().splitlines()
             if lines and lines[0].startswith('http://127.0.0.1:'):
-                state = {'pid': process.pid, 'url': lines[0], 'project': str(project)}
+                state = {'pid': process.pid, 'url': lines[0], 'project': str(project), 'started': started}
                 if healthy(state, project):
                     temporary = state_path.with_suffix('.tmp')
                     temporary.write_text(json.dumps(state))
