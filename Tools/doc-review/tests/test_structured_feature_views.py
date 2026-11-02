@@ -32,6 +32,18 @@ class StructuredFeatureViewsTest(unittest.TestCase):
         self.assertEqual(perf_view.feature_filter(self.progress), ('Example', {'1234abcd'}))
         self.assertIn(self.folder / 'state.json', progress_view.watched_paths(self.progress))
 
+    def test_json_section_statuses_match_template_headings(self):
+        update_state(self.folder, 'checkpoint', {
+            'step_status': {'1a': 'done', '1b': 'in_progress'},
+            'tdd_sections': {'Objective': 'approved', 'Related documentation': 'drafting'}}, self.state['revision'])
+        intake = progress_view.build_model(self.progress)['phases'][0]
+        step = next(step for step in intake['steps'] if step['key'] == '1b')
+        sections = {section['title']: section['state'] for section in step['sections']}
+        self.assertEqual(step['state'], 'partial')
+        self.assertEqual(sections['Objective'], 'done')
+        self.assertEqual(sections['Related Documentation'], 'partial')
+        self.assertEqual(sections['Architecture'], 'todo')
+
     def test_missing_projection_does_not_hide_state(self):
         self.progress.unlink()
         self.assertEqual(progress_view.find_progress_file(self.folder), self.progress)
