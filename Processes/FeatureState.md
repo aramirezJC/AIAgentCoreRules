@@ -34,7 +34,10 @@ Run the shared CLI from the project root, resolving `<state-tool>` to
 - PR linkage uses `pr` with `{"phase":"V0","number":123}`. Batch updates use `batch` with
   `{"task_id":"T1","value":{...}}`; preserve the complete existing batch value.
 - Task status uses `task` with `id` and `status` (`todo`, `partial`, `done`), retaining task
-  metadata. Artifact roles use `artifact` with `role` and a feature-relative `path`.
+  metadata. The payload may also include `title` (and other task fields); it is merged into the
+  existing entry by `id`, never replacing the whole task list. There is no delete: retiring a
+  task-list row means repurposing its id for new work (new `title`/`status`), not removing it.
+  Artifact roles use `artifact` with `role` and a feature-relative `path`.
 - Each successful mutation regenerates Progress Markdown. Do not parse it back into state.
 
 Lifecycle skills retain all engineer approvals. Pass payloads as JSON objects, never inline shell substitutions.

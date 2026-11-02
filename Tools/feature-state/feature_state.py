@@ -272,8 +272,12 @@ def main():
     listing = sub.add_parser("list")
     listing.add_argument("--root", type=Path, required=True)
     listing.add_argument("--include-closed", action="store_true")
+    command_help = {
+        "task": "Add or update one task by id (merge, no delete). Payload: "
+                '{"id": "T<n>", "title": "...", "status": "todo|partial|done"}.',
+    }
     for command in ("get", "create", "checkpoint", "gate", "close", "reopen", "pr", "batch", "task", "artifact", "render", "migrate"):
-        item = sub.add_parser(command)
+        item = sub.add_parser(command, help=command_help.get(command), description=command_help.get(command))
         item.add_argument("directory", type=Path, nargs="?" if command == "migrate" else None)
         if command == "get":
             item.add_argument("--section")
