@@ -23,7 +23,9 @@ Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
    LLM Performance. Missing content shows a placeholder. Legacy features display migration
    required; starting the preview never implicitly migrates them.
 5. Feature comments live in `<feature-directory>/review.json`, independent of the current
-   tab or first document. Read with `doc_review.py comments <feature-directory>`.
+   tab or first document. Read with `doc_review.py comments <feature-directory>`. When working
+   a batch of them, follow `Processes/ExternalDocPass.md` → "Comment research": subagents research
+   and propose edits, the main session applies them in order and replies.
 6. To explicitly stop this project's managed server use `$kill-server` or
    `bash <tools>/doc-review/preview-control.sh stop --project <project-root>`.
 
