@@ -16,6 +16,7 @@ Subcommands:
     hook-end     SessionEnd hook. Compiles metrics even when /end-session was not run.
     hook-stop    Stop hook. Recompiles after a reply (throttled), for sessions that never exit.
     hook-prompt  UserPromptSubmit hook. After an idle gap past the prompt-cache TTL, notes the cost.
+                 Warns once when the per-call context reaches 90% of the median session peak.
     hook-bash    PreToolUse hook on Bash. Reminds the agent to Read rule files it cat/sed/head/tails.
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
@@ -43,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import retro_page
@@ -79,6 +81,10 @@ FRESH_SESSION_TOKENS = 30000000
 IDLE_GAP_MINUTES = 60
 IDLE_CONTEXT_TOKENS = 100000
 TRANSCRIPT_TAIL_BYTES = 512 * 1024
+# hook-prompt context-size warning (token_breakdown.context_warning_threshold): written on the first
+# warning, removed once the context drops below the threshold, so it fires once per crossing.
+CONTEXT_WARNING_MARKER = "context-warning.json"
+CONTEXT_ACTIVE_WINDOW_SECONDS = 60 * 60   # = perf_view.ACTIVE_WINDOW_SECONDS, so the tab and the hook agree
 # hook-bash (MR-20261016-05): a shell read of a rule file only reaches the router trace by inference.
 # Only at a command position (start, or after ; && || |), so a quoted or heredoc mention is silent.
 SHELL_RULE_READ = re.compile(r"(?:^|[;&|]|\$\()\s*(?:cat|sed|head|tail)\b[^|;&\n]*?(\S*\b(?:Rules|Processes|Systems|SystemPatterns|Skills)/\S*\.md)",
@@ -927,9 +933,58 @@ def last_reply(transcript_path):
     return None
 
 
+def reference_peaks(root, exclude):
+    """breakdown.peak_context of every finished session folder under root except `exclude`. Still-running
+    sessions (perf_view's active rule: no ended_at, session.json written within the hour) have partial peaks."""
+    peaks = []
+    for name in sorted(os.listdir(root)):
+        folder = os.path.join(root, name)
+        if folder == exclude:
+            continue
+        try:
+            state = load_state(folder)
+            running = not state.get("ended_at") and \
+                time.time() - os.path.getmtime(os.path.join(folder, "session.json")) < CONTEXT_ACTIVE_WINDOW_SECONDS
+            if not running:
+                peaks.append((state.get("breakdown") or {}).get("peak_context") or 0)
+        except (OSError, ValueError, AttributeError):
+            continue
+    return peaks
+
+
+def context_warning(args, hook, context):
+    """(engineer message, agent note) once per crossing of the context-size threshold, else None.
+    The marker in the session folder re-arms when the context drops back below it (compact / clear)."""
+    root = reports_root(args)
+    folder = find_folder(root, hook.get("session_id"))
+    if not folder:
+        return None
+    marker = os.path.join(folder, CONTEXT_WARNING_MARKER)
+    peaks = reference_peaks(root, folder)
+    threshold = token_breakdown.context_warning_threshold(peaks)
+    if threshold is None or context < threshold:
+        if os.path.isfile(marker):
+            os.remove(marker)
+        return None
+    if os.path.isfile(marker):
+        return None
+    with open(marker, "w") as handle:
+        json.dump({"at": now_iso(), "context": context, "threshold": threshold}, handle)
+    median = threshold / token_breakdown.CONTEXT_WARNING_SHARE
+    hook_log(args, "prompt", hook, "context %dk >= threshold %dk" % (context // 1000, threshold // 1000))
+    message = ("Context-size warning: this session re-sends ~%dk tokens on every call, %d%% of the %dk median "
+               "peak across %d sessions. At the next task boundary: /compact <what to keep>, or a fresh "
+               "session with a handoff." % (context // 1000, round(100 * context / median), median // 1000,
+                                            len([peak for peak in peaks if peak])))
+    note = (message + " Finish the current step first, then offer the engineer that reset in one line; do "
+            "not reset mid-step.")
+    return message, note
+
+
 def cmd_hook_prompt(args):
     """UserPromptSubmit hook: after an idle gap long enough for the prompt cache to expire, tell the
-    agent what the next call costs, so new work can be offered a fresh session. Silent otherwise."""
+    agent what the next call costs, so new work can be offered a fresh session; and once the context
+    reaches the context-size threshold, warn both the engineer (systemMessage) and the agent. Silent otherwise."""
     hook = {}
     try:
         hook = read_hook_input()
@@ -937,15 +992,24 @@ def cmd_hook_prompt(args):
         if not reply:
             return 0
         moment, context = reply
+        notes, messages = [], []
         idle = datetime.datetime.now().astimezone() - moment
-        if idle.total_seconds() < IDLE_GAP_MINUTES * 60 or context < IDLE_CONTEXT_TOKENS:
-            return 0
-        hours, minutes = divmod(int(idle.total_seconds() // 60), 60)
-        print("Idle-gap note: %dh %02dm since the last reply, so the prompt cache has expired and the next "
-              "call re-reads ~%dk tokens of context uncached. If this prompt starts new work rather than "
-              "continuing the current task, offer a fresh session first: /new-session \"<prompt>\"."
-              % (hours, minutes, context // 1000))
-        hook_log(args, "prompt", hook, "idle %dh%02dm, context %dk" % (hours, minutes, context // 1000))
+        if idle.total_seconds() >= IDLE_GAP_MINUTES * 60 and context >= IDLE_CONTEXT_TOKENS:
+            hours, minutes = divmod(int(idle.total_seconds() // 60), 60)
+            notes.append("Idle-gap note: %dh %02dm since the last reply, so the prompt cache has expired and the next "
+                         "call re-reads ~%dk tokens of context uncached. If this prompt starts new work rather than "
+                         "continuing the current task, offer a fresh session first: /new-session \"<prompt>\"."
+                         % (hours, minutes, context // 1000))
+            hook_log(args, "prompt", hook, "idle %dh%02dm, context %dk" % (hours, minutes, context // 1000))
+        warning = context_warning(args, hook, context)
+        if warning:
+            messages.append(warning[0])
+            notes.append(warning[1])
+        if notes:
+            output = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "\n".join(notes)}}
+            if messages:
+                output["systemMessage"] = "\n".join(messages)   # shown to the engineer, not added to context
+            print(json.dumps(output))
     except Exception as error:   # a hook must never block a prompt
         hook_log(args, "prompt", hook, "ERROR %s" % error)
     return 0

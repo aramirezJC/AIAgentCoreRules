@@ -21,6 +21,7 @@ import glob
 import json
 import os
 import re
+import statistics
 
 CHARS_PER_TOKEN = 4.0
 STANDARDIZED = ["Runnable tools", "Session lifecycle", "Skills", "Rule & process loads", "Subagents"]
@@ -45,6 +46,11 @@ SAVINGS = ["Parallel tool calls", "Subagent delegation", "Partial file reads",
 # Low side: a Confluence republish after every doc edit, which the preview's live reload avoids, is not counted.
 DOC_REVIEW_PATTERN = r"python3?\s+\S*(doc_review|mermaid_preview)\.py(?:\s+([\w-]+))?"
 MIRO_CONFLUENCE_BY_COMMAND = {"serve": (18400, 3), "comments": (2400, 2), "reply": (1300, 1)}
+# Context-size warning: every call re-reads the whole current context ("Conversation & base context"
+# was a median 80% of a session's tokens across 107 sessions, 2026-11-02), so a reset pays off most once
+# a session's per-call context reaches most sessions' peak. Shared by hook-prompt and the Performance tab.
+CONTEXT_WARNING_SHARE = 0.9
+CONTEXT_WARNING_MIN_SESSIONS = 5
 
 
 def size(value):
@@ -87,6 +93,14 @@ def read_calls(path):
                 index[key] = len(calls)
                 calls.append((key, context, output))
     return calls
+
+
+def context_warning_threshold(peaks):
+    """CONTEXT_WARNING_SHARE x the median peak per-call context of other sessions, or None with too few."""
+    peaks = [peak for peak in peaks if peak]
+    if len(peaks) < CONTEXT_WARNING_MIN_SESSIONS:
+        return None
+    return int(CONTEXT_WARNING_SHARE * statistics.median(peaks))
 
 
 def subagent_runs(transcript_path, session_id):
@@ -297,7 +311,9 @@ def analyse(transcript_path, session_id, roots):
                         for command, (t, r) in MIRO_CONFLUENCE_BY_COMMAND.items()})
     return {"estimated": True, "total": total, "calls": len(calls), "categories": categories,
             "standardized": sum(categories[name] for name in STANDARDIZED), "savings": savings,
-            "doc_review": doc_review, "assumptions": assumptions}
+            "doc_review": doc_review, "assumptions": assumptions,
+            "peak_context": max((context for _key, context, _output in calls), default=0),
+            "last_context": calls[-1][1] if calls else 0}
 
 
 def session_total(transcript_path, session_id):

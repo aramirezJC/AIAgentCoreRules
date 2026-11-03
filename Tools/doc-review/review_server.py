@@ -399,7 +399,7 @@ LIVE_SCRIPT_TEMPLATE = """
 # Category colours = retro_page.py's dark --s1..--s5 (validated against #20242e), greys for the rest.
 PERF_CSS = """
   .perf-view { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --n1: #6e6d68; --n2: #4e5260;
-               --curve: #3987e5; --active: #f0c674; background: #20242e; color: #e4e6eb; max-width: 960px; margin: 0 auto;
+               --curve: #3987e5; --active: #f0c674; --warn: #ef8354; background: #20242e; color: #e4e6eb; max-width: 960px; margin: 0 auto;
                padding: 24px 32px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.4); box-sizing: border-box; line-height: 1.5; }
   .perf-view h1 { margin: 0 0 4px; font-size: 22px; color: #fff; }
   .perf-view h2 { margin: 22px 0 8px; font-size: 16px; color: #fff; }
@@ -428,6 +428,9 @@ PERF_CSS = """
   .perf-session summary .total { color: #e4e6eb; font-weight: 600; font-variant-numeric: tabular-nums; }
   .perf-pill { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #333944; color: #e4e6eb; }
   .perf-pill.active { background: var(--active); color: #10141c; }
+  .perf-pill.over { background: var(--warn); color: #10141c; }
+  .perf-warning { border: 1px solid var(--warn); border-left-width: 4px; border-radius: 6px; padding: 8px 12px; margin: 14px 0; background: #2e2422; }
+  .perf-warning strong { color: var(--warn); }
   .perf-view .empty { color: #5c6577; }
   .perf-scope { display: inline-flex; border: 1px solid #333944; border-radius: 6px; overflow: hidden; margin: 10px 0 0; }
   .perf-scope button { background: none; border: 0; color: #9aa3b5; font: inherit; font-size: 13px; padding: 4px 12px; cursor: pointer; }
@@ -536,6 +539,26 @@ PERF_SCRIPT = """
       '<div class="perf-tile"><div class="label">' + label + '</div><div class="value">' + value(n) + '</div></div>').join('') + '</div>';
   }
 
+  // Context-size warning (perf_view.context_warning = token_breakdown's rule, also used by hook-prompt).
+  function perfContextWarning(model) {
+    const w = model.context_warning;
+    const over = model.sessions.filter((s) => s.over_context);
+    if (!w || w.threshold == null || !over.length) return '';
+    return '<div class="perf-warning"><strong>Context-size warning</strong> &middot; '
+      + over.map((s) => escapeHtml(s.title || s.folder) + ' re-sends ~' + perfCompact(s.last_context) + ' tokens per call').join('; ')
+      + '. Threshold ' + perfCompact(w.threshold) + ' = ' + Math.round(w.share * 100) + '% of the ' + perfCompact(w.median_peak)
+      + ' median peak context of ' + w.sessions + ' finished sessions. At the next task boundary: /compact &lt;what to keep&gt;, '
+      + 'or a fresh session with a handoff.</div>';
+  }
+
+  function perfContextPill(session) {
+    if (!session.peak_context) return '';
+    const live = session.active && session.last_context;
+    return '<span class="perf-pill' + (session.over_context ? ' over' : '') + '" title="Per-call context: '
+      + (live ? 'latest call (peak ' + perfCompact(session.peak_context) + ')' : 'largest call') + '">'
+      + (live ? 'context ' + perfCompact(session.last_context) : 'peak ' + perfCompact(session.peak_context)) + '</span>';
+  }
+
   function perfSession(session, colors) {
     const when = (session.started_at || "").slice(0, 16).replace("T", " ");
     const parts = ['<details class="perf-session' + (session.active ? ' active' : '') + '" data-key="' + escapeHtml(session.folder) + '"'
@@ -543,6 +566,7 @@ PERF_SCRIPT = """
       + '<span class="title">' + escapeHtml(session.title || session.folder) + '</span>'
       + (session.active ? '<span class="perf-pill active">active</span>' : '')
       + (session.lane ? '<span class="perf-pill">' + escapeHtml(session.lane) + '</span>' : '')
+      + perfContextPill(session)
       + '<span class="total">' + (session.usage.total != null ? perfCompact(session.usage.total) : session.compiled ? perfCompact(session.total) : '–') + '</span></summary>'];
     parts.push(perfUsage(session.usage));
     if (!session.compiled) {
@@ -603,10 +627,13 @@ PERF_SCRIPT = """
       const parts = ['<h1>Session performance</h1><div class="meta">Estimated tokens per session (the retrospective\\'s breakdown) &middot; '
         + escapeHtml(model.root) + '</div>'
         + (model.feature ? perfScopeToggle(model, scope)
-          + '<div class="meta">Feature sessions: tagged with set --feature, or listed under sessions: in the Progress file.</div>' : ''),
+          + '<div class="meta">Feature sessions: tagged with set --feature, or listed under sessions: in the Progress file.</div>' : '')
+        + perfContextWarning(model),
         '<div class="perf-tiles">' + tile("Sessions", o.compiled + (o.sessions > o.compiled ? ' <span class="meta">/ ' + o.sessions + '</span>' : ''))
           + tile("Total tokens", perfCompact(o.total)) + tile("Average / session", perfCompact(o.mean))
           + tile("Median", perfCompact(o.median)) + tile("Std deviation", perfCompact(o.stdev))
+          + tile("Context warning at", model.context_warning && model.context_warning.threshold != null
+            ? perfCompact(model.context_warning.threshold) + ' <span class="meta">/ call</span>' : '–')
           + tile("Standardized", perfPercent(o.total ? o.standardized / o.total : 0)) + '</div>',
         '<h2>Distribution of session totals</h2><div class="perf-curve">' + perfBellCurve(o.totals)
           + '<div class="note">Bars: sessions per bin. Curve: normal fit to log10(tokens). Band: ±1σ. Dots: one per session.</div></div>',
