@@ -99,6 +99,12 @@ breakdown: the same estimated token-by-category numbers the retrospective charts
 - **Sessions, newest first.** One collapsible each, with its category table. The active session
   (no `ended_at`, `session.json` written in the last hour) is highlighted and open.
 
+**Context-size warning.** Each compiled breakdown records `peak_context` and `last_context` (per-call
+context tokens). A *Context warning at* tile shows 90% of the median peak of finished sessions (the same
+threshold the UserPromptSubmit hook warns with); an amber banner names each active session whose latest
+call is at or above it, and every session row has a context pill (latest for active sessions, peak
+otherwise; amber when over). Breakdowns compiled before 2026-11-02 have no peak until recompiled.
+
 Sessions without a compiled breakdown are listed but left out of the statistics. The tab
 refreshes whenever a `session.json` changes; the active session is as fresh as its last compile
 (the Stop hook recompiles after replies).

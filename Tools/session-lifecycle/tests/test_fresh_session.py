@@ -69,6 +69,66 @@ class IdleGapTests(unittest.TestCase):
         self.assertEqual(self.hook(130, 20000), "")
 
 
+class ContextWarningTests(IdleGapTests):
+    """2026-11-02: 87% of context tokens were spent in calls already at >= 90% of the median session
+    peak context, so hook-prompt warns the engineer and the agent once the context crosses it."""
+
+    def setUp(self):
+        super().setUp()
+        self.root = os.path.join(self.tmp, "Sessions")
+        self.folder = self.session_folder("current", "s", None)
+
+    def session_folder(self, name, session_id, peak, ended=True):
+        folder = os.path.join(self.root, name)
+        os.makedirs(folder)
+        state = {"session_id": session_id, "breakdown": {"peak_context": peak} if peak else {}}
+        if peak and ended:
+            state["ended_at"] = "2026-11-01T10:00:00-07:00"
+        with open(os.path.join(folder, "session.json"), "w") as handle:
+            json.dump(state, handle)
+        return folder
+
+    def references(self, count, peak=100000):
+        for index in range(count):
+            self.session_folder("other%d" % index, "o%d" % index, peak)
+
+    def test_crossing_warns_engineer_and_agent_once(self):
+        self.references(5)
+        output = json.loads(self.hook(1, 95000))
+        self.assertIn("Context-size warning", output["systemMessage"])
+        self.assertIn("100k median", output["systemMessage"])
+        self.assertIn("do not reset mid-step", output["hookSpecificOutput"]["additionalContext"])
+        self.assertEqual(self.hook(1, 120000), "")
+
+    def test_rearms_after_context_drops(self):
+        self.references(5)
+        self.assertNotEqual(self.hook(1, 95000), "")
+        self.assertEqual(self.hook(1, 30000), "")
+        self.assertFalse(os.path.isfile(os.path.join(self.folder, session_lifecycle.CONTEXT_WARNING_MARKER)))
+        self.assertIn("Context-size warning", self.hook(1, 95000))
+
+    def test_below_threshold_is_silent(self):
+        self.references(5)
+        self.assertEqual(self.hook(1, 85000), "")
+
+    def test_too_few_reference_sessions_is_silent(self):
+        self.references(4)
+        self.session_folder("uncompiled", "u", None)
+        self.assertEqual(self.hook(1, 500000), "")
+
+    def test_running_sessions_do_not_count_as_references(self):
+        """Their peaks are partial; the Performance tab leaves them out too."""
+        self.references(4)
+        self.session_folder("running", "r", 100000, ended=False)
+        self.assertEqual(self.hook(1, 500000), "")
+
+    def test_idle_gap_and_warning_share_one_output(self):
+        self.references(5)
+        output = json.loads(self.hook(130, 400000))
+        self.assertIn("Idle-gap note", output["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("Context-size warning", output["hookSpecificOutput"]["additionalContext"])
+
+
 class ShellRuleReadTests(unittest.TestCase):
     """MR-20261016-05: rule and process files read via cat/sed only reach the router trace by inference."""
 

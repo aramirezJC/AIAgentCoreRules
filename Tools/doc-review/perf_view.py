@@ -72,9 +72,23 @@ def build_model(reports_root: Path, now: Optional[float] = None, progress_path: 
     sessions.sort(key=lambda session: session["sort_key"], reverse=True)
     for session in sessions:
         del session["sort_key"]
+    warning = context_warning(sessions)
+    for session in sessions:
+        session["over_context"] = bool(warning["threshold"]) and session["active"] \
+            and session["last_context"] >= warning["threshold"]
     return {"root": str(reports_root), "standardized_names": token_breakdown.STANDARDIZED,
+            "context_warning": warning,
             "overview": _overview(sessions), "sessions": sessions, "feature": feature,
             "feature_overview": _overview([session for session in sessions if session["in_feature"]])}
+
+
+def context_warning(sessions: List[Dict]) -> Dict:
+    """token_breakdown's context-size threshold over the peak per-call context of finished sessions
+    (the same rule hook-prompt warns the agent with); threshold None when too few have a peak."""
+    peaks = [session["peak_context"] for session in sessions if not session["active"] and session["peak_context"]]
+    threshold = token_breakdown.context_warning_threshold(peaks)
+    return {"threshold": threshold, "share": token_breakdown.CONTEXT_WARNING_SHARE, "sessions": len(peaks),
+            "median_peak": statistics.median(peaks) if threshold is not None else None}
 
 
 def feature_filter(progress_path: Optional[Path]):
@@ -146,6 +160,8 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
         "calls": breakdown.get("calls") or 0,
         "standardized": breakdown.get("standardized") or 0,
         "categories": categories,
+        "peak_context": breakdown.get("peak_context") or 0,
+        "last_context": breakdown.get("last_context") or 0,
         "doc_review": _doc_review(breakdown.get("doc_review") or {}),
         "sort_key": (_timestamp(started_at), state_path.parent.name),
     }
