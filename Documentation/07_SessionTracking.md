@@ -34,6 +34,21 @@ configure per project — `install.py` and the tracker share the same root looku
 go before the subcommand: `session_lifecycle.py --reports-root <dir> set …` and
 `install.py --project <repo> worktrees`.
 
+### Hook output reach
+
+Who sees what a hook prints — check here before designing a new warning or nudge.
+
+| Hook | Reaches the agent | Reaches the engineer |
+|---|---|---|
+| SessionStart | stdout and `additionalContext`; re-fires after `/clear` and `/compact`, so it can re-inject context | `systemMessage` |
+| UserPromptSubmit | stdout and `additionalContext` — the only way to reach the agent mid-session | `systemMessage` |
+| PreToolUse | `additionalContext` | `systemMessage` |
+| Stop | Nothing (runs async) | Nothing |
+
+A JSON `systemMessage` from any hook reaches the engineer only. No hook or agent action can run
+`/clear` or `/compact` — a hook can only tell the agent to offer one. The auto-compact threshold
+is the `autoCompactWindow` setting or `/autocompact <tokens>`.
+
 The **lane** is the process that ran; the **work type** is what the work was. They usually match,
 but not always: an investigation into a crash is lane `investigation`, work type `bug_fix`. If the
 agent does not set a work type, it follows the lane (small_task → small_feature, investigation →

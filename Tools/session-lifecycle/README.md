@@ -57,6 +57,22 @@ the app marks completed after going idle never exits, and Claude Code has no idl
 fires after every main-agent reply, and `hook-stop` recompiles then (at most every 2 minutes,
 async, never marking the session ended), so metrics stay current however the session ends.
 
+### Hook output reach
+
+Who sees what a hook prints. Check here before designing a warning or a nudge.
+
+| Hook | Reaches the agent | Reaches the engineer |
+|---|---|---|
+| SessionStart | stdout and `hookSpecificOutput.additionalContext`. Re-fires with source `clear` or `compact`, so it can re-inject context after either | JSON `systemMessage` |
+| UserPromptSubmit | stdout and `hookSpecificOutput.additionalContext` — the only way to reach the agent mid-session | JSON `systemMessage` |
+| PreToolUse | `hookSpecificOutput.additionalContext` | JSON `systemMessage` |
+| Stop | Nothing — it runs `async`, so its output reaches no one | Nothing |
+| Any hook | — | JSON `systemMessage` reaches the engineer only, never the agent |
+
+No hook or model action can run `/clear` or `/compact`; the most a hook can do is tell the agent
+to offer one. The auto-compact threshold is set with the `autoCompactWindow` setting or
+`/autocompact <tokens>`.
+
 2. Symlink `Skills/start-session`, `end-session`, `inaccuracy`, `iteration` into
    `<project>/.claude/skills/`.
 

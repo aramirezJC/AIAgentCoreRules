@@ -31,6 +31,7 @@ steps:
     - "If the request is a tool/script/report: StopAndVerify Scope Gate — ask one-off vs reusable, and Editor/runtime/CLI. Wait."
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
     - "A question with no change → set --work-type question. If it later turns into a change, re-run `set --work-type <small_feature|other>` before 4_propose."
+    - "A request for a warning, limit or threshold: name the cost it is meant to reduce and pick the metric that drives that cost (e.g. per-call context vs session total) before proposing."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
     - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
@@ -39,6 +40,7 @@ steps:
     - "Anything broader than one targeted query → /discover, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
     - "When the change consumes data written by another skill or tool (a progress block, a sidecar, ids), check that real feature data actually has the keys the consumer matches on, before 4_propose."
+    - "When a new check must agree with an existing view (tab, report), reuse the view's population and filter rules, such as perf_view's active-session rule, instead of re-deriving them."
   3_rules:   # routing table, by what the change touches
     always:                    [../Rules/CodingStandards.md]
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
