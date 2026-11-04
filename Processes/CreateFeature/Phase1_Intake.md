@@ -329,6 +329,11 @@ Carry the finalized list (status emoji + finding + outcome, one string per line)
 `phase_handoff` block's `consistency_findings` field (see Handoff Format in index.md). The preview
 server's Progress tab renders it as a sub-item under this step once that block is written.
 
+Also write the finalized list into the checkpoint's `context_notes` (via `feature_state.py
+checkpoint`, or `/checkpoint`) as soon as 1c completes — do not wait for the Gate 1 block. 1d–1f
+can span a session boundary, and a session that resumes before the gate is written must be able to
+read the findings back instead of reconstructing them from the TDD.
+
 ---
 
 ## Sub-phase 1d — Metrics

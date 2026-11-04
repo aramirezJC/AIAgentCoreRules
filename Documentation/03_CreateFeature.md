@@ -77,7 +77,9 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   **acknowledge and continue** or **rework now**, and the outcome is recorded beside the finding.
   An acknowledged ❌ is logged as a Gate 1 open item with an owner; it does not block the gate.
   The final list goes into the Gate 1 handoff's `consistency_findings` field, and the doc-review
-  [[12_DocReview#Progress tab|Progress tab]] shows it under the 1c step.
+  [[12_DocReview#Progress tab|Progress tab]] shows it under the 1c step. It is also saved to the
+  checkpoint's `context_notes` as soon as 1c finishes, so a session resuming before Gate 1 can
+  read it back.
 - **1d metrics** — a one-time reminder of `/inaccuracy`, `/iteration` and `/end-session`. The
   lane and title are already set by `/feature` or `/resume-work`, so this step no longer sets them.
 - **1e document generation**.
