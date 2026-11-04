@@ -127,6 +127,9 @@ a **File Plan** (task id, path, new/modified, responsibility) that Phase 4 works
 contracts the TDD left out, a decision for every TBD left for Phase 3, and corrections where the
 code contradicts the TDD. A skip check comes first: when the TDD already covers all of that, the
 gate is a short confirmation and can close at the end of the Phase 2 session.
+Besides the matching SystemPatterns entries, the agent loads the host SystemIndex's `Systems/`
+entry for every system a new design decision touches (e.g. a new message type → the message-bus
+doc), not only the systems Discovery covered.
 
 Everything approved is written back into the TDD (version bump and Versions row), with the task
 list and use cases updated when a decision changes them. There is no separate

@@ -11,7 +11,9 @@ the codebase, settles what it left for Phase 3, and gives Phase 4 a concrete fil
 TDD already covers is not restated here.
 
 Inputs: `<FeatureName>_TDD.md` (Architecture section, embedded diagrams, TBDs) and
-`<FeatureName>_Discovery.md`. Load the host SystemIndex's matching SystemPatterns entries.
+`<FeatureName>_Discovery.md`. Load the host SystemIndex's matching SystemPatterns entries, and
+its `Systems/` entry for every system a new design decision touches (e.g. a new message type →
+the message-bus system doc), not only the systems Discovery already covered.
 
 ---
 
