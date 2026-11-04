@@ -61,6 +61,9 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   Before the Architecture section is drafted, the host SystemIndex's SystemPatterns entries that
   match the feature (e.g. GemEventPattern, PrizeFlowPattern) are loaded: the TDD is now the main
   design document, so pattern guidance applies here, not only in Phase 3.
+  A save/storage-mechanism decision in Architecture (or Data Reconciliation Strategy) is
+  re-checked against every entry in the progress file's `sources_of_truth`, not just the GDD,
+  before it is marked decided.
   The Architecture section embeds each `Diagrams/*.mmd` diagram inline, each in its own
   collapsible `<details><summary>Mermaid Diagram: <Name></summary>` block holding a fenced
   `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
