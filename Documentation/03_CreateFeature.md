@@ -97,6 +97,8 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   to be the real, complete content just built, not a placeholder or truncated fragment. Every
   publish is fetched back and checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
+  When 4 or more threads need research, subagents investigate them in parallel and return proposed
+  edits; the main session alone applies them, in order (the same rule covers preview comments).
   The update is verified like a publish; that check (at most one fetch per page) is outside the
   pass's two-read budget.
   The host project's conventions file sets the layout and the comment convention. Review round

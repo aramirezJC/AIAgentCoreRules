@@ -166,4 +166,8 @@ Feature comments live in `<feature-directory>/review.json`, independent of the s
 Each thread retains its relative `anchor.file`, text/diagram anchor, replies and status. Use
 `doc_review.py comments <feature-directory>` and `doc_review.py reply <feature-directory> <id>
 "message" --status addressed`. Standalone document preview retains its existing document sidecar.
+A batch of comments is worked per [[ExternalDocPass|External Doc Pass]] → Comment research: with 4
+or more threads needing investigation, subagents research them in parallel and return proposed
+edits plus draft replies; only the main session edits the document, one proposal at a time, then
+replies. Edits are never queued through the server — text anchors orphan under concurrent edits.
 The CLI no longer collects inline `@CLAUDE` markers; existing source markers remain untouched.
