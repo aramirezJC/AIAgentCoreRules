@@ -22,6 +22,7 @@ Tag definitions: [[CoreTags]]
 publish:
   - "Load the host's doc-conventions file. Read its style reference page once, for structure only."
   - "Build the complete page body locally (a scratch file next to the local source doc), including diagrams. Validate diagrams before publishing if the host names a validator."
+  - "For a structural diagram using [[ChangeClassification]]'s NEW/MODIFIED/DELETED palette, substitute `color:#ffffff` → `color:#172b4d` in the copy being embedded in this page or pushed to its board — see ChangeClassification's 'External publish — color substitution'. Never touch the local `.mmd`; the substitution applies only to the published/pushed copy, every pass."
   - "If the document has diagrams reviewed on a board, push them in this same pass — see 'Diagrams reviewed on a board' below. Do not push a diagram ahead of the document it illustrates."
   - "Measure the built body before publishing. Over ~50K characters, split it into child pages (the host's doc-conventions file says how) — one call per page."
   - "Before sending: confirm the `body` argument is the real, complete content just built or read back from its file — not a placeholder, a truncated fragment, or escaped markup typed by mistake. This matters most for a large body typed or pasted directly into the tool call rather than loaded from the file that was just built: a publish call cannot be partially reviewed after the fact, only caught before it is sent or fixed after it has already overwritten the live page."

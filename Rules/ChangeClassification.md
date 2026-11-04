@@ -43,6 +43,22 @@ These exact hex values are `RemoteDebugger_TDD.md`'s own (`newStyle`/`modifiedSt
 palette because they already render correctly in the local preview, which is hard-coded to
 `theme: "dark"` (`Tools/doc-review/review_server.py`).
 
+### External publish — color substitution
+
+The `color:#ffffff` values above (the three change-tag `classDef`s and the `classDiagram` legend
+`style` lines) are tuned for the local preview's dark theme only. Confluence and Miro are both
+light-background, so the same value renders as invisible text there — on a `classDiagram`, `style
+ClassName fill:...,color:#ffffff` colors the whole box, including the member/method compartment,
+not just the tag label (found and fixed by hand on GameProgressSaveSlim's `ClassDiagram.mmd`
+before this rule existed).
+
+Keep the local `.mmd` source and the local preview's `#ffffff` unchanged — do not darken the local
+copy to fix this. Instead, a Publish pass (see [[ExternalDocPass]]) that pushes a structural
+diagram to Confluence or Miro must substitute `color:#ffffff` → `color:#172b4d` (the same navy
+`existingStyle` already uses) in the **published copy only**, for every `classDef`/`style` line
+that sets it. This is a deterministic substitution applied every such pass, not a per-diagram
+judgment call made only after someone notices missing text.
+
 ### Legend, per diagram type
 
 A diagram using these colors carries its own legend, so it is self-explanatory even viewed alone
