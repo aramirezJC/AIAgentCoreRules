@@ -76,6 +76,20 @@ write_back:
 
 ## Gate 3 — Design Approved
 
+Before presenting this gate for approval, generate a design-delta summary as `[FeatureName]_Design.md` 
+covering the changes made in Step 2, the updated TDD sections, and any discovered corrections. 
+Register it with the feature-state tool:
+
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "3_design", "path": "[FeatureName]_Design.md"}' \
+  --revision <N>
+```
+
+Then present both the report and the updated TDD to the engineer for approval. The report serves as
+a summary of what changed; the substantive design detail lives in the TDD itself per the "no separate 
+design doc" rule.
+
 Engineer explicitly approves the delta (or confirms it is empty) and the updated TDD.
 
 **This is the last gate before code is written. The TDD's File Plan must be complete and every TBD

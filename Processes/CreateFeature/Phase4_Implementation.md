@@ -87,4 +87,15 @@ batch N of M, where N = merged + 1 and M = the plan's length.
 
 ## Gate 4 — Implementation Complete
 
+Before presenting this gate for approval, generate an implementation summary as `[FeatureName]_Implementation.md`
+covering files written, their responsibilities, PRs opened, and any decisions made. Register it:
+
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "4_implementation", "path": "[FeatureName]_Implementation.md"}' \
+  --revision <N>
+```
+
+Then present the report to the engineer for approval.
+
 All files written and engineer-reviewed. Engineer confirms implementation is ready for integration.

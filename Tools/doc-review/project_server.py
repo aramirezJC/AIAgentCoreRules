@@ -48,7 +48,35 @@ def project_tabs(root, directory=None):
         rows.append('No active features found.')
     tabs = [{'title': 'Home', 'kind': 'md', 'file': '#home', 'path': root, 'content': '\n'.join(rows)}]
     state = feature_state.load_state(directory) if directory and (directory / 'state.json').exists() else None
-    for title, role in zip(TITLES[1:], ROLES):
+
+    # Add Plan tab
+    if directory and state is None:
+        tab = {'title': 'Plan', 'kind': 'md', 'file': '#plan', 'path': root, 'content': 'Migration required. Run the feature-state migration command explicitly.'}
+    elif state:
+        path = directory / (state['feature'] + '_Progress.md')
+        tab = {'title': 'Plan', 'kind': 'progress', 'file': '#progress', 'path': path}
+    else:
+        tab = {'title': 'Plan', 'kind': 'md', 'file': '#plan', 'path': root, 'content': 'Pending generation or data not found yet.'}
+    tabs.append(tab)
+
+    # Add phase-report tabs (after Plan, before TDD/GDD)
+    if state:
+        phase_reports = state.get('phase_reports', {})
+        phase_order = [f"{i}_{name}" for i, name in enumerate(
+            ["intake", "discovery", "design", "implementation", "unit_tests", "integration", "verification", "retrospective"], 1)]
+        for phase_key in sorted(phase_reports.keys(), key=lambda k: phase_order.index(k) if k in phase_order else 999):
+            report_path = phase_reports[phase_key]
+            path = artifact_path(directory, report_path)
+            if path and path.is_file():
+                phase_number = int(phase_key.split("_", 1)[0])
+                phase_label = phase_key.split("_", 1)[1].replace("_", " ").title()
+                title = f"Phase {phase_number}: {phase_label} Report"
+                tab = {'title': title, 'kind': 'md', 'file': str(path.relative_to(directory.resolve())),
+                       'path': path}
+                tabs.append(tab)
+
+    # Add remaining fixed tabs (TDD, GDD, diagrams, performance)
+    for title, role in zip(TITLES[2:], ROLES[1:]):
         tab = {'title': title, 'kind': 'md', 'file': '#' + role, 'path': root, 'content': 'Pending generation or data not found yet.'}
         if directory and state is None:
             tab['content'] = 'Migration required. Run the feature-state migration command explicitly.'
@@ -58,11 +86,7 @@ def project_tabs(root, directory=None):
             if isinstance(value, list):
                 value = value[0] if len(value) == 1 else None
             path = artifact_path(directory, value)
-            if role == 'plan':
-                path = directory / (state['feature'] + '_Progress.md')
-                tab.update(kind='progress', file='#progress', path=path)
-                tab.pop('content')
-            elif role == 'performance':
+            if role == 'performance':
                 reports = view.perf_view.find_reports_root(directory / 'state.json')
                 if reports:
                     tab.update(kind='perf', path=reports, progress=directory / (state['feature'] + '_Progress.md'))

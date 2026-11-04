@@ -73,6 +73,24 @@ but not written to the progress file is lost to the next session.
 
 ---
 
+## Phase Report Convention
+
+For phases 2 through 7, before presenting the phase's gate summary to the engineer for approval:
+
+1. Generate `<FeatureName>_<ReportLabel>.md` summarizing that phase's work and findings
+2. Save it to the feature's working folder (alongside other feature documents)
+3. Register it with the feature-state tool:
+   ```
+   python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+     --payload '{"phase": "<phase_key>", "path": "<FeatureName>_<ReportLabel>.md"}' \
+     --revision <N>
+   ```
+4. The preview server will then show that report as a persistent tab (Phase N: Label Report)
+
+The report becomes the artifact the engineer reviews to decide gate approval — a "final review moment" before the gate is recorded. Phases 1 and 8 are exempt: Phase 1 already produces four documents (GDD/TDD/TaskList/UseCases) before its gate; Phase 8 writes retro.md into the session reports folder.
+
+---
+
 ## Phases
 
 ```yaml
@@ -88,6 +106,7 @@ phases:
     file: ./Phase2_Discovery.md
     goal: Load rules, explore codebase, confirm all dependencies are visible
     gate: Discovery report approved — no missing source files
+    report: GameProgressSaveSlim_Discovery.md
     recommended_agent: explore        # use /discover <SystemName> for targeted area surveys
     recommended_model: haiku          # pure search, no generation
 
@@ -95,6 +114,7 @@ phases:
     file: ./Phase3_Design.md
     goal: Reconcile the TDD with Discovery — file plan, missing contracts, Phase 3 TBDs, corrections — written back into the TDD (no separate design doc, no new diagrams)
     gate: Design delta approved (or confirmed empty) — NO CODE WRITTEN BEFORE THIS GATE
+    report: GameProgressSaveSlim_Design.md
     recommended_agent: plan
     recommended_model: sonnet
 
@@ -102,6 +122,7 @@ phases:
     file: ./Phase4_Implementation.md
     goal: Write code file-by-file, published per task in small batch PRs (/publish-batch) the engineer reviews and merges
     gate: All files written and engineer-reviewed
+    report: GameProgressSaveSlim_Implementation.md
     recommended_agent: general-purpose
     recommended_model: sonnet         # run /audit on each file before presenting it
 
@@ -109,6 +130,7 @@ phases:
     file: ./Phase5_UnitTests.md
     goal: JSON deserialization tests + behavior and boundary tests traced to UseCases.md
     gate: All tests passing, TBD cases logged as follow-up tasks
+    report: GameProgressSaveSlim_UnitTests.md
     recommended_agent: general-purpose
     recommended_model: sonnet
 
@@ -116,6 +138,7 @@ phases:
     file: ./Phase6_Integration.md
     goal: Wire feature into factories, registries, manifests; run required tools
     gate: Project compiles, all integration steps confirmed
+    report: GameProgressSaveSlim_Integration.md
     recommended_agent: explore        # verify integration points exist before editing
     recommended_model: haiku
 
@@ -123,6 +146,7 @@ phases:
     file: ./Phase7_Verification.md
     goal: Final rules compliance pass across all files
     gate: Engineer confirms feature complete
+    report: GameProgressSaveSlim_Verification.md
     recommended_agent: explore        # grep for rule violations, no generation needed
     recommended_model: haiku
 
