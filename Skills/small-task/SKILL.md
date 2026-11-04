@@ -15,6 +15,7 @@ steps:
   - "Run: python3 <lifecycle script> set --lane small_task --work-type small_feature --title \"<short title from $ARGUMENTS>\"   # --work-type other for tooling, config or rule edits"
   - "If the work is for an in-progress CreateFeature feature (named in the ask, or the active-features list fits it), add --feature \"<FeatureName>\" to that set, so the feature's Performance tab counts this session."
   - "Read: Processes/SmallTask.md and follow it from 1_scope with $ARGUMENTS as the request."
+  - "A question or design opinion rather than a change still reads SmallTask.md: answer in 1_scope (work type question), and run any follow-up edit through its proposal checkpoint."
   - "No arguments → ask what to build or change, then continue."
 ```
 
