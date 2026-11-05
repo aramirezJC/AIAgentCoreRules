@@ -144,6 +144,17 @@ large_feature`, `investigation → question`, others map to themselves) and `wor
 changes no longer touch it. Changes are kept in `work_type_history` and listed under *Work type
 changes*.
 
+**Adding a lane or work type** — every place that lists them must change together:
+
+- `Rules/MetaRouter.md` — `mode_fork`, the `work_type` line, routing table, `commands`
+- `session_lifecycle.py` — `LANES`, `WORK_TYPES`, `LANE_WORK_TYPE`, `LANE_COMMAND`
+- `../session-analysis/session_meta_report.py` — `LANES`, `LANE_WORK_TYPE`
+- `Skills/start-session/SKILL.md` — lane list and `work_type` definitions; `Skills/end-session/SKILL.md` — `depth`
+- `Documentation/02_WorkModes.md`, `07_SessionTracking.md`, `08_Commands.md`, and this README
+
+`tests/test_lanes.py` fails when the two Python files' tables disagree or a lane has no default
+work type or fresh-session command.
+
 `--session-id` defaults to `$CODEX_THREAD_ID` in Codex or `$CLAUDE_CODE_SESSION_ID` in Claude Code;
 only the legacy Claude path falls back to the newest transcript for the project. An ID with no folder is an error — the script never falls
 back to another session's folder.
