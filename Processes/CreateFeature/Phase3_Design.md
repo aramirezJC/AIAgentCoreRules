@@ -94,5 +94,11 @@ design doc" rule.
 
 Engineer explicitly approves the delta (or confirms it is empty) and the updated TDD.
 
+```yaml
+gate_3_before_confirming:
+  republish: "If Step 3 changed the TDD and the TDD is published externally, run the [[ExternalDocPass]] publish pass for every changed page (parent and child pages) and verify it before recording the gate confirmed. Record the new versions in sources_of_truth. A confirmed Gate 3 with a stale published TDD is not a passed gate."
+  task_sync: "If the delta added or split a task, update TaskList.md and state.json's tasks in this gate too — see index.md's on_gate."
+```
+
 **This is the last gate before code is written. The TDD's File Plan must be complete and every TBD
 left for Phase 3 resolved before proceeding.**

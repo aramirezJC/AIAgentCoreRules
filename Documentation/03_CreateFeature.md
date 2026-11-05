@@ -96,7 +96,8 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally, measured, and
   published in one call per page — a body over ~50K characters is split into child pages first,
   because a call cut off mid-body saves a truncated page. Before every send, the body is confirmed
-  to be the real, complete content just built, not a placeholder or truncated fragment. Every
+  to be the real, complete content just built, not a placeholder or truncated fragment — its length
+  is compared with the built file's, and a TDD-sized body of a few hundred characters stops the send. Every
   publish is fetched back and checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
   When 4 or more threads need research, subagents investigate them in parallel and return proposed
@@ -135,6 +136,9 @@ Everything approved is written back into the TDD (version bump and Versions row)
 list and use cases updated when a decision changes them. There is no separate
 `_Architecture.md` and no new diagrams: if the architecture changes, the existing `Diagrams/*.mmd`
 sources and their embedded copies in the TDD are updated and re-validated.
+Before Gate 3 is recorded, a TDD that is published externally is republished (and verified) for
+every changed page, and any task the delta added or split is added to `TaskList.md` and
+`state.json`'s `tasks` as well as the TDD's Development Plan — the same rule applies at every gate.
 
 ### Phase 4 — Implementation
 
