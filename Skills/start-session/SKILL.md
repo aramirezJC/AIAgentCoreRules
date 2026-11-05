@@ -10,7 +10,7 @@ Tracking is normally started by the SessionStart hook, which puts a **Session tr
 in context with the session folder and the lifecycle script path. This skill names the session,
 covers the cases where the hook did not run, and records the lane and work type.
 
-The lane-entry skills (`/small-task`, `/bug-fix`, `/feature`, `/resume-work`,
+The lane-entry skills (`/small-task`, `/large-task`, `/bug-fix`, `/feature`, `/resume-work`,
 `/run-investigation-mode`, `/generate-meta-review`) run this skill's `hook-start` step as their
 step 0 and then their own `set` with a fixed lane — no separate `/start-session` is needed.
 
@@ -21,7 +21,7 @@ Lifecycle script (use the path from the Session tracking block if present):
 ```yaml
 steps:
   - "Run: python3 <script> hook-start   # prints the tracking block; the folder is created by the set below"
-  - "Classify the lane per MetaRouter 'First: Classify the Mode': small_task | bug_fix | investigation | feature | other"
+  - "Classify the lane per MetaRouter 'First: Classify the Mode': small_task | large_task | bug_fix | investigation | feature | other"
   - "Classify the work type (below). If there is no request yet, record only the name and classify on the first request."
   - "Run: python3 <script> set --name \"<name>\" --lane <lane> --work-type <work_type> --title \"<short title>\""
   - "Reply with one line: name, lane, work type, folder path."
@@ -36,12 +36,13 @@ on a session that is already tracked renames it.
 work_type:   # what the work is, independent of which lane ran it — used by the meta-analysis
   bug_fix:       "something is broken and gets diagnosed or fixed"
   small_feature: "bounded new behaviour: a tool, utility, debug command, tweak"
+  large_feature: "new behaviour bigger than a small feature, without a GDD: a framework change, a cross-system tool or refactor (LargeTask)"
   feature:       "a full feature (GDD, CreateFeature)"
   question:      "an answer, explanation, investigation or document — no shipped code"
   other:         "tooling, config, rules, docs, anything else"
 ```
 
-If `--work-type` is omitted it follows the lane (small_task → small_feature, investigation →
+If `--work-type` is omitted it follows the lane (small_task → small_feature, large_task → large_feature, investigation →
 question, …) and metrics.md marks it "(from lane)". Pass it explicitly whenever the two differ,
 e.g. an investigation into a crash is lane `investigation`, work type `bug_fix`.
 

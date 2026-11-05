@@ -11,7 +11,8 @@ code. Smaller than a feature — no GDD, TDD or task list, and a single proposal
 - An existing example can be followed ("like xyz, but does abc").
 
 If any of these stops being true mid-task, the agent stops, says so in one line and offers
-`/feature <Name>`. It does not quietly turn a small task into a feature. It can offer a split
+`/large-task` when the work still fits a [[14_LargeTask|large task]] (2–3 systems, no GDD or new
+schema/contract, finishable in this session), otherwise `/feature <Name>`. It does not quietly turn a small task into a feature. It can offer a split
 instead: two or more small tasks that each fit, the first done in this session and each of the
 rest handed off as a ready-to-run `claude "/small-task …"` command with self-contained context
 (files, formats, where to work).
@@ -44,4 +45,4 @@ first: continue there, or open a fresh session with `/new-session "/small-task <
 
 ---
 
-← [[04_BugFix|Bug Fix Process]] · [[00_Overview|Overview]] · [[06_Investigation|Investigation Mode]] →
+← [[04_BugFix|Bug Fix Process]] · [[00_Overview|Overview]] · [[14_LargeTask|Large Task Process]] →

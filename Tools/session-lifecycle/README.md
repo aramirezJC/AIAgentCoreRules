@@ -137,10 +137,10 @@ proposal has a button that copies its `retro --mark … --status applied` comman
 `--name` is the engineer-given session name (`/start-session <name>`). It is slugged into the
 folder name, which `set` renames, and heads metrics.md.
 
-`--work-type` (`bug_fix | small_feature | feature | question | other`) records what the work is,
-separately from the lane that ran it, so the meta-analysis can compare cost by kind of work. Until
-it is passed explicitly it follows the lane (`small_task → small_feature`, `investigation →
-question`, others map to themselves) and `work_type_source` is `"lane"`; once explicit, later lane
+`--work-type` (`bug_fix | small_feature | large_feature | feature | question | other`) records what
+the work is, separately from the lane that ran it, so the meta-analysis can compare cost by kind of
+work. Until it is passed explicitly it follows the lane (`small_task → small_feature`, `large_task →
+large_feature`, `investigation → question`, others map to themselves) and `work_type_source` is `"lane"`; once explicit, later lane
 changes no longer touch it. Changes are kept in `work_type_history` and listed under *Work type
 changes*.
 
