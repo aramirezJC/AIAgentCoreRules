@@ -142,6 +142,34 @@ def cmd_pr_notes(args: argparse.Namespace) -> None:
         print(f"- {note['author']} {note['created_at'][:10]} {where}: {_truncate(' '.join(note['body'].split()), 200)}")
 
 
+def cmd_pr_pull(args: argparse.Namespace) -> None:
+    try:
+        path, counts = pr_notes.pull_threads(args.number, Path(args.feature_dir),
+                                             Path(args.repo_dir) if args.repo_dir else None)
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+    print(path)
+    print(f"{counts['threads']} threads ({counts['new']} new, {counts['awaiting']} awaiting a reply, {counts['gone']} gone)")
+
+
+def cmd_pr_push(args: argparse.Namespace) -> None:
+    try:
+        pending = pr_notes.push_replies(Path(args.draft), args.confirm, Path(args.repo_dir) if args.repo_dir else None)
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        print(f"error: {e} (replies posted before the failure are recorded in the draft)", file=sys.stderr)
+        sys.exit(1)
+    if not pending:
+        print("nothing to post: no thread has an unposted reply")
+        return
+    for thread in pending:
+        where = thread["location"] or thread["kind"]
+        posted = f" -> {thread['posted']['url']}" if thread.get("posted") else ""
+        print(f"- {thread['id']} · {where} · {_truncate(' '.join(thread['reply'].split()), 80)}{posted}")
+    if not args.confirm:
+        print(f"dry run: {len(pending)} replies would be posted; rerun with --confirm to post them")
+
+
 def running_servers() -> List[Dict]:
     # Only the Python process: a Bash(run_in_background) launch also leaves a shell whose command
     # line names doc_review.py, and killing that shell would leave the server running.
@@ -317,6 +345,18 @@ def main() -> None:
     pr_notes_parser.add_argument("--repo-dir", default=".", help="a folder inside the PR's git repository")
     pr_notes_parser.add_argument("--json", action="store_true")
     pr_notes_parser.set_defaults(func=cmd_pr_notes)
+
+    pr_pull_parser = subparsers.add_parser("pr-pull", help="Write a feature PR's threads to <feature>_PR<n>_review.json for batch replies (gh)")
+    pr_pull_parser.add_argument("number", type=int)
+    pr_pull_parser.add_argument("--feature-dir", required=True, help="the feature folder; the PR must be under its pull_requests")
+    pr_pull_parser.add_argument("--repo-dir", default=None, help="a folder inside the PR's git repository (default: the feature folder)")
+    pr_pull_parser.set_defaults(func=cmd_pr_pull)
+
+    pr_push_parser = subparsers.add_parser("pr-push", help="Post the draft's unposted replies (dry run unless --confirm); never resolves threads")
+    pr_push_parser.add_argument("draft")
+    pr_push_parser.add_argument("--confirm", action="store_true", help="actually post the replies")
+    pr_push_parser.add_argument("--repo-dir", default=None, help="a folder inside the PR's git repository (default: the draft's folder)")
+    pr_push_parser.set_defaults(func=cmd_pr_push)
 
     project_parser = subparsers.add_parser("serve-project", help="Persistent project feature preview")
     project_parser.add_argument("project")
