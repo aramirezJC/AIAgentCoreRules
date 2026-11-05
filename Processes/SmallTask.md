@@ -66,6 +66,7 @@ steps:
     - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new`."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
     - "A change to a tool that renders a view (preview tab, report): compare the rendered VALUES (statuses, counts, ids) against the source data for at least one real item — a model that builds is not verification. If a long-running server serves it, restart it and check the served page."
+    - "A tool that writes to an external service (GitHub, Confluence, Slack): verify its reads and dry run on real data, cover the write path with a faked client, and run a real write only on a target the engineer names; otherwise report the real write as untested."
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
   7_close:
     - "Offer /end-session."
