@@ -17,6 +17,8 @@ and svg-pan-zoom load from CDNs in the browser.
 | `doc_review.py servers [--json]` | Lists the running live servers: pid, URL, doc and folder. Only the Python server process, not the shell that launched it |
 | `doc_review.py stop [--port N \| --pid N \| --all]` | Stops a live server (SIGTERM). With no selector it stops the only one running and refuses when there are several. Used by `/kill-server` |
 | `doc_review.py pr-notes <PR> [--repo-dir DIR] [--json]` | Prints a PR's conversation comments, review bodies and inline notes, oldest first, via `gh`. Used by `/feature-pr` |
+| `doc_review.py pr-pull <PR> --feature-dir DIR [--repo-dir DIR]` | Writes `<Feature>_PR<PR>_review.json` in the feature folder: one thread per inline root comment (replies grouped under it), conversation comment and review body, each with an empty `reply`. Refuses a PR not under the feature's `pull_requests`. A re-pull keeps drafted replies and marks vanished threads `gone`. Used by `/feature-pr` |
+| `doc_review.py pr-push <draft> [--confirm] [--repo-dir DIR]` | Lists the threads with an unposted `reply` (dry run). With `--confirm` posts them in order — inline replies to the thread's root comment, others as a quoting conversation comment — recording each as `posted`; stops at the first `gh` failure. Never resolves threads |
 
 `Tools/mermaid-preview/mermaid_preview.py` is the older entry point. It forwards to
 `serve --static`.
