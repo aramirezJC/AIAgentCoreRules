@@ -74,6 +74,10 @@ documented in its own page tree.
   - [[12_DocReview#Commenting in the page|Commenting in the page]]
   - [[12_DocReview#Progress tab|Progress tab]]
   - [[12_DocReview#Tests|Tests]]
+- **[[15_CodeGraph|Code Graph Tool]]** — browsable inheritance graph and JSON API over the codeindex database, with a force-refresh button
+  - [[15_CodeGraph#Commands|Commands]]
+  - [[15_CodeGraph#The page|The page]]
+  - [[15_CodeGraph#For the agent|For the agent]]
 
 ## Why this exists
 

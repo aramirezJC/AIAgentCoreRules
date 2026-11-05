@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Graph</title>
+<link rel="icon" href="data:,">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14161a; --panel: #1c1f25; --panel-2: #232730; --border: #333946;
+    --text: #e3e6eb; --muted: #9aa3b2; --accent: #5aa9ff; --ok: #5fd394; --warn: #e5b84d; --bad: #f0777c;
+    --k-class: #3d6fb3; --k-interface: #2f8f6b; --k-struct: #8a5fbf; --k-enum: #b07a2f; --k-external: #4a505c;
+    --k-record: #3d8fa3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  button, input, select { font: inherit; color: var(--text); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { color: var(--muted); cursor: default; }
+  a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  #app { display: grid; height: 100%; grid-template-rows: auto 1fr;
+    grid-template-columns: 260px 1fr 380px; grid-template-areas: "head head head" "tree graph detail"; }
+  header { grid-area: head; display: flex; gap: 10px; align-items: center; padding: 8px 12px;
+    background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0 6px 0 0; color: var(--text); }
+  #search-wrap { position: relative; }
+  #search { width: 300px; }
+  #results { position: absolute; top: 100%; left: 0; z-index: 10; width: 460px; max-height: 420px;
+    overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
+    margin-top: 2px; display: none; }
+  #results div { padding: 5px 8px; cursor: pointer; color: var(--text); }
+  #results div:hover, #results div.active { background: var(--panel-2); }
+  #meta { color: var(--muted); margin-left: auto; }
+  #refresh-status { color: var(--muted); }
+  #refresh-status.failed { color: var(--bad); }
+  #refresh-status.done { color: var(--ok); }
+  aside, #detail { overflow: auto; background: var(--panel); }
+  aside { grid-area: tree; border-right: 1px solid var(--border); padding: 6px 0; }
+  #detail { grid-area: detail; border-left: 1px solid var(--border); padding: 10px 12px; }
+  #graph-wrap { grid-area: graph; position: relative; background: var(--bg); }
+  #cy { position: absolute; inset: 0; }
+  #graph-controls { position: absolute; top: 8px; left: 8px; z-index: 5; display: flex; gap: 6px;
+    align-items: center; background: var(--panel); padding: 4px 6px; border: 1px solid var(--border);
+    border-radius: 4px; color: var(--muted); }
+  #graph-note { position: absolute; bottom: 8px; left: 8px; z-index: 5; color: var(--muted); }
+  #empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); pointer-events: none; }
+  .tree-item { padding: 2px 8px; cursor: pointer; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; color: var(--text); }
+  .tree-item:hover { background: var(--panel-2); }
+  .tree-item.selected { background: var(--panel-2); color: var(--accent); }
+  .tree-count { color: var(--muted); }
+  .lvl1 { padding-left: 20px; } .lvl2 { padding-left: 34px; }
+  .kind { display: inline-block; min-width: 14px; text-align: center; border-radius: 3px;
+    font-size: 10px; padding: 0 3px; margin-right: 4px; color: #ffffff; }
+  .k-class { background: var(--k-class); } .k-interface { background: var(--k-interface); }
+  .k-struct { background: var(--k-struct); } .k-enum { background: var(--k-enum); }
+  .k-record { background: var(--k-record); } .k-external { background: var(--k-external); }
+  h2 { font-size: 16px; margin: 0 0 4px; color: var(--text); }
+  h3 { font-size: 12px; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--muted); }
+  .pill { display: inline-block; border: 1px solid var(--border); border-radius: 10px; padding: 0 6px;
+    font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .pill.warn { color: var(--warn); border-color: var(--warn); }
+  .loc { cursor: copy; color: var(--text); word-break: break-all; }
+  .loc:hover { color: var(--accent); }
+  ul.plain { list-style: none; margin: 0; padding: 0; }
+  ul.plain li { padding: 1px 0; color: var(--text); }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 2px 4px; vertical-align: top; border-bottom: 1px solid var(--border); color: var(--text); }
+  td.line { color: var(--muted); text-align: right; width: 40px; }
+  #member-filter { width: 100%; margin-bottom: 4px; }
+  pre.log { white-space: pre-wrap; background: var(--bg); color: var(--muted); padding: 6px;
+    border: 1px solid var(--border); border-radius: 4px; max-height: 160px; overflow: auto; }
+  .declaration + .declaration { border-top: 2px solid var(--border); margin-top: 14px; padding-top: 10px; }
+  #toast { position: fixed; bottom: 12px; right: 12px; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; display: none; z-index: 20; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Code Graph</h1>
+    <div id="search-wrap">
+      <input id="search" type="search" placeholder="Search types…  ( / )" autocomplete="off">
+      <div id="results"></div>
+    </div>
+    <span id="meta">loading…</span>
+    <button id="refresh" hidden title="Rebuild the whole codeindex database">Force refresh index</button>
+    <span id="refresh-status"></span>
+  </header>
+  <aside id="tree"></aside>
+  <div id="graph-wrap">
+    <div id="graph-controls">
+      depth <select id="depth"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
+      <select id="direction"><option value="both">bases + derived</option><option value="up">bases</option><option value="down">derived</option></select>
+      <button id="fit">Fit</button>
+    </div>
+    <div id="cy"></div>
+    <div id="empty">Search for a type, or pick one from the tree.</div>
+    <div id="graph-note"></div>
+  </div>
+  <section id="detail"><p class="sub">Click a node for its members and location. Double-click to expand it.</p></section>
+</div>
+<div id="toast"></div>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const state = { root: null, refreshPoll: null, selectedTreeItem: null };
+
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs || {})) {
+      if (key === 'text') node.textContent = value;
+      else if (key === 'class') node.className = value;
+      else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+      else node.setAttribute(key, value);
+    }
+    for (const child of [].concat(children || [])) {
+      if (child != null) node.append(child);
+    }
+    return node;
+  }
+
+  async function api(path, options) {
+    const response = await fetch(path, options);
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || response.statusText);
+    return body;
+  }
+
+  function toast(message) {
+    const box = $('toast');
+    box.textContent = message;
+    box.style.display = 'block';
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { box.style.display = 'none'; }, 2200);
+  }
+
+  function kindBadge(kind) {
+    const letter = { class: 'C', interface: 'I', struct: 'S', enum: 'E', record: 'R', external: 'X' }[kind] || '?';
+    return el('span', { class: 'kind k-' + kind, text: letter, title: kind });
+  }
+
+  function formatBuilt(value) {
+    const seconds = Number(value);
+    if (!value) return 'never';
+    if (!isNaN(seconds)) return new Date(seconds * 1000).toLocaleString();
+    return String(value);
+  }
+
+  // -- status + refresh ---------------------------------------------------
+
+  async function loadStatus() {
+    try {
+      const status = await api('/api/status');
+      const counts = status.counts;
+      $('meta').textContent = 'index built ' + formatBuilt(status.built_at) + ' · ' +
+        counts.type.toLocaleString() + ' types · ' + counts.member.toLocaleString() + ' members · ' +
+        counts.assembly + ' assemblies';
+      $('refresh').hidden = !status.refresh_available;
+      if (status.refresh === 'running') watchRefresh();
+    } catch (error) {
+      $('meta').textContent = error.message;
+    }
+  }
+
+  function showRefreshState(refresh) {
+    const status = $('refresh-status');
+    status.className = refresh.state;
+    status.textContent = {
+      running: 'Rebuilding index…', done: 'Index rebuilt ✓', failed: 'Refresh failed: ' + (refresh.error || ''),
+      idle: ''
+    }[refresh.state] || '';
+    $('refresh').disabled = refresh.state === 'running';
+    const old = $('refresh-log');
+    if (old) old.remove();
+    if (refresh.state === 'failed' && refresh.log_tail.length) {
+      $('detail').prepend(el('div', { id: 'refresh-log' }, [
+        el('h3', { text: 'Refresh log (last lines)' }), el('pre', { class: 'log', text: refresh.log_tail.join('\n') })]));
+    }
+  }
+
+  function watchRefresh() {
+    if (state.refreshPoll) return;
+    state.refreshPoll = setInterval(async () => {
+      let refresh;
+      try { refresh = await api('/api/refresh'); } catch (error) { return; }
+      showRefreshState(refresh);
+      if (refresh.state !== 'running') {
+        clearInterval(state.refreshPoll);
+        state.refreshPoll = null;
+        await loadStatus();
+        await loadTree();
+        // A forced build re-inserts every row, so type ids change: re-show by name.
+        if (state.root && state.root.name) await showType({ name: state.root.name });
+      }
+    }, 2000);
+  }
+
+  $('refresh').addEventListener('click', async () => {
+    if (!confirm('Force refresh the code index?\n\nThis rebuilds every file (a few seconds to a minute). ' +
+                 'The graph keeps serving the current index until the rebuild finishes.')) return;
+    try {
+      const refresh = await api('/api/refresh', { method: 'POST', headers: { 'X-Code-Graph': '1' } });
+      showRefreshState(refresh);
+      watchRefresh();
+    } catch (error) {
+      showRefreshState({ state: 'failed', error: error.message, log_tail: [] });
+    }
+  });
+
+  // -- tree ---------------------------------------------------------------
+
+  async function loadTree() {
+    const tree = $('tree');
+    let data;
+    try { data = await api('/api/tree'); } catch (error) { tree.textContent = error.message; return; }
+    tree.replaceChildren();
+    for (const assembly of data.assemblies) {
+      const children = el('div', { hidden: '' });
+      const row = el('div', { class: 'tree-item', title: assembly.name, onclick: () => toggleAssembly(assembly.name, children, row) },
+        ['▸ ' + assembly.name + ' ', el('span', { class: 'tree-count', text: assembly.types })]);
+      tree.append(row, children);
+    }
+  }
+
+  async function toggleAssembly(name, children, row) {
+    if (!children.hidden) { children.hidden = true; row.firstChild.textContent = '▸ ' + name + ' '; return; }
+    children.hidden = false;
+    row.firstChild.textContent = '▾ ' + name + ' ';
+    if (children.childElementCount) return;
+    const data = await api('/api/tree?assembly=' + encodeURIComponent(name));
+    for (const namespace of data.namespaces) {
+      const types = el('div', { hidden: '' });
+      const nsRow = el('div', { class: 'tree-item lvl1', title: namespace.name, onclick: () => {
+        types.hidden = !types.hidden;
+        nsRow.firstChild.textContent = (types.hidden ? '▸ ' : '▾ ') + namespace.name + ' ';
+      } }, ['▸ ' + namespace.name + ' ', el('span', { class: 'tree-count', text: namespace.types.length })]);
+      for (const type of namespace.types) {
+        const label = (type.container ? type.container + '.' : '') + type.name;
+        const typeRow = el('div', { class: 'tree-item lvl2', title: label, onclick: () => {
+          if (state.selectedTreeItem) state.selectedTreeItem.classList.remove('selected');
+          typeRow.classList.add('selected');
+          state.selectedTreeItem = typeRow;
+          showType({ id: type.id, name: type.name });
+        } }, [kindBadge(type.kind), label]);
+        types.append(typeRow);
+      }
+      children.append(nsRow, types);
+    }
+  }
+
+  // -- search -------------------------------------------------------------
+
+  let searchTimer = null;
+  let searchActive = -1;
+  $('search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 150);
+  });
+  $('search').addEventListener('keydown', (event) => {
+    const items = [...$('results').children];
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      searchActive = Math.max(0, Math.min(items.length - 1, searchActive + (event.key === 'ArrowDown' ? 1 : -1)));
+      items.forEach((item, index) => item.classList.toggle('active', index === searchActive));
+    } else if (event.key === 'Enter' && items.length) {
+      items[Math.max(0, searchActive)].click();
+    } else if (event.key === 'Escape') {
+      $('results').style.display = 'none';
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!$('search-wrap').contains(event.target)) $('results').style.display = 'none';
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && document.activeElement.tagName !== 'INPUT') { event.preventDefault(); $('search').focus(); }
+  });
+
+  async function runSearch() {
+    const query = $('search').value.trim();
+    const box = $('results');
+    searchActive = -1;
+    if (!query) { box.style.display = 'none'; return; }
+    const data = await api('/api/search?limit=40&q=' + encodeURIComponent(query));
+    box.replaceChildren(...data.results.map((row) => el('div', { onclick: () => {
+      box.style.display = 'none';
+      showType({ id: row.id, name: row.name });
+    } }, [kindBadge(row.kind), row.name, el('span', { class: 'sub', text: '  ' + (row.namespace || '(global)') + ' · ' + (row.assembly || '?') })])));
+    if (!data.results.length) box.append(el('div', { class: 'sub', text: 'No types match.' }));
+    box.style.display = 'block';
+  }
+
+  // -- graph --------------------------------------------------------------
+
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const kindColor = (kind) => css('--k-' + kind) || css('--k-class');
+
+  const cy = cytoscape({
+    container: $('cy'),
+    wheelSensitivity: 0.3,
+    maxZoom: 1.6,  // keeps a two-node graph from filling the screen on fit
+    style: [
+      { selector: 'node', style: {
+        'shape': 'round-rectangle', 'width': 'label', 'height': 26, 'padding': '8px',
+        'label': 'data(name)', 'color': '#ffffff', 'font-size': 12, 'text-valign': 'center',
+        'background-color': (node) => kindColor(node.data('kind')), 'border-width': 1, 'border-color': '#0b0c0f' } },
+      { selector: 'node[kind = "interface"]', style: { 'shape': 'round-tag' } },
+      { selector: 'node[kind = "external"]', style: { 'color': '#c9ced6', 'border-style': 'dashed', 'border-color': '#8a919e' } },
+      { selector: 'node.root', style: { 'border-width': 3, 'border-color': '#ffd166' } },
+      { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#5aa9ff' } },
+      { selector: 'edge', style: {
+        'width': 1.5, 'line-color': '#6b7383', 'curve-style': 'bezier',
+        'source-arrow-shape': 'triangle', 'source-arrow-fill': 'hollow', 'source-arrow-color': '#9aa3b2' } },
+      { selector: 'edge.ambiguous', style: { 'line-style': 'dashed', 'line-color': '#e5b84d', 'source-arrow-color': '#e5b84d' } },
+    ],
+  });
+
+  function graphQuery(target) {
+    const key = target.id != null && !String(target.id).startsWith('ext:') ? 'id=' + target.id : 'name=' + encodeURIComponent(target.name);
+    return '/api/graph?' + key + '&depth=' + $('depth').value + '&direction=' + $('direction').value;
+  }
+
+  function addGraph(data) {
+    const elements = [];
+    for (const node of data.nodes) {
+      if (!cy.getElementById(node.id).length) elements.push({ group: 'nodes', data: node });
+    }
+    for (const edge of data.edges) {
+      // Drawn base -> derived so a breadthfirst layout puts bases on top; the hollow arrow sits on the base.
+      const id = edge.source + '>' + edge.target;
+      if (!cy.getElementById(id).length) {
+        elements.push({ group: 'edges', data: { id, source: edge.target, target: edge.source, raw: edge.raw },
+                        classes: edge.ambiguous ? 'ambiguous' : '' });
+      }
+    }
+    cy.add(elements);
+  }
+
+  function layout() {
+    const roots = cy.nodes().filter((node) => node.incomers('edge').length === 0);
+    cy.layout({ name: 'breadthfirst', directed: true, roots, spacingFactor: 1.1, padding: 30, animate: false }).run();
+  }
+
+  async function loadGraph(target, reset) {
+    const data = await api(graphQuery(target));
+    if (reset) cy.elements().remove();
+    addGraph(data);
+    cy.nodes().removeClass('root');
+    for (const key of data.roots || []) cy.getElementById(key).addClass('root');
+    layout();
+    $('empty').style.display = cy.nodes().length ? 'none' : 'flex';
+    $('graph-note').textContent = (data.truncated ? 'Graph truncated at ' + data.nodes.length + ' nodes — lower the depth or pick a direction. ' : '') +
+      'Dashed amber edge = base name declared in more than one namespace.';
+  }
+
+  cy.on('tap', 'node', (event) => {
+    const node = event.target.data();
+    if (node.kind === 'external') { renderExternal(node); return; }
+    renderDetail({ id: node.id, name: node.name });
+  });
+  cy.on('dbltap', 'node', async (event) => {
+    const node = event.target.data();
+    if (node.kind === 'external') return;
+    await loadGraph({ id: node.id, name: node.name }, false);
+  });
+  $('fit').addEventListener('click', () => cy.fit(undefined, 30));
+  $('depth').addEventListener('change', () => state.root && loadGraph(state.root, true));
+  $('direction').addEventListener('change', () => state.root && loadGraph(state.root, true));
+
+  // -- detail -------------------------------------------------------------
+
+  function typeLink(target, label) {
+    return el('a', { onclick: () => showType(target), text: label || target.name });
+  }
+
+  function locationLine(type) {
+    const text = type.file + ':' + type.line;
+    return el('div', { class: 'loc mono', title: 'Click to copy', text, onclick: () => {
+      navigator.clipboard && navigator.clipboard.writeText(text).then(() => toast('Copied ' + text));
+    } });
+  }
+
+  function renderExternal(node) {
+    $('detail').replaceChildren(el('h2', {}, [kindBadge('external'), node.name]),
+      el('p', { class: 'sub', text: 'Not declared in the indexed sources (Unity, BCL or a package). No members indexed.' }));
+  }
+
+  async function renderDetail(target) {
+    const query = target.id != null ? 'id=' + target.id : 'name=' + encodeURIComponent(target.name);
+    const data = await api('/api/type?' + query);
+    const detail = $('detail');
+    detail.replaceChildren();
+    if (!data.types.length) { detail.append(el('p', { class: 'sub', text: 'Type not found: ' + target.name })); return; }
+    for (const type of data.types) detail.append(renderDeclaration(type, data.types.length));
+  }
+
+  function renderDeclaration(type, declarations) {
+    const box = el('div', { class: 'declaration' });
+    const name = (type.container ? type.container + '.' : '') + type.name;
+    box.append(el('h2', {}, [kindBadge(type.kind), name,
+      declarations > 1 ? el('span', { class: 'pill warn', text: declarations + ' declarations', title: 'Same simple name in more than one namespace' }) : null]));
+    box.append(el('div', { class: 'sub', text: [type.access, ...type.flags, type.kind].filter(Boolean).join(' ') +
+      ' · ' + (type.namespace || '(global)') + ' · ' + (type.assembly || '?') }));
+    box.append(locationLine(type));
+
+    box.append(el('h3', { text: 'Bases (' + type.bases.length + ')' }));
+    box.append(el('ul', { class: 'plain' }, type.bases.map((base) => el('li', {}, [
+      base.external ? el('span', { class: 'sub', text: base.raw }) : typeLink({ name: base.name }, base.raw),
+      base.external ? el('span', { class: 'pill', text: 'external' }) : null,
+      base.ambiguous ? el('span', { class: 'pill warn', text: 'ambiguous' }) : null]))));
+
+    box.append(el('h3', { text: 'Derived / implementers (' + type.derived.length + ')' }));
+    box.append(el('ul', { class: 'plain' }, type.derived.map((child) => el('li', {}, [
+      kindBadge(child.kind), typeLink({ id: child.id, name: child.name }),
+      el('span', { class: 'sub', text: '  ' + (child.namespace || '') })]))));
+
+    const members = type.members || [];
+    box.append(el('h3', { text: 'Members (' + members.length + ')' }));
+    if (members.length) {
+      const filter = el('input', { id: 'member-filter', type: 'search', placeholder: 'Filter members…' });
+      const body = el('tbody');
+      const draw = () => {
+        const needle = filter.value.toLowerCase();
+        body.replaceChildren(...members.filter((member) => !needle || member.signature.toLowerCase().includes(needle))
+          .map((member) => el('tr', {}, [
+            el('td', { class: 'sub', text: member.kind }),
+            el('td', { class: 'mono', text: member.signature }),
+            el('td', { class: 'line', text: member.line })])));
+      };
+      filter.addEventListener('input', draw);
+      draw();
+      box.append(filter, el('table', {}, body));
+    }
+    return box;
+  }
+
+  // -- entry --------------------------------------------------------------
+
+  async function showType(target, pushHash) {
+    state.root = target;
+    if (pushHash !== false) {
+      // Prefer the name: ids do not survive an index rebuild.
+      const hash = target.name ? '#name=' + encodeURIComponent(target.name) : '#id=' + target.id;
+      if (location.hash !== hash) history.replaceState(null, '', hash);
+    }
+    try {
+      await Promise.all([loadGraph(target, true), renderDetail(target)]);
+    } catch (error) {
+      $('detail').replaceChildren(el('p', { class: 'sub', text: error.message }));
+    }
+  }
+
+  function fromHash() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    if (params.get('id')) return { id: params.get('id'), name: '' };
+    if (params.get('name')) return { name: params.get('name') };
+    return null;
+  }
+
+  loadStatus();
+  loadTree();
+  api('/api/refresh').then((refresh) => { if (refresh.state !== 'idle') showRefreshState(refresh); }).catch(() => {});
+  const initial = fromHash();
+  if (initial) showType(initial, false);
+})();
+</script>
+</body>
+</html>
