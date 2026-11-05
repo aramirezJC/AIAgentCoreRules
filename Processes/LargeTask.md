@@ -54,7 +54,7 @@ steps:
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
     subscriptions_timers_loads:[../Rules/ResourceManagementRules.md]
     async_sequences:           [../Rules/MultyStepOperationsRules.md]
-    tests:                     [../Rules/TestingRules.md]
+    csharp_tests:              [../Rules/TestingRules.md]   # Python tool tests: 5_tests (unittest in the tool's tests/), no rule file
   4_implement:   # one plan step at a time
     - "Isolate first. Host project: EnterWorktree. Layer repo (AIAgentCoreRules, the host metadata repo): follow SmallTask 5_implement's layer-worktree rule (absolute paths, check the main checkout is clean)."
     - "Per step: StopAndVerify pre-generation checks, write, then /audit on the step's changed C# files and typecheck.py. Fix or report each violation before the next step."
