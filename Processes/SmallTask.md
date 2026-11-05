@@ -4,7 +4,7 @@
 
 For a bounded change: a tool, utility, debug command, or behaviour tweak modelled on existing
 code. Smaller than a feature — no GDD, TDD, or task list. If the work grows past the limits
-below, stop and offer `/feature <Name>`.
+below, stop and offer `/large-task` (still one session, no GDD) or `/feature <Name>`.
 
 Tag definitions: [[CoreTags]]
 
@@ -15,7 +15,7 @@ fits_when:
   - "No new config root, player-data schema, or server contract"
   - "An existing example can be followed ('like xyz, but does abc')"
 escalate_when:
-  - "Any fits_when condition breaks mid-task → stop, say so in one line, offer /feature"
+  - "Any fits_when condition breaks mid-task → stop, say so in one line, and offer /large-task when the work fits LargeTask.md's fits_when (2–3 systems, no GDD or new schema/contract, finishable this session), otherwise /feature"
   - "Or offer a split: list two or more small tasks (each within fits_when), do the first here, and hand each remaining one off as a ready-to-run `claude \"/small-task …\"` command with self-contained context (files, formats, where to work)."
 lane_switch:
   - "Entering this lane from another one in the same session → offer the split as a choice first: continue here, or /new-session \"/small-task <ask>\". Relay the fresh-session offer `set` prints for a large session. The engineer decides."

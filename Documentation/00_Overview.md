@@ -18,7 +18,7 @@ documented in its own page tree.
   - [[01_Setup#5. Verify|5. Verify]]
   - [[01_Setup#Requirements|Requirements]]
 - **[[02_WorkModes|Work Modes and Routing]]** — how the agent picks a process and which files it loads
-  - [[02_WorkModes#The five modes|The five modes]]
+  - [[02_WorkModes#The seven modes|The seven modes]]
   - [[02_WorkModes#Loading rules on demand|Loading rules on demand]]
   - [[02_WorkModes#Delegation|Delegation]]
   - [[02_WorkModes#Stop and Verify|Stop and Verify]]
@@ -35,6 +35,10 @@ documented in its own page tree.
   - [[05_SmallTask#When it fits|When it fits]]
   - [[05_SmallTask#Steps|Steps]]
   - [[05_SmallTask#What the retrospective expects to see loaded|What the retrospective expects to see loaded]]
+- **[[14_LargeTask|Large Task Process]]** — tools, framework changes and cross-system refactors: discovery, an approved plan, finished in one session
+  - [[14_LargeTask#When it fits|When it fits]]
+  - [[14_LargeTask#Steps|Steps]]
+  - [[14_LargeTask#What the retrospective expects to see loaded|What the retrospective expects to see loaded]]
 - **[[06_Investigation|Investigation Mode]]** — feasibility, comparison and design work that produces a document, not code
   - [[06_Investigation#Rules|Rules]]
   - [[06_Investigation#The output document|The output document]]
@@ -102,8 +106,8 @@ task needs. This keeps the agent's context budget free for the actual work.
 ## How a session flows
 
 1. **Start** — a SessionStart hook creates a tracking folder for the session automatically.
-2. **Classify** — the agent picks a work mode (feature, bug fix, small task, investigation,
-   other) and records it.
+2. **Classify** — the agent picks a work mode (feature, bug fix, small task, large task,
+   investigation, other) and records it.
 3. **Load** — it reads the process file for that mode and the rule files the work touches.
 4. **Work** — it follows the process, stopping at each gate for engineer confirmation.
 5. **Correct** — the engineer logs agent mistakes with `/inaccuracy` and deliberate changes

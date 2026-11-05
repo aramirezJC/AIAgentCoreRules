@@ -59,11 +59,11 @@ from feature_state import load_state as load_feature_state
 SCRIPT_PATH = os.path.abspath(__file__)
 REPORTS_DIR = "GitIgnoreReports"
 SESSION_SUPPORT = os.path.join(os.path.dirname(SCRIPT_PATH), "..", "session-support", "session-support")
-LANES = ["small_task", "bug_fix", "investigation", "feature", "other"]
+LANES = ["small_task", "large_task", "bug_fix", "investigation", "feature", "other"]
 # Work type is what the work is; lane is which process ran it. Kept separate for the meta-analysis.
-WORK_TYPES = ["bug_fix", "small_feature", "feature", "question", "other"]
-LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
-                  "feature": "feature", "other": "other"}
+WORK_TYPES = ["bug_fix", "small_feature", "large_feature", "feature", "question", "other"]
+LANE_WORK_TYPE = {"small_task": "small_feature", "large_task": "large_feature", "bug_fix": "bug_fix",
+                  "investigation": "question", "feature": "feature", "other": "other"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
 # CreateFeature working folders, relative to the project root (Processes/CreateFeature/index.md
 # working_folder). Override with SESSION_FEATURES_ROOT or --features-root.
@@ -95,7 +95,7 @@ QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 # cannot Write into directly.
 FILE_TARGETS = ["MetaReviews"]
 LANE_COMMAND = {"bug_fix": "/bug-fix <symptom>", "small_task": "/small-task <ask>",
-                "investigation": "/run-investigation-mode <question>", "feature": "/resume-work <FeatureName>",
+                "large_task": "/large-task <ask>", "investigation": "/run-investigation-mode <question>", "feature": "/resume-work <FeatureName>",
                 "other": "<prompt>"}
 
 

@@ -4,13 +4,14 @@ Before doing anything, the agent classifies the request into one **work mode** (
 a *lane*). The mode decides which process runs, what the output is, and which files are
 loaded. Picking the wrong mode wastes the whole turn, so this is the first step of every task.
 
-## The six modes
+## The seven modes
 
 | Mode | Looks like | Output | Process |
 |---|---|---|---|
 | **feature** | "implement / build / add feature X", "here is the GDD", `/feature <Name>` | Code, tests and integration, through 8 gates | [[03_CreateFeature\|Create Feature Process]] |
 | **bug_fix** | "X is broken", "why does X happen", "fix this crash", `/bug-fix <symptom>` | Diagnosis → approved fix → regression test | [[04_BugFix\|Bug Fix Process]] |
 | **small_task** | "make a tool/debug command like X that does Y", small tweak, "follow this example", `/small-task <ask>` | A bounded code change with one proposal checkpoint | [[05_SmallTask\|Small Task Process]] |
+| **large_task** | "build a tool", "change this framework", a cross-system refactor — bigger than a small task, no GDD, `/large-task <ask>` | Discovery → approved `plan.md` → stepwise code and tests, **finished in one session** | [[14_LargeTask\|Large Task Process]] |
 | **investigation** | "how feasible is", "how does X compare", "where does X happen", "compile a list", `/run-investigation-mode <question>` | A document or recommendation — **not code** | [[06_Investigation\|Investigation Mode]] |
 | **code_review** | "review PR X", "does this satisfy our rules", "evaluate my review comments" | Findings with file:line — **not code** | Coding Standards + Architectural Principles + Multi-Step Operations, plus the SystemIndex entry for each system the diff touches |
 | **other** | Questions, tooling/config, documentation | Whatever was asked | Routing table only |
@@ -30,8 +31,8 @@ future removals.
 
 ### No silent escalation
 
-The agent never moves between modes on its own. A small task that grows past its limits, or an
-investigation that uncovers a bug, is **offered** to the engineer as a mode change. If a request
+The agent never moves between modes on its own. A small task that grows past its limits, a large
+task that cannot finish in its session, or an investigation that uncovers a bug, is **offered** to the engineer as a mode change. If a request
 is genuinely ambiguous, the agent states the mode it is assuming in one line and continues.
 
 ## Loading rules on demand

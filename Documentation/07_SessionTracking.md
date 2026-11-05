@@ -12,7 +12,7 @@ engineer's part is logging corrections and running `/end-session`.
 | Session start | The SessionStart hook puts a **Session tracking** block in the agent's context. No folder is created yet | Automatic |
 | First thing worth saving | The session folder is created on the first `set`, `note` or `compile`, or after the first reply. Sessions opened and closed without work leave no folder | Automatic |
 | Naming (optional) | `/start-session <name>` names the session; the name goes into the folder and the metrics heading | Engineer |
-| Mode classified | The agent records the lane (feature, bug_fix, small_task, investigation, other), the work type (bug_fix, small_feature, feature, question, other) and a short title | Agent |
+| Mode classified | The agent records the lane (feature, bug_fix, small_task, large_task, investigation, other), the work type (bug_fix, small_feature, large_feature, feature, question, other) and a short title | Agent |
 | Agent makes a mistake you correct | `/inaccuracy <what was wrong>` | Engineer |
 | Agent retracts a claim, or you reject its approach | It logs the inaccuracy itself, marked `agent` | Agent |
 | A correction was never logged | `/end-session` records it from the retro's Corrections, marked `retro` | Agent |
@@ -51,12 +51,12 @@ is the `autoCompactWindow` setting or `/autocompact <tokens>`.
 
 The **lane** is the process that ran; the **work type** is what the work was. They usually match,
 but not always: an investigation into a crash is lane `investigation`, work type `bug_fix`. If the
-agent does not set a work type, it follows the lane (small_task → small_feature, investigation →
-question) and metrics.md marks it "(from lane)". The meta-analysis groups cost by work type to
+agent does not set a work type, it follows the lane (small_task → small_feature, large_task → large_feature,
+investigation → question) and metrics.md marks it "(from lane)". The meta-analysis groups cost by work type to
 show which kinds of work are most expensive.
 
 The **feature** tag (`set --feature <Name>`) ties a session to a CreateFeature feature. /feature
-and /resume-work always set it; /small-task, /bug-fix and /run-investigation-mode set it when the
+and /resume-work always set it; /small-task, /large-task, /bug-fix and /run-investigation-mode set it when the
 work is for an in-progress feature. The feature's Performance tab in the doc-review preview counts
 tagged sessions plus those listed under `sessions:` in its Progress file.
 

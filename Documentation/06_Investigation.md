@@ -66,4 +66,4 @@ Escalating to feature work is the engineer's call.
 
 ---
 
-← [[05_SmallTask|Small Task Process]] · [[00_Overview|Overview]] · [[07_SessionTracking|Session Tracking and Retrospectives]] →
+← [[14_LargeTask|Large Task Process]] · [[00_Overview|Overview]] · [[07_SessionTracking|Session Tracking and Retrospectives]] →

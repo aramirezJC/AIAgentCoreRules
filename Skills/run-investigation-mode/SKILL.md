@@ -19,4 +19,4 @@ steps:
 ```
 
 The output is a document or recommendation. If the answer is to build or fix something, offer
-the lane change (`/small-task`, `/bug-fix`, `/feature`) — do not start writing code.
+the lane change (`/small-task`, `/large-task`, `/bug-fix`, `/feature`) — do not start writing code.
