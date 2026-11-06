@@ -56,8 +56,8 @@ steps:
     async_sequences:           [../Rules/MultyStepOperationsRules.md]
     csharp_tests:              [../Rules/TestingRules.md]   # Python tool tests: 5_tests (unittest in the tool's tests/), no rule file
   4_implement:   # one plan step at a time
-    - "Isolate first. Host project: EnterWorktree. Layer repo (AIAgentCoreRules, the host metadata repo): follow SmallTask 5_implement's layer-worktree rule (absolute paths, check the main checkout is clean)."
-    - "Per step: StopAndVerify pre-generation checks, write, then /audit on the step's changed C# files and typecheck.py. Fix or report each violation before the next step."
+    - "Isolate first. Host project: EnterWorktree. Layer repo (AIAgentCoreRules, the host metadata repo): follow SmallTask 5_implement's layer-worktree rule (absolute paths, check the main checkout is clean). Exception: if verification needs the live Unity Editor (MCP tools, real-data runs), the Editor only compiles the main checkout. Offer the engineer worktree + land-before-verify, or work in the main checkout, at 3_plan time, and record the choice in plan.md."
+    - "Per step: StopAndVerify pre-generation checks, write, then /audit on the step's changed C# files and typecheck.py. Moving code verbatim into a new file still counts as changed C#: audit it in the step that moves it. Fix or report each violation before the next step."
     - "After each step: one line to the engineer — step N of M done, what was checked. Do not wait for an OK unless the step departed from plan.md."
     - "A departure from plan.md (a new file, a changed public contract, a dropped step) → stop, update plan.md, and get approval before continuing."
     - "Re-read a rule file when a step starts work it governs; do not rely on memory of it in a long session."
