@@ -61,6 +61,9 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   Before the Architecture section is drafted, the host SystemIndex's SystemPatterns entries that
   match the feature (e.g. GemEventPattern, PrizeFlowPattern) are loaded: the TDD is now the main
   design document, so pattern guidance applies here, not only in Phase 3.
+  A save/storage-mechanism decision in Architecture (or Data Reconciliation Strategy) is
+  re-checked against every entry in the progress file's `sources_of_truth`, not just the GDD,
+  before it is marked decided.
   The Architecture section embeds each `Diagrams/*.mmd` diagram inline, each in its own
   collapsible `<details><summary>Mermaid Diagram: <Name></summary>` block holding a fenced
   `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
@@ -74,7 +77,9 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   **acknowledge and continue** or **rework now**, and the outcome is recorded beside the finding.
   An acknowledged ❌ is logged as a Gate 1 open item with an owner; it does not block the gate.
   The final list goes into the Gate 1 handoff's `consistency_findings` field, and the doc-review
-  [[12_DocReview#Progress tab|Progress tab]] shows it under the 1c step.
+  [[12_DocReview#Progress tab|Progress tab]] shows it under the 1c step. It is also saved to the
+  checkpoint's `context_notes` as soon as 1c finishes, so a session resuming before Gate 1 can
+  read it back.
 - **1d metrics** — a one-time reminder of `/inaccuracy`, `/iteration` and `/end-session`. The
   lane and title are already set by `/feature` or `/resume-work`, so this step no longer sets them.
 - **1e document generation**.
@@ -91,9 +96,12 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   [[ExternalDocPass|External Doc Pass]] process applies. The page is built locally, measured, and
   published in one call per page — a body over ~50K characters is split into child pages first,
   because a call cut off mid-body saves a truncated page. Before every send, the body is confirmed
-  to be the real, complete content just built, not a placeholder or truncated fragment. Every
+  to be the real, complete content just built, not a placeholder or truncated fragment — its length
+  is compared with the built file's, and a TDD-sized body of a few hundred characters stops the send. Every
   publish is fetched back and checked. Each round of review comments is one pass: one read of the page and its comments,
   every ready item applied together, one update, and a report of which threads can be resolved.
+  When 4 or more threads need research, subagents investigate them in parallel and return proposed
+  edits; the main session alone applies them, in order (the same rule covers preview comments).
   The update is verified like a publish; that check (at most one fetch per page) is outside the
   pass's two-read budget.
   The host project's conventions file sets the layout and the comment convention. Review round
@@ -120,11 +128,17 @@ a **File Plan** (task id, path, new/modified, responsibility) that Phase 4 works
 contracts the TDD left out, a decision for every TBD left for Phase 3, and corrections where the
 code contradicts the TDD. A skip check comes first: when the TDD already covers all of that, the
 gate is a short confirmation and can close at the end of the Phase 2 session.
+Besides the matching SystemPatterns entries, the agent loads the host SystemIndex's `Systems/`
+entry for every system a new design decision touches (e.g. a new message type → the message-bus
+doc), not only the systems Discovery covered.
 
 Everything approved is written back into the TDD (version bump and Versions row), with the task
 list and use cases updated when a decision changes them. There is no separate
 `_Architecture.md` and no new diagrams: if the architecture changes, the existing `Diagrams/*.mmd`
 sources and their embedded copies in the TDD are updated and re-validated.
+Before Gate 3 is recorded, a TDD that is published externally is republished (and verified) for
+every changed page, and any task the delta added or split is added to `TaskList.md` and
+`state.json`'s `tasks` as well as the TDD's Development Plan — the same rule applies at every gate.
 
 ### Phase 4 — Implementation
 

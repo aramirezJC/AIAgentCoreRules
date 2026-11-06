@@ -41,7 +41,7 @@ python3 Tools/feature-state/feature_state.py migrate --root Assets/GitIgnoreAsse
 
 Without `--apply`, migration performs no writes. A fingerprint allows a single-feature apply to reject changes since the reviewed dry-run. Every apply also rechecks its source snapshot before committing. Project migration processes each feature separately and reports any blocked features.
 
-The importer supports the template's bounded YAML subset rather than general YAML. Unsupported syntax, conflicting TDD/TaskList statuses, multiple progress sources, and escaping comment targets block the feature without writes. Resolve those source ambiguities and rerun. Original progress and sidecars are retained byte-for-byte under `legacy-backup`; full legacy progress text is also retained in `legacy_notes` so custom notes are not discarded.
+The importer supports the template's bounded YAML subset rather than general YAML. A single-line flow list or mapping is supported; one wrapped over several lines is not, so join it onto one line. Older TaskList ids such as `{id: 1}` import as `T1`, and a `#` inside a quoted value is kept rather than read as a comment. Unsupported syntax, conflicting TDD/TaskList statuses, multiple progress sources, and escaping comment targets block the feature without writes. Resolve those source ambiguities and rerun. Original progress and sidecars are retained byte-for-byte under `legacy-backup`; full legacy progress text is also retained in `legacy_notes` so custom notes are not discarded.
 
 Feature names must match their containing directory. Existing backup files with different content block migration; they are never silently reused or overwritten.
 

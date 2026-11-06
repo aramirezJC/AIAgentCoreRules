@@ -32,6 +32,18 @@ class StructuredFeatureViewsTest(unittest.TestCase):
         self.assertEqual(perf_view.feature_filter(self.progress), ('Example', {'1234abcd'}))
         self.assertIn(self.folder / 'state.json', progress_view.watched_paths(self.progress))
 
+    def test_json_section_statuses_match_template_headings(self):
+        update_state(self.folder, 'checkpoint', {
+            'step_status': {'1a': 'done', '1b': 'in_progress'},
+            'tdd_sections': {'Objective': 'approved', 'Related documentation': 'drafting'}}, self.state['revision'])
+        intake = progress_view.build_model(self.progress)['phases'][0]
+        step = next(step for step in intake['steps'] if step['key'] == '1b')
+        sections = {section['title']: section['state'] for section in step['sections']}
+        self.assertEqual(step['state'], 'partial')
+        self.assertEqual(sections['Objective'], 'done')
+        self.assertEqual(sections['Related Documentation'], 'partial')
+        self.assertEqual(sections['Architecture'], 'todo')
+
     def test_missing_projection_does_not_hide_state(self):
         self.progress.unlink()
         self.assertEqual(progress_view.find_progress_file(self.folder), self.progress)
@@ -48,6 +60,15 @@ class StructuredFeatureViewsTest(unittest.TestCase):
         self.assertEqual(tasks['T1']['status'], 'todo')
         self.assertEqual(tasks['T2']['status'], 'partial')
         self.assertEqual(tasks['T2']['title'], 'JSON task')
+
+    def test_numeric_document_ids_match_migrated_t_ids(self):
+        (self.folder / 'Example_TDD.md').write_text(
+            '## Development plan\n### V0 — Tool\n| # | Title | Status |\n|---|---|---|\n| 1 | Document task | [ ] |\n')
+        update_state(self.folder, 'task', {'id': 'T1', 'title': 'Document task', 'status': 'done'}, self.state['revision'])
+        model = progress_view.build_model(self.progress)
+        implementation = next(phase for phase in model['phases'] if phase['key'] == '4_implementation')
+        tasks = [task for stage in implementation['dev_phases'] for task in stage['tasks']]
+        self.assertEqual([(task['id'], task['status']) for task in tasks], [('1', 'done')])
 
     def test_json_batch_plan_and_numbers_render(self):
         result = progress_view._batch_view({'plan': ['one', 'two'], 'merged': 1, 'open_pr': 8}, self.folder, lambda number, root: str(number))

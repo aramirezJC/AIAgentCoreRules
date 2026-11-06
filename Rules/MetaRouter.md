@@ -20,7 +20,7 @@ All `load` and `routing` paths below are relative to the directory containing th
 session_lifecycle:
   start:   "Automatic (SessionStart hook) — a 'Session tracking' block appears in context. If it is missing, run /start-session."
   record:  "Right after classifying the mode below, record the lane and work type with the `set` command shown in the Session tracking block."
-  work_type: "bug_fix | small_feature | feature | question | other — what the work is, not which lane ran it (definitions in ../Skills/start-session). Defaults to the lane's; pass --work-type when they differ."
+  work_type: "bug_fix | small_feature | large_feature | feature | question | other — what the work is, not which lane ran it (definitions in ../Skills/start-session). Defaults to the lane's; pass --work-type when they differ."
   name:    "/start-session <name> names the session (folder + metrics heading). Optional."
   during:  "The engineer logs /inaccuracy <reason> after correcting you, and /iteration <change> on a deliberate change of direction."
   self_log: "When you retract a claim, or the engineer rejects your approach, log it yourself straight away with `note --kind inaccuracy --source agent \"<what was wrong>\"` (command in the Session tracking block). Unlogged corrections are back-filled by /end-session with --source retro."
@@ -44,6 +44,10 @@ mode_fork:
     looks_like: "make a tool/utility/debug command like X that does Y / small tweak / follow this example / /small-task"
     output:     "code for a bounded change — no TDD, one proposal checkpoint"
     load:       [../Processes/SmallTask.md]
+  large_task:
+    looks_like: "build a tool / change a framework or shared infrastructure / cross-system refactor / rule or tooling overhaul — bigger than SmallTask's limits, no GDD, finishable in one session / /large-task"
+    output:     "discovery → approved plan.md → stepwise code with tests, in this session — no feature state or phases"
+    load:       [../Processes/LargeTask.md]
   bug_fix:
     looks_like: "X is broken / what could be causing / why does X happen / fix this crash / /bug-fix"
     output:     "diagnosis → approved fix → regression test"
@@ -69,8 +73,8 @@ mode_fork:
     load:       []
 ```
 
-Never silently escalate between lanes: a small task that outgrows SmallTask's limits, or an
-investigation that turns into a bug, is offered to the engineer as a lane change, not taken.
+Never silently escalate between lanes: a small task that outgrows SmallTask's limits, a large
+task that cannot finish in its session, or an investigation that turns into a bug, is offered to the engineer as a lane change, not taken.
 If genuinely ambiguous, state the assumed lane in one line and continue — do not block.
 
 ---
@@ -125,9 +129,10 @@ routing:
   # Processes — load and follow step by step
   create_new_feature:             [../Processes/CreateFeature/index.md]
   small_bounded_change:           [../Processes/SmallTask.md]
+  larger_bounded_change:          [../Processes/LargeTask.md]   # tool · framework change · cross-system refactor, one session
   diagnose_and_fix_bug:           [../Processes/BugFix.md]
   meta_review_of_sessions:        [../Processes/MetaReview.md]   # review past sessions · meta-analysis · weekly retro of retros
-  publish_or_review_external_doc: [../Processes/ExternalDocPass.md]   # Confluence/Docs page · apply review comments · publish a TDD
+  publish_or_review_external_doc: [../Processes/ExternalDocPass.md]   # Confluence/Docs page · apply review comments (incl. doc-review preview comments) · publish a TDD
 
   # Modes — decide this first, see "Classify the Mode" above
   investigate_or_preplan:         [./InvestigationMode.md]
@@ -169,6 +174,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /iteration:      "engineer logs a deliberate change of direction"
   /feature <Name>: "enter the CreateFeature process"
   /small-task <ask>: "enter the SmallTask process (lane small_task), skipping classification"
+  /large-task <ask>: "enter the LargeTask process (lane large_task): discovery, approved plan.md, stepwise code — one session"
   /bug-fix <symptom>: "enter the BugFix process (lane bug_fix), skipping classification"
   /run-investigation-mode <question>: "enter Investigation Mode (lane investigation), skipping classification"
   /generate-meta-review [time frame]: "run the MetaReview process over the sessions in the window"

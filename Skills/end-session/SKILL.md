@@ -84,6 +84,7 @@ If rendering or opening fails, report that failure and link the saved artifacts.
 depth:
   feature:        "Only when the progress file's current_phase is 8_retrospective: load ../Processes/CreateFeature/Phase8_Retrospective.md and follow it; its report is retro.md and its benchmarks come from metrics.md — do not ask for /cost. Any earlier phase: a short retro titled '<FeatureName> — Phase <N> <Name>', with the phase file as the Router check's expected load. Phase 8 reads these."
   small_task:     short
+  large_task:     short
   bug_fix:        short
   investigation:  short
   other:          short
@@ -103,8 +104,8 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 
 ## Router check
 | Expected for this lane | Loaded? | Note |
-<expected loads come from the lane's process file (Processes/SmallTask.md, Processes/BugFix.md,
- Rules/InvestigationMode.md) plus the routing-table rows the work matched. Flag both misses and
+<expected loads come from the lane's process file (Processes/SmallTask.md, Processes/LargeTask.md,
+ Processes/BugFix.md, Rules/InvestigationMode.md) plus the routing-table rows the work matched. Flag both misses and
  loads that were not needed.>
 
 ## Corrections
@@ -120,7 +121,9 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 ## Proposed changes
 | # | File | Change | Why |
 <concrete, minimal edits. Not applied. Each Change cell is self-contained — state the facts
- inline, never "the facts above": the applying session reads only this table.>
+ inline, never "the facts above": the applying session reads only this table.
+ The File cell lists every copy of the changed text, including the matching Documentation/
+ page: grep the old text across the repo before writing the row.>
 
 ## Cost
 <total tokens, turns, subagents from metrics.md; the 3 heaviest turns and whether each was necessary.
@@ -170,7 +173,7 @@ Where to apply them, offered in this order:
 ```yaml
 fresh_session:   # default — this session's context is at its largest, and every edit re-reads it
   how: "Mark the approved proposals pending, then print (or run via /new-session):"
-  command: '/new-session "Apply proposals <N,M> from <retro.md path>: read only its Proposed changes table, apply each, then mark it with session_lifecycle.py retro --folder <id8> --mark <N> --status applied. Run session_lifecycle.py from the host project root (it resolves GitIgnoreReports/Sessions from the cwd). Layer-repo edits go in a worktree: git -C <layer> worktree add -b agent/<name> <layer>/.claude/worktrees/<name> HEAD"'
+  command: '/new-session "Apply proposals <N,M> from <retro.md path>: read only its Proposed changes table, apply each, then mark it with session_lifecycle.py retro --folder <id8> --mark <N> --status applied. Run session_lifecycle.py from the host project root (it resolves GitIgnoreReports/Sessions from the cwd). Layer-repo edits go in a worktree: git -C <abs layer> worktree add -b agent/<name> <abs layer>/.claude/worktrees/<name> HEAD"'
   note: "The new session reads the retro's table, not this transcript. Record it as lane other. Copy the command's worktree clause verbatim; for layer repos never substitute EnterWorktree — it isolates only the host project, and its GitIgnoredExternals links still point at the layer's main checkout."
 in_place:        # only for 1–2 one-line edits
   how: "Apply here, one file at a time, as below."

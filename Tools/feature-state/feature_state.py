@@ -31,7 +31,7 @@ def empty_state(feature):
             "current_phase": "1_intake", "status": "in_progress", "updated_at": now(),
             "artifacts": [], "sessions": [], "sources_of_truth": [], "pull_requests": {},
             "batches": {}, "step_status": {}, "tdd_sections": {}, "checkpoint": {},
-            "gates": [], "closed": [], "tasks": [], "artifact_roles": {}, "legacy_notes": []}
+            "gates": [], "closed": [], "tasks": [], "artifact_roles": {}, "phase_reports": {}, "legacy_notes": []}
 
 
 def validate_state(data):
@@ -48,7 +48,7 @@ def validate_state(data):
     for key in ("artifacts", "sessions", "sources_of_truth", "gates", "closed", "tasks", "legacy_notes"):
         if not isinstance(data.get(key), list):
             raise StateError(f"{key} must be a list")
-    for key in ("checkpoint", "pull_requests", "batches", "step_status", "tdd_sections", "artifact_roles"):
+    for key in ("checkpoint", "pull_requests", "batches", "step_status", "tdd_sections", "artifact_roles", "phase_reports"):
         if not isinstance(data.get(key), dict):
             raise StateError(f"{key} must be an object")
     for key, values in (("step_status", {"in_progress", "done"}), ("tdd_sections", {"drafting", "approved"})):
@@ -71,7 +71,10 @@ def validate_state(data):
             raise StateError("batch merged must be a nonnegative integer")
     if any(not isinstance(gate, dict) or not gate.get("phase_completed") for gate in data["gates"]):
         raise StateError("gate requires phase_completed")
-    for path in list(data["artifact_roles"].values()) + data["artifacts"]:
+    for phase_key in data["phase_reports"]:
+        if phase_key not in PHASES:
+            raise StateError("phase_reports keys must be valid phase keys")
+    for path in list(data["artifact_roles"].values()) + list(data["phase_reports"].values()) + data["artifacts"]:
         if not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts:
             raise StateError("artifact paths must stay within the feature directory")
     return data
@@ -221,6 +224,9 @@ def update_state(feature_dir, operation, payload, expected_revision):
                 raise StateError(f"gate next_phase must be {expected_next!r}")
             if any(re.match(r"^Phase " + str(phase_number) + r"\b", str(gate.get("phase_completed", ""))) for gate in state["gates"]):
                 raise StateError("gate for this phase is already recorded")
+            PHASES_REQUIRING_REPORT = {"2_discovery", "3_design", "4_implementation", "5_unit_tests", "6_integration", "7_verification"}
+            if state["current_phase"] in PHASES_REQUIRING_REPORT and not state.get("phase_reports", {}).get(state["current_phase"]):
+                raise StateError("phase report required before gate — run 'phase-report' first")
             gate = {key: value for key, value in payload.items() if key != "next_phase"}
             state["gates"].append(gate)
             state["current_phase"] = expected_next or state["current_phase"]
@@ -237,6 +243,19 @@ def update_state(feature_dir, operation, payload, expected_revision):
                 raise StateError("only closed non-complete features can reopen")
             state["status"] = status
             state["closed"].append(dict(payload, at=now(), action=operation, status=status, was=old, phase=state["current_phase"]))
+        elif operation == "phase-report":
+            phase = payload.get("phase")
+            path = payload.get("path")
+            PHASES_REQUIRING_REPORT = {"2_discovery", "3_design", "4_implementation", "5_unit_tests", "6_integration", "7_verification"}
+            if phase not in PHASES_REQUIRING_REPORT:
+                raise StateError(f"phase-report requires one of {PHASES_REQUIRING_REPORT}")
+            if phase != state["current_phase"]:
+                raise StateError("phase report can only be registered for the current phase")
+            if not isinstance(path, str) or Path(path).is_absolute() or ".." in Path(path).parts:
+                raise StateError("artifact paths must stay within the feature directory")
+            state["phase_reports"][phase] = path
+            if path not in state["artifacts"]:
+                state["artifacts"].append(path)
         elif operation in {"pr", "batch", "artifact", "task"}:
             if operation == "pr":
                 phase, number = payload["phase"], payload["number"]
@@ -272,8 +291,12 @@ def main():
     listing = sub.add_parser("list")
     listing.add_argument("--root", type=Path, required=True)
     listing.add_argument("--include-closed", action="store_true")
-    for command in ("get", "create", "checkpoint", "gate", "close", "reopen", "pr", "batch", "task", "artifact", "render", "migrate"):
-        item = sub.add_parser(command)
+    command_help = {
+        "task": "Add or update one task by id (merge, no delete). Payload: "
+                '{"id": "T<n>", "title": "...", "status": "todo|partial|done"}.',
+    }
+    for command in ("get", "create", "checkpoint", "gate", "close", "reopen", "pr", "batch", "task", "artifact", "phase-report", "render", "migrate"):
+        item = sub.add_parser(command, help=command_help.get(command), description=command_help.get(command))
         item.add_argument("directory", type=Path, nargs="?" if command == "migrate" else None)
         if command == "get":
             item.add_argument("--section")

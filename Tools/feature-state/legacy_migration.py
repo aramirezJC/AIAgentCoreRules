@@ -32,6 +32,24 @@ def _split(text, separator=","):
     return result
 
 
+def _strip_comment(text):
+    """Drop a trailing ` # comment`, ignoring `#` inside quoted strings of inline values."""
+    quote, escaped = None, False
+    for index, character in enumerate(text):
+        if escaped:
+            escaped = False
+        elif quote and character == "\\":
+            escaped = True
+        elif quote:
+            if character == quote:
+                quote = None
+        elif character in "\"'" and (index == 0 or text[index - 1] in " \t[{,:"):
+            quote = character
+        elif character == "#" and index > 0 and text[index - 1].isspace():
+            return text[:index].strip()
+    return text.strip()
+
+
 def _scalar(text):
     text = text.strip()
     if not text:
@@ -43,7 +61,7 @@ def _scalar(text):
             raise StateError("unsupported quoted legacy scalar")
         literal = match.group(1)
         return json.loads(literal) if literal[0] == '"' else literal[1:-1].replace("''", "'")
-    text = re.split(r"\s+#", text, maxsplit=1)[0].strip()
+    text = _strip_comment(text)
     if text.startswith("[") and text.endswith("]"):
         return [_scalar(part) for part in _split(text[1:-1]) if part]
     if text.startswith("{") and text.endswith("}"):
@@ -101,7 +119,7 @@ def parse_legacy_yaml(text):
                 key, raw = line.split(":", 1)
                 if key in output:
                     raise StateError(f"duplicate legacy key: {key}")
-                raw = re.split(r"\s+#", raw, maxsplit=1)[0].strip() if not raw.strip().startswith(('"', "'")) else raw
+                raw = _strip_comment(raw) if not raw.strip().startswith(('"', "'")) else raw
                 value = _scalar(raw)
                 if value is None and index + 1 < len(rows) and rows[index + 1][0] > indentation:
                     value, index = parse(index + 1, rows[index + 1][0])
@@ -177,6 +195,9 @@ def _import_tasks(directory, state):
         for match in re.finditer(r"^\s*-\s*\{(id:.*?)\}\s*$", path.read_text(), re.M):
             item = _scalar("{" + match.group(1) + "}")
             if "id" in item and "status" in item:
+                # Older task lists number tasks {id: 1}; the schema's ids are "T1".
+                if isinstance(item["id"], int):
+                    item["id"] = f"T{item['id']}"
                 item["status"] = {"[ ]": "todo", "[~]": "partial", "[x]": "done"}.get(item["status"], item["status"])
                 state["tasks"].append(item)
     # Do not choose between conflicting agent-maintained artifacts.

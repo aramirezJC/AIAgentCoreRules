@@ -128,6 +128,52 @@ class TestModel(PerfViewTestCase):
         self.assertEqual({"sessions": 1, "count": 4, "tokens": 25000}, doc_review["miro_confluence"])
 
 
+class TestContextWarning(PerfViewTestCase):
+    """Same threshold as hook-prompt: 90% of the median peak per-call context of finished sessions."""
+
+    def write_finished(self, count, peak=100000):
+        for index in range(count):
+            self.write_session("2026-10-0%d_0900_done" % (index + 1), "f%07d" % index, "2026-10-0%dT09:00:00-07:00" % (index + 1),
+                               age_seconds=86400, ended_at="x", breakdown=dict(breakdown(1000, 0), peak_context=peak))
+
+    def write_live(self, last_context):
+        self.write_session("2026-10-09_0900_live", "live0001", "2026-10-09T09:00:00-07:00",
+                           breakdown=dict(breakdown(4000, 0), peak_context=last_context, last_context=last_context))
+
+    def test_active_session_over_threshold_is_flagged(self):
+        self.write_finished(5)
+        self.write_live(95000)
+        model = perf_view.build_model(self.root)
+        self.assertEqual(90000, model["context_warning"]["threshold"])
+        self.assertEqual(100000, model["context_warning"]["median_peak"])
+        self.assertEqual(5, model["context_warning"]["sessions"])
+        flags = {s["id"]: s["over_context"] for s in model["sessions"]}
+        self.assertTrue(flags["live0001"])
+        self.assertFalse(any(flag for sid, flag in flags.items() if sid != "live0001"))
+
+    def test_active_session_peak_does_not_move_the_threshold(self):
+        self.write_finished(5)
+        self.write_live(900000)
+        self.assertEqual(90000, perf_view.build_model(self.root)["context_warning"]["threshold"])
+
+    def test_below_threshold_is_not_flagged(self):
+        self.write_finished(5)
+        self.write_live(85000)
+        self.assertFalse(any(s["over_context"] for s in perf_view.build_model(self.root)["sessions"]))
+
+    def test_too_few_finished_sessions_gives_no_threshold(self):
+        self.write_finished(4)
+        self.write_live(500000)
+        model = perf_view.build_model(self.root)
+        self.assertIsNone(model["context_warning"]["threshold"])
+        self.assertFalse(any(s["over_context"] for s in model["sessions"]))
+
+    def test_older_breakdowns_default_to_zero_context(self):
+        self.write_three()
+        session = perf_view.build_model(self.root)["sessions"][0]
+        self.assertEqual((0, 0), (session["peak_context"], session["last_context"]))
+
+
 class TestFeatureScope(PerfViewTestCase):
     def write_progress(self, sessions_text):
         path = self.root.parent.parent / "Demo_Progress.md"
@@ -208,6 +254,7 @@ class TestServerTab(PerfViewTestCase):
         self.assertIn('class="perf-view"', page)
         self.assertIn("function renderPerf(", page)
         self.assertIn("function perfDocReview(", page)
+        self.assertIn("function perfContextWarning(", page)
         source = json.loads(review_server._collect_sources(review_server._tabs([self.doc]))["d1"])
         self.assertIn("Runnable tools", source["standardized_names"])
 

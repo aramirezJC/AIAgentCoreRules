@@ -57,6 +57,22 @@ the app marks completed after going idle never exits, and Claude Code has no idl
 fires after every main-agent reply, and `hook-stop` recompiles then (at most every 2 minutes,
 async, never marking the session ended), so metrics stay current however the session ends.
 
+### Hook output reach
+
+Who sees what a hook prints. Check here before designing a warning or a nudge.
+
+| Hook | Reaches the agent | Reaches the engineer |
+|---|---|---|
+| SessionStart | stdout and `hookSpecificOutput.additionalContext`. Re-fires with source `clear` or `compact`, so it can re-inject context after either | JSON `systemMessage` |
+| UserPromptSubmit | stdout and `hookSpecificOutput.additionalContext` — the only way to reach the agent mid-session | JSON `systemMessage` |
+| PreToolUse | `hookSpecificOutput.additionalContext` | JSON `systemMessage` |
+| Stop | Nothing — it runs `async`, so its output reaches no one | Nothing |
+| Any hook | — | JSON `systemMessage` reaches the engineer only, never the agent |
+
+No hook or model action can run `/clear` or `/compact`; the most a hook can do is tell the agent
+to offer one. The auto-compact threshold is set with the `autoCompactWindow` setting or
+`/autocompact <tokens>`.
+
 2. Symlink `Skills/start-session`, `end-session`, `inaccuracy`, `iteration` into
    `<project>/.claude/skills/`.
 
@@ -121,12 +137,23 @@ proposal has a button that copies its `retro --mark … --status applied` comman
 `--name` is the engineer-given session name (`/start-session <name>`). It is slugged into the
 folder name, which `set` renames, and heads metrics.md.
 
-`--work-type` (`bug_fix | small_feature | feature | question | other`) records what the work is,
-separately from the lane that ran it, so the meta-analysis can compare cost by kind of work. Until
-it is passed explicitly it follows the lane (`small_task → small_feature`, `investigation →
-question`, others map to themselves) and `work_type_source` is `"lane"`; once explicit, later lane
+`--work-type` (`bug_fix | small_feature | large_feature | feature | question | other`) records what
+the work is, separately from the lane that ran it, so the meta-analysis can compare cost by kind of
+work. Until it is passed explicitly it follows the lane (`small_task → small_feature`, `large_task →
+large_feature`, `investigation → question`, others map to themselves) and `work_type_source` is `"lane"`; once explicit, later lane
 changes no longer touch it. Changes are kept in `work_type_history` and listed under *Work type
 changes*.
+
+**Adding a lane or work type** — every place that lists them must change together:
+
+- `Rules/MetaRouter.md` — `mode_fork`, the `work_type` line, routing table, `commands`
+- `session_lifecycle.py` — `LANES`, `WORK_TYPES`, `LANE_WORK_TYPE`, `LANE_COMMAND`
+- `../session-analysis/session_meta_report.py` — `LANES`, `LANE_WORK_TYPE`
+- `Skills/start-session/SKILL.md` — lane list and `work_type` definitions; `Skills/end-session/SKILL.md` — `depth`
+- `Documentation/02_WorkModes.md`, `07_SessionTracking.md`, `08_Commands.md`, and this README
+
+`tests/test_lanes.py` fails when the two Python files' tables disagree or a lane has no default
+work type or fresh-session command.
 
 `--session-id` defaults to `$CODEX_THREAD_ID` in Codex or `$CLAUDE_CODE_SESSION_ID` in Claude Code;
 only the legacy Claude path falls back to the newest transcript for the project. An ID with no folder is an error — the script never falls

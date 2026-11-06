@@ -138,5 +138,16 @@ coverage_summary:
 Before the gate: run `/audit` on every test file written this phase and fix or report each
 violation. Test code follows the same rules as production code.
 
+Once all tests pass, generate a unit-test summary as `[FeatureName]_UnitTests.md` covering
+test categories, coverage counts, and any skipped TBD cases. Register it:
+
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "5_unit_tests", "path": "[FeatureName]_UnitTests.md"}' \
+  --revision <N>
+```
+
+Then present the report to the engineer for approval.
+
 All tests passing. `failing_tests` must be empty. Engineer confirms coverage is acceptable.
 Any skipped TBD cases must be logged as follow-up tasks before the gate clears.

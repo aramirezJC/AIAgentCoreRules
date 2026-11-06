@@ -4,7 +4,7 @@
 
 For a bounded change: a tool, utility, debug command, or behaviour tweak modelled on existing
 code. Smaller than a feature — no GDD, TDD, or task list. If the work grows past the limits
-below, stop and offer `/feature <Name>`.
+below, stop and offer `/large-task` (still one session, no GDD) or `/feature <Name>`.
 
 Tag definitions: [[CoreTags]]
 
@@ -15,7 +15,7 @@ fits_when:
   - "No new config root, player-data schema, or server contract"
   - "An existing example can be followed ('like xyz, but does abc')"
 escalate_when:
-  - "Any fits_when condition breaks mid-task → stop, say so in one line, offer /feature"
+  - "Any fits_when condition breaks mid-task → stop, say so in one line, and offer /large-task when the work fits LargeTask.md's fits_when (2–3 systems, no GDD or new schema/contract, finishable this session), otherwise /feature"
   - "Or offer a split: list two or more small tasks (each within fits_when), do the first here, and hand each remaining one off as a ready-to-run `claude \"/small-task …\"` command with self-contained context (files, formats, where to work)."
 lane_switch:
   - "Entering this lane from another one in the same session → offer the split as a choice first: continue here, or /new-session \"/small-task <ask>\". Relay the fresh-session offer `set` prints for a large session. The engineer decides."
@@ -31,6 +31,7 @@ steps:
     - "If the request is a tool/script/report: StopAndVerify Scope Gate — ask one-off vs reusable, and Editor/runtime/CLI. Wait."
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
     - "A question with no change → set --work-type question. If it later turns into a change, re-run `set --work-type <small_feature|other>` before 4_propose."
+    - "A request for a warning, limit or threshold: name the cost it is meant to reduce and pick the metric that drives that cost (e.g. per-call context vs session total) before proposing."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
     - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
@@ -39,6 +40,7 @@ steps:
     - "Anything broader than one targeted query → /discover, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
     - "When the change consumes data written by another skill or tool (a progress block, a sidecar, ids), check that real feature data actually has the keys the consumer matches on, before 4_propose."
+    - "When a new check must agree with an existing view (tab, report), reuse the view's population and filter rules, such as perf_view's active-session rule, instead of re-deriving them."
   3_rules:   # routing table, by what the change touches
     always:                    [../Rules/CodingStandards.md]
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
@@ -63,6 +65,8 @@ steps:
     - "Run typecheck.py. Report its result verbatim if it fails."
     - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new`."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
+    - "A change to a tool that renders a view (preview tab, report): compare the rendered VALUES (statuses, counts, ids) against the source data for at least one real item — a model that builds is not verification. If a long-running server serves it, restart it and check the served page."
+    - "A tool that writes to an external service (GitHub, Confluence, Slack): verify its reads and dry run on real data, cover the write path with a faked client, and run a real write only on a target the engineer names; otherwise report the real write as untested."
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
   7_close:
     - "Offer /end-session."

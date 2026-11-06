@@ -9,8 +9,11 @@ Open the persistent project preview without editing feature documents or migrati
 Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
 
 1. Run `bash <tools>/doc-review/preview-control.sh start --project <project-root>`.
-   It reuses the managed server if already healthy and prints its URL. The server is
-   independent of this LLM session; do not stop it at session end.
+   It reuses the managed server if already healthy and prints its URL. If any
+   `Tools/doc-review/*.py` or `Tools/feature-state/*.py` file changed since that server started,
+   it restarts it instead and prints `restarted (tool code changed)` before the new URL — the
+   port may change, so report the new URL. The server is independent of this LLM session; do
+   not stop it at session end.
 2. No name: open the returned Home URL. A name: use the exact feature directory under
    `$SESSION_FEATURES_ROOT`, otherwise `Assets/GitIgnoreAssets/Features`.
    If no match exists, list the available feature names and ask; never guess.
@@ -20,7 +23,9 @@ Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
    LLM Performance. Missing content shows a placeholder. Legacy features display migration
    required; starting the preview never implicitly migrates them.
 5. Feature comments live in `<feature-directory>/review.json`, independent of the current
-   tab or first document. Read with `doc_review.py comments <feature-directory>`.
+   tab or first document. Read with `doc_review.py comments <feature-directory>`. When working
+   a batch of them, follow `Processes/ExternalDocPass.md` → "Comment research": subagents research
+   and propose edits, the main session applies them in order and replies.
 6. To explicitly stop this project's managed server use `$kill-server` or
    `bash <tools>/doc-review/preview-control.sh stop --project <project-root>`.
 

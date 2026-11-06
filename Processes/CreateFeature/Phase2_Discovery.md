@@ -41,7 +41,8 @@ discovery_actions:
 
 ## Gate 2 — Discovery Report
 
-Present to the engineer:
+Once discovery_actions are complete, generate the discovery report as `[FeatureName]_Discovery.md`
+documenting:
 
 ```yaml
 discovery_report:
@@ -52,8 +53,15 @@ discovery_report:
   missing_source:      []   # BLOCK if non-empty — request files before proceeding
 ```
 
-**Do not proceed to Phase 3 if `missing_source` is non-empty. Request the missing files first.**
+Save the report to the feature's working folder. Register it with the feature-state tool:
 
-Once approved, save the report as `[FeatureName]_Discovery.md` in the feature's working folder
-and add it to `artifacts` in the progress file. A resumed session reads it instead of
-re-running discovery.
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "2_discovery", "path": "[FeatureName]_Discovery.md"}' \
+  --revision <N>
+```
+
+**Do not proceed to approval if `missing_source` is non-empty. Request the missing files first.**
+
+Once the report is registered, present it to the engineer for approval. A resumed session
+reads it instead of re-running discovery.

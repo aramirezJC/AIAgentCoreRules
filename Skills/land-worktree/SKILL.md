@@ -30,13 +30,16 @@ steps:
   - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash"
   - "  worktree is DIRTY → the agent left uncommitted work; show `git -C <worktree> status --short` and ask"
   - "  ahead is 0 → nothing to land; offer cleanup only"
+  - "  conflict markers in the branch's tree (`git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' <branch>`) → list the files and ask before merging. They may predate the agent's work (a stash pop committed with markers reached main in ac09f58); landing would carry them on."
   - "Show `git log --oneline HEAD..<branch>` and `git diff --stat HEAD...<branch>`."
   - "from_upstream > 0 → the worktree branched from the default branch, not from the target. Merging brings those upstream commits too. Offer instead: cherry-pick only the agent's commits (`git log --reverse --format=%H HEAD..<branch> --not <upstream>`). Engineer chooses."
   - "Merge without committing so the engineer tests first: `git merge --no-ff --no-commit <branch>` (or `--squash` when asked). On conflicts: list the files, stop, let the engineer resolve or abort."
+  - "Right after staging, record the branch tip: `git rev-parse <branch>`. Keep the hash for the keep step."
   - "If the host project has a compile check (e.g. a typecheck tool in its SystemIndex), run it now and report the result."
   - "Ask the engineer to test, and wait. Do not continue until they answer keep or reject."
   - "keep → `git commit --no-edit` (squash: commit with a message summarising the agent's commits). Then cleanup."
   - "  `git commit --no-edit` reports nothing to commit → the engineer committed while the merge was staged. Confirm with `git merge-base --is-ancestor <branch> HEAD` and report the engineer's commit hash as the landing commit; never re-merge."
+  - "  branch or worktree already gone (landed elsewhere while waiting, e.g. by another session) → check the recorded tip with `git merge-base --is-ancestor <tip> HEAD`, report the merge commit that contains it (`git log --merges --ancestry-path <tip>..HEAD --format=%h | tail -1`), skip cleanup and never re-merge. Not an ancestor → say the work is not in HEAD and ask."
   - "reject → `git merge --abort` (squash: `git reset --merge`). Then ask: keep the worktree for more work, or discard it."
   - "Cleanup (keep, or reject + discard):"
   - "  `git worktree remove <path>` — never add --force on your own; if git refuses, show why and ask"
@@ -51,7 +54,7 @@ steps:
 
 ```yaml
 rules:
-  - "Never push the target branch or force-push. Landing is local."
+  - "Never force-push. Push the target branch only when the engineer explicitly asks in this request; before pushing, show `git log --oneline --first-parent origin/<branch>..HEAD` so commits unrelated to this landing are visible before they go out."
   - "Running /land-worktree (or answering yes in /end-session) is the confirmation to merge, including into the default branch. Do not ask again before merging."
   - "Never commit the merge before the engineer says keep."
   - "Removing a worktree deletes only its folder: symlinked directories (worktree.symlinkDirectories) are links, so the main checkout's copies are untouched."

@@ -17,6 +17,8 @@ and svg-pan-zoom load from CDNs in the browser.
 | `doc_review.py servers [--json]` | Lists the running live servers: pid, URL, doc and folder. Only the Python server process, not the shell that launched it |
 | `doc_review.py stop [--port N \| --pid N \| --all]` | Stops a live server (SIGTERM). With no selector it stops the only one running and refuses when there are several. Used by `/kill-server` |
 | `doc_review.py pr-notes <PR> [--repo-dir DIR] [--json]` | Prints a PR's conversation comments, review bodies and inline notes, oldest first, via `gh`. Used by `/feature-pr` |
+| `doc_review.py pr-pull <PR> --feature-dir DIR [--repo-dir DIR]` | Writes `<Feature>_PR<PR>_review.json` in the feature folder: one thread per inline root comment (replies grouped under it), conversation comment and review body, each with an empty `reply`. Refuses a PR not under the feature's `pull_requests`. A re-pull keeps drafted replies and marks vanished threads `gone`. Used by `/feature-pr` |
+| `doc_review.py pr-push <draft> [--confirm] [--repo-dir DIR]` | Lists the threads with an unposted `reply` (dry run). With `--confirm` posts them in order — inline replies to the thread's root comment, others as a quoting conversation comment — recording each as `posted`; stops at the first `gh` failure. Never resolves threads |
 
 `Tools/mermaid-preview/mermaid_preview.py` is the older entry point. It forwards to
 `serve --static`.
@@ -99,6 +101,12 @@ breakdown: the same estimated token-by-category numbers the retrospective charts
 - **Sessions, newest first.** One collapsible each, with its category table. The active session
   (no `ended_at`, `session.json` written in the last hour) is highlighted and open.
 
+**Context-size warning.** Each compiled breakdown records `peak_context` and `last_context` (per-call
+context tokens). A *Context warning at* tile shows 90% of the median peak of finished sessions (the same
+threshold the UserPromptSubmit hook warns with); an amber banner names each active session whose latest
+call is at or above it, and every session row has a context pill (latest for active sessions, peak
+otherwise; amber when over). Breakdowns compiled before 2026-11-02 have no peak until recompiled.
+
 Sessions without a compiled breakdown are listed but left out of the statistics. The tab
 refreshes whenever a `session.json` changes; the active session is as fresh as its last compile
 (the Stop hook recompiles after replies).
@@ -143,7 +151,10 @@ bash GitIgnoreExternals/AIAgentCoreRules/Tools/doc-review/preview-control.sh sto
 ```
 
 Pass `--project /path/to/project` when running elsewhere. Start prints the existing URL if
-already running. Runtime PID, URL and log files live in the project's `.doc-review/`. The
+already running — unless any `Tools/doc-review/*.py` or `Tools/feature-state/*.py` file is newer
+than the server's recorded start time. Python never reloads modules, so start then stops the
+stale server, prints `restarted (tool code changed)`, and starts a fresh one (the port may change;
+use the URL printed after that line). Runtime PID, URL and log files live in the project's `.doc-review/`. The
 launcher verifies the server's project and PID before stopping it, and uses Python locking
 rather than requiring an external `flock` command. The detached process survives agent sessions.
 
@@ -157,4 +168,8 @@ Feature comments live in `<feature-directory>/review.json`, independent of the s
 Each thread retains its relative `anchor.file`, text/diagram anchor, replies and status. Use
 `doc_review.py comments <feature-directory>` and `doc_review.py reply <feature-directory> <id>
 "message" --status addressed`. Standalone document preview retains its existing document sidecar.
+A batch of comments is worked per [[ExternalDocPass|External Doc Pass]] → Comment research: with 4
+or more threads needing investigation, subagents research them in parallel and return proposed
+edits plus draft replies; only the main session edits the document, one proposal at a time, then
+replies. Edits are never queued through the server — text anchors orphan under concurrent edits.
 The CLI no longer collects inline `@CLAUDE` markers; existing source markers remain untouched.

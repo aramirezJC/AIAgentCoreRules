@@ -12,7 +12,7 @@ engineer's part is logging corrections and running `/end-session`.
 | Session start | The SessionStart hook puts a **Session tracking** block in the agent's context. No folder is created yet | Automatic |
 | First thing worth saving | The session folder is created on the first `set`, `note` or `compile`, or after the first reply. Sessions opened and closed without work leave no folder | Automatic |
 | Naming (optional) | `/start-session <name>` names the session; the name goes into the folder and the metrics heading | Engineer |
-| Mode classified | The agent records the lane (feature, bug_fix, small_task, investigation, other), the work type (bug_fix, small_feature, feature, question, other) and a short title | Agent |
+| Mode classified | The agent records the lane (feature, bug_fix, small_task, large_task, investigation, other), the work type (bug_fix, small_feature, large_feature, feature, question, other) and a short title | Agent |
 | Agent makes a mistake you correct | `/inaccuracy <what was wrong>` | Engineer |
 | Agent retracts a claim, or you reject its approach | It logs the inaccuracy itself, marked `agent` | Agent |
 | A correction was never logged | `/end-session` records it from the retro's Corrections, marked `retro` | Agent |
@@ -21,6 +21,7 @@ engineer's part is logging corrections and running `/end-session`.
 | After each agent reply | The Stop hook recompiles metrics (at most every 2 minutes) without marking the session ended, so a session that is never exited still has current metrics | Automatic |
 | You send a prompt after a long break | When the last reply is over an hour old and its context was over ~100k tokens, the UserPromptSubmit hook tells the agent the prompt cache has expired and what the next call costs, so new work can be offered a fresh session (`/new-session`) | Automatic |
 | The agent reads a rule file through the shell | A PreToolUse hook on Bash notices `cat`/`sed`/`head`/`tail` of a `.md` under `Rules/`, `Processes/`, `Systems/`, `SystemPatterns/` or `Skills/` and reminds the agent to use Read, so the router trace stays exact. Only a command in command position counts (start of the line, or after `;`, `&&`, `\|`): a mention inside quoted text or a heredoc stays silent. It never blocks the command | Automatic |
+| The context gets large | When the last call's context reaches 90% of the median **peak per-call context** of finished sessions (122k on 2026-11-02, from 100 sessions; needs at least 5 with a compiled `peak_context`), the UserPromptSubmit hook shows you a warning and tells the agent to offer a reset (`/compact <what to keep>` or a fresh session with a handoff) at the next task boundary. Once per crossing: `context-warning.json` in the session folder re-arms when the context drops back below. Every call re-sends the whole context, so "Conversation & base context" is most of a session's cost | Automatic; you decide |
 | The lane changes in a large session | Recording a lane change on a session past ~30M tokens prints a fresh-session offer with the matching command (`/new-session "/bug-fix <symptom>"`, …) | Agent offers, you decide |
 | Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit. It fires only when the process exits, not when the app marks an idle session completed | Automatic |
 
@@ -33,14 +34,29 @@ configure per project — `install.py` and the tracker share the same root looku
 go before the subcommand: `session_lifecycle.py --reports-root <dir> set …` and
 `install.py --project <repo> worktrees`.
 
+### Hook output reach
+
+Who sees what a hook prints — check here before designing a new warning or nudge.
+
+| Hook | Reaches the agent | Reaches the engineer |
+|---|---|---|
+| SessionStart | stdout and `additionalContext`; re-fires after `/clear` and `/compact`, so it can re-inject context | `systemMessage` |
+| UserPromptSubmit | stdout and `additionalContext` — the only way to reach the agent mid-session | `systemMessage` |
+| PreToolUse | `additionalContext` | `systemMessage` |
+| Stop | Nothing (runs async) | Nothing |
+
+A JSON `systemMessage` from any hook reaches the engineer only. No hook or agent action can run
+`/clear` or `/compact` — a hook can only tell the agent to offer one. The auto-compact threshold
+is the `autoCompactWindow` setting or `/autocompact <tokens>`.
+
 The **lane** is the process that ran; the **work type** is what the work was. They usually match,
 but not always: an investigation into a crash is lane `investigation`, work type `bug_fix`. If the
-agent does not set a work type, it follows the lane (small_task → small_feature, investigation →
-question) and metrics.md marks it "(from lane)". The meta-analysis groups cost by work type to
+agent does not set a work type, it follows the lane (small_task → small_feature, large_task → large_feature,
+investigation → question) and metrics.md marks it "(from lane)". The meta-analysis groups cost by work type to
 show which kinds of work are most expensive.
 
 The **feature** tag (`set --feature <Name>`) ties a session to a CreateFeature feature. /feature
-and /resume-work always set it; /small-task, /bug-fix and /run-investigation-mode set it when the
+and /resume-work always set it; /small-task, /large-task, /bug-fix and /run-investigation-mode set it when the
 work is for an in-progress feature. The feature's Performance tab in the doc-review preview counts
 tagged sessions plus those listed under `sessions:` in its Progress file.
 
@@ -104,7 +120,7 @@ resume.
 | Router check | The files the lane's process expects to be loaded vs. what the trace shows — misses and unnecessary loads |
 | Corrections | Each inaccuracy with a root cause: missing rule, missing index entry, rule ignored, signature guessed, or scope misread |
 | Discovery gaps | Anything looked up mid-task that the host project's SystemIndex or Systems docs should have supplied |
-| Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied**. Each row is self-contained (no "see above"), because the session that applies it reads only this table |
+| Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied**. Each row is self-contained (no "see above"), because the session that applies it reads only this table. The File cell lists every copy of the changed text, including the matching Documentation/ page |
 | Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable |
 
 In a background session, `/end-session` cannot write `retro.md` into the session folder: once its

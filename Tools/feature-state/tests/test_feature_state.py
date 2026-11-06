@@ -139,6 +139,15 @@ Keep me exactly.
         self.assertIn("conflicts", report["errors"][0])
         self.assertFalse((self.directory / "state.json").exists())
 
+    def test_numeric_task_list_ids_import_as_t_ids(self):
+        self.legacy()
+        (self.directory / "Feature_TaskList.md").write_text(
+            '    - {id: 1,  status: "[x]", task: "Build"}\n    - {id: 12, status: "[ ]", task: "Wrap in #if !RC"}\n')
+        self.assertEqual(migrate_feature(self.directory, True)["status"], "migrated")
+        tasks = load_state(self.directory)["tasks"]
+        self.assertEqual([(task["id"], task["status"]) for task in tasks], [("T1", "done"), ("T12", "todo")])
+        self.assertEqual(tasks[1]["task"], "Wrap in #if !RC")
+
     def test_apply_rejects_sources_changed_since_dryrun(self):
         source, text = self.legacy()
         report = migrate_feature(self.directory)

@@ -41,6 +41,18 @@ final_verification:
 
 ## Gate 7 — Feature Complete
 
+Once the full `/audit` pass is complete and all violations are addressed, generate a verification summary
+as `[FeatureName]_Verification.md` covering the final checklist results and any deferred items.
+Register it:
+
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "7_verification", "path": "[FeatureName]_Verification.md"}' \
+  --revision <N>
+```
+
+Then present the report to the engineer for approval.
+
 ```yaml
 completion_summary:
   built:          ""

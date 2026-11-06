@@ -43,10 +43,10 @@ import subprocess
 import sys
 
 ROOT_CAUSES = ["missing-rule", "missing-index-entry", "rule-ignored", "signature-guessed", "scope-misread"]
-LANES = ["feature", "bug_fix", "small_task", "investigation", "other", "unset"]
+LANES = ["feature", "bug_fix", "small_task", "large_task", "investigation", "other", "unset"]
 # Sessions recorded before work types existed fall back to their lane's work type.
-LANE_WORK_TYPE = {"small_task": "small_feature", "bug_fix": "bug_fix", "investigation": "question",
-                  "feature": "feature", "other": "other"}
+LANE_WORK_TYPE = {"small_task": "small_feature", "large_task": "large_feature", "bug_fix": "bug_fix",
+                  "investigation": "question", "feature": "feature", "other": "other"}
 PATH_TOKEN = re.compile(r"[A-Za-z0-9_./-]*[A-Za-z0-9_-]+\.(?:md|py|cs|json|asmdef)\b|(?<![A-Za-z])(?:Tools|Skills|Rules|Processes|Systems|SystemPatterns|Runnable)/[A-Za-z0-9_./-]+")
 UNMAPPED = "(gap with no file named)"
 REPO_PREFIXES = ("AIAgentCoreRules/", "TripleMatchAiMetaData/", "GitIgnoredExternals/")

@@ -22,9 +22,11 @@ Tag definitions: [[CoreTags]]
 publish:
   - "Load the host's doc-conventions file. Read its style reference page once, for structure only."
   - "Build the complete page body locally (a scratch file next to the local source doc), including diagrams. Validate diagrams before publishing if the host names a validator."
+  - "For a structural diagram using [[ChangeClassification]]'s NEW/MODIFIED/DELETED palette, substitute `color:#ffffff` → `color:#172b4d` in the copy being embedded in this page or pushed to its board — see ChangeClassification's 'External publish — color substitution'. Never touch the local `.mmd`; the substitution applies only to the published/pushed copy, every pass."
   - "If the document has diagrams reviewed on a board, push them in this same pass — see 'Diagrams reviewed on a board' below. Do not push a diagram ahead of the document it illustrates."
   - "Measure the built body before publishing. Over ~50K characters, split it into child pages (the host's doc-conventions file says how) — one call per page."
   - "Before sending: confirm the `body` argument is the real, complete content just built or read back from its file — not a placeholder, a truncated fragment, or escaped markup typed by mistake. This matters most for a large body typed or pasted directly into the tool call rather than loaded from the file that was just built: a publish call cannot be partially reviewed after the fact, only caught before it is sent or fixed after it has already overwritten the live page."
+  - "Mechanical size check before every create/update: compare the `body` argument's length with the length of the file just built (`wc -c`). They must match closely; and a TDD-sized page body under a few hundred characters is a placeholder — stop and do not send. A prose warning alone did not stop a placeholder publish that overwrote a live page; a length comparison would have."
   - "Publish each page in one create or update call, written in the main session. Never hand a body to a subagent to retype."
   - "Verify every publish: fetch the page (or read the create response) and confirm it ends at its last section. A call cut off mid-body still saves a truncated page."
   - "Record the page in the progress file's sources_of_truth: kind, id, title, version returned by the call."
@@ -39,12 +41,31 @@ One pass handles every comment that is ready. Do not fetch or update per comment
 review_pass:
   1_read:     "Fetch once: the page body, its inline comments with replies, and its footer comments. That is the whole read budget for the pass."
   2_list:     "Build the pass list: each actionable thread (per the host's resolution convention), what it asks, and where it applies. Threads still under discussion are listed as skipped."
+  2b_research: "Threads that need codebase or source research go through 'Comment research' below; wording-only threads stay inline."
   3_confirm:  "Show the pass list. Ask only about items that are ambiguous or conflict with each other; do not ask per item."
   4_apply:    "Apply every item to the local copy of the body in one go. An item that removes a question also removes every mention of it."
   5_write:    "One update call. If the update fails on a version conflict, re-read once and re-apply; never loop."
   5b_verify:  "Verify the update as for a publish: check the update response first. If it does not show the body ending at its last section, do one verification fetch."
   6_report:   "Reply with: new version, threads addressed (the engineer resolves them; the agent cannot), threads skipped and why. Update sources_of_truth to the new version."
 budget:       "Per pass: at most 2 page reads for review (step 1 and one conflict retry) and 1 update. The post-write verification (5b, and Publish's verify) does not count against it — at most one fetch per page written. Exceeding the budget means the pass was split; say why in the report."
+```
+
+## Comment research (any review pass)
+
+Applies to every batch of review comments: the Review pass above, and local doc-review preview
+comments (`doc_review.py comments <feature-directory>`). Subagents research; the main session
+alone edits the document. Comments on a design doc are rarely independent — one decision ripples
+into other sections, diagrams and the task list — so a queue or merge layer could order parallel
+edits but never catch two that contradict each other. One reader applying them in sequence can.
+
+```yaml
+comment_research:
+  when:      "4 or more threads need investigation (is this true in the code, who else calls this, what does the engine do). Fewer: research inline — spawning costs more than it saves."
+  group:     "Wording-only threads stay inline. Research threads go one subagent per thread, or per group of threads about the same system, all spawned in ONE message."
+  subagent_returns: "{thread_id, findings with file:line, proposed edit as exact old → new text against the local doc, draft reply}. It edits nothing — no document, no sidecar, no reply call."
+  main_applies: "The main session applies proposals one at a time (Edit's exact-match failure is the conflict check — re-read that region and adapt the proposal, never force it), then sweeps for cross-section consistency before replying."
+  replies:   "Preview: doc_review.py reply <feature-directory> <id> --status addressed '<message>', after the edit lands. External page: the single update of step 5, as usual."
+  no_server_queue: "Do not route edits through the preview server or any delta queue. Text anchors (quote/prefix/suffix) orphan under concurrent edits, and review.json is already serialised by SidecarStore."
 ```
 
 ## Diagrams reviewed on a board (Miro)

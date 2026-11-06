@@ -36,6 +36,7 @@ steps:
   - "Then wait. The engineer picks which notes to address; this skill does not change code on its own."
   - "Addressing a note: follow the lane the feature is in (Phase 4 per-file checklist, /audit, typecheck). After the engineer acknowledges each fix, add to the Checkpoint `done` list: \"PR #<PR> <file:line or 'review'>: <note gist> — addressed (<what changed>)\". A note left as is goes in context_notes with the reason."
   - "Reply on GitHub only when the engineer asks; never resolve review threads."
+  - "Batch replies: python3 <cli> pr-pull <PR> --feature-dir <feature folder> writes <FeatureName>_PR<PR>_review.json (one thread per inline root, conversation comment or review body; a re-pull keeps drafted replies and flags vanished threads `gone`). Fill each thread's `reply` field — subagents may research threads in parallel, the main session writes the file. Show the engineer python3 <cli> pr-push <draft> (a dry run listing every reply); post with --confirm only after the engineer approves that list. Posted replies are recorded in the draft, so a re-push never repeats one. Only PRs under the feature's pull_requests are accepted."
   - "End with one line: the progress file path, the V-phase, and how many notes are open vs addressed. The doc-review Progress tab shows the notes under that V-phase (refreshed every 5 minutes)."
 ```
 

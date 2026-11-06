@@ -11,7 +11,9 @@ the codebase, settles what it left for Phase 3, and gives Phase 4 a concrete fil
 TDD already covers is not restated here.
 
 Inputs: `<FeatureName>_TDD.md` (Architecture section, embedded diagrams, TBDs) and
-`<FeatureName>_Discovery.md`. Load the host SystemIndex's matching SystemPatterns entries.
+`<FeatureName>_Discovery.md`. Load the host SystemIndex's matching SystemPatterns entries, and
+its `Systems/` entry for every system a new design decision touches (e.g. a new message type →
+the message-bus system doc), not only the systems Discovery already covered.
 
 ---
 
@@ -76,7 +78,27 @@ write_back:
 
 ## Gate 3 — Design Approved
 
+Before presenting this gate for approval, generate a design-delta summary as `[FeatureName]_Design.md` 
+covering the changes made in Step 2, the updated TDD sections, and any discovered corrections. 
+Register it with the feature-state tool:
+
+```
+python3 Tools/feature-state/feature_state.py phase-report <feature_dir> \
+  --payload '{"phase": "3_design", "path": "[FeatureName]_Design.md"}' \
+  --revision <N>
+```
+
+Then present both the report and the updated TDD to the engineer for approval. The report serves as
+a summary of what changed; the substantive design detail lives in the TDD itself per the "no separate 
+design doc" rule.
+
 Engineer explicitly approves the delta (or confirms it is empty) and the updated TDD.
+
+```yaml
+gate_3_before_confirming:
+  republish: "If Step 3 changed the TDD and the TDD is published externally, run the [[ExternalDocPass]] publish pass for every changed page (parent and child pages) and verify it before recording the gate confirmed. Record the new versions in sources_of_truth. A confirmed Gate 3 with a stale published TDD is not a passed gate."
+  task_sync: "If the delta added or split a task, update TaskList.md and state.json's tasks in this gate too — see index.md's on_gate."
+```
 
 **This is the last gate before code is written. The TDD's File Plan must be complete and every TBD
 left for Phase 3 resolved before proceeding.**
