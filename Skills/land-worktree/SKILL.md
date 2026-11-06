@@ -27,7 +27,7 @@ steps:
   - "Preconditions — stop and report, do not fix silently:"
   - "  a landing is already staged (`git rev-parse -q --verify MERGE_HEAD` succeeds) → name its branch (`git name-rev --name-only MERGE_HEAD`) and ask: keep it (`git commit --no-edit`) or reject it (`git merge --abort`). Finish that one before landing anything else; it is not generic dirty state."
   - "  one keep/reject answer while two landings are pending (e.g. a pre-existing MERGE_HEAD in one repo and a staged landing in another) → state which landings the answer applies to before committing."
-  - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash"
+  - "  main checkout has uncommitted changes to tracked files (`git status --porcelain --untracked-files=no`) → ask the engineer to commit or stash. If none of the dirty files are staged and none overlap `git diff --name-only HEAD <branch>`, offer the engineer a merge without cleaning first (`--no-ff --no-commit` leaves the unstaged changes out of the merge commit). Ask; do not assume."
   - "  worktree is DIRTY → the agent left uncommitted work; show `git -C <worktree> status --short` and ask"
   - "  ahead is 0 → nothing to land; offer cleanup only"
   - "  conflict markers in the branch's tree (`git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' <branch>`) → list the files and ask before merging. They may predate the agent's work (a stash pop committed with markers reached main in ac09f58); landing would carry them on."
