@@ -72,6 +72,8 @@ Detours: when the engineer asks for side work mid-bug (for example a repro tool 
 command), record the lane change with the lifecycle `set --lane small_task` command before
 starting it, then `set --lane bug_fix` when you return. That keeps metrics and the router check
 accurate. Follow SmallTask.md for the detour, including its own /audit.
+A PR-review follow-up counts as a detour: load SmallTask.md and run /audit before its commit,
+even when a plan file was approved.
 
 Lane switch: entering this lane from another one in the same session (e.g. a PR review that
 turns into a bug), offer the split as a choice before step 1: continue here, or

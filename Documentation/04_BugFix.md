@@ -25,7 +25,9 @@ fix, not a deliverable — for "should we change X" questions with no bug, use [
 - **Detours are recorded.** If the engineer asks for side work mid-bug (a repro button, a debug
   command), the agent switches the session lane to `small_task`, follows the [[05_SmallTask|Small Task process]]
   for it, then switches back to `bug_fix`. Both changes are recorded under *Lane changes* in the
-  session metrics, and the retrospective checks each part against its own lane.
+  session metrics, and the retrospective checks each part against its own lane. Follow-up work
+  on PR review comments counts as a detour too: the agent loads the Small Task process and runs
+  `/audit` before committing it, even when a plan file was already approved.
 - **A lane switch is offered as a split.** When a session that started in another lane turns into
   a bug fix (a PR review that finds a bug, say), the agent first asks whether to continue there or
   open a fresh session with `/new-session "/bug-fix <symptom>"`. On a session already past ~30M
