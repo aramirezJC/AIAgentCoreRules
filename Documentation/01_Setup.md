@@ -123,3 +123,57 @@ available.
 ---
 
 ← [[00_Overview|Overview]] · [[02_WorkModes|Work Modes and Routing]] →
+
+## Project document-path configuration
+
+Install creates `ai-agent-core.json` at the host project root. Commit it so every computer
+uses the same document roots. Paths are relative to that project, independent of shell cwd:
+
+```json
+{
+  "schema_version": 1,
+  "paths": {
+    "features": "Assets/GitIgnoreAssets/Features",
+    "design_documents": "Assets/GitIgnoreAssets/DesignDocuments"
+  }
+}
+```
+
+The initial defaults are always `Assets/GitIgnoreAssets/Features` and
+`Assets/GitIgnoreAssets/DesignDocuments`; installation does not choose a tracked replacement
+automatically. On an interactive first install, choose each target or accept its default.
+Choosing a folder opens the native directory picker (`osascript` on macOS, `tkinter` elsewhere).
+Selections must be existing folders inside the project; cancellation writes no configuration.
+For a tracked Unity asset location, pass custom paths as in the first example below.
+Noninteractive installs use the defaults for targets without explicit flags; `--defaults` also
+suppresses target prompts during interactive installs:
+
+```bash
+python3 <core>/Tools/setup/install.py install --agent codex --features-dir Assets/Documentation/Features --design-documents-dir Assets/Documentation/DesignDocuments
+python3 <core>/Tools/setup/install.py install --agent codex --defaults
+python3 <core>/Tools/setup/project_config.py --project <project-root> get features
+python3 <core>/Tools/setup/project_config.py --project <project-root> get design_documents
+```
+
+Existing configuration is preserved on reinstall. Explicit flags that conflict with existing
+values fail rather than overwriting them. `check` and `install --dry-run` neither prompt nor
+write files. CLI feature-root overrides and `SESSION_FEATURES_ROOT` take precedence over
+configuration; without config, existing projects retain legacy behavior. Configuration requires
+both path keys and retains unknown fields on reinstall. Invalid configuration fails clearly
+when it is consulted; an explicit feature-root override bypasses config lookup and validation.
+Reports and server runtime locations are unchanged.
+
+The resolver prints an absolute path. Without `--project`, it finds the working checkout from
+its invocation directory, keeping per-worktree configuration local. Pass `--project` when
+running elsewhere or from within the shared rules repository.
+
+Configuration creation or editing does not move documents. Relocate complete feature folders
+explicitly, preserving authoritative state, comments, relative anchors, legacy backups and
+Unity `.meta` GUIDs. Let Unity create missing `.meta` files for real folders under `Assets`,
+then commit those with the documents. Ignore runtime `.feature-state.lock` files. Do not use a
+compatibility symlink as a second configured document location.
+
+After editing feature paths or relocating feature folders, explicitly stop and start the
+persistent preview with `preview-control.sh stop`, then `preview-control.sh start`. Calling
+`start` alone reuses a healthy server: automatic restart watches preview/feature-state Python
+files, not project configuration or the setup resolver.

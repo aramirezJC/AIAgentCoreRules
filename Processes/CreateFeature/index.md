@@ -15,7 +15,8 @@ and explicit migration for legacy features. Preserve engineer approval gates.
 
 
 ```yaml
-working_folder: "Assets/GitIgnoreAssets/Features/<FeatureName>/   # GDD, TDD, TaskList, UseCases, Discovery, Architecture docs"
+features_root: "Resolve with Tools/setup/project_config.py --project <project-root> get features (CLI/env/config/legacy precedence)"
+working_folder: "<features_root>/<FeatureName>/   # GDD, TDD, TaskList, UseCases, Discovery, Architecture docs"
 state_file:     "<working_folder>/state.json  # authoritative; shared feature-state CLI"
 progress_file:  "<working_folder>/<FeatureName>_Progress.md  # generated read-only view"
 session_metrics: "per session, in the Session tracking folder — see MetaRouter Session Lifecycle"

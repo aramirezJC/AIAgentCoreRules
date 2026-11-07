@@ -1,11 +1,13 @@
 """Project preview contracts and request isolation."""
 import functools
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -18,7 +20,7 @@ class ProjectPreviewTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.project = Path(self.tmp.name)
+        self.project = Path(self.tmp.name).resolve()
         self.root = self.project / 'Assets/GitIgnoreAssets/Features'
         for name in ('Alpha', 'Beta'):
             directory = self.root / name
@@ -64,6 +66,43 @@ class ProjectPreviewTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as caught:
             urlopen(request)
         self.assertEqual(caught.exception.code, 400)
+
+
+class ProjectPreviewRootTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.project = Path(self.tmp.name).resolve()
+
+    def served_root(self, override=None, environment=None):
+        server = mock.Mock(server_address=('127.0.0.1', 12345))
+        with mock.patch.dict(os.environ, environment or {}, clear=True), \
+             mock.patch.object(project_server.view, '_bind_server', return_value=server) as bind:
+            project_server.serve_project(self.project, features_root=override)
+        server.serve_forever.assert_called_once()
+        server.server_close.assert_called_once()
+        return bind.call_args.args[0].keywords['features_root']
+
+    def test_configured_feature_directory_and_override_precedence(self):
+        (self.project / 'ai-agent-core.json').write_text(json.dumps({
+            'schema_version': 1, 'paths': {'features': 'Assets/Documentation/Features', 'design_documents': 'Assets/Documentation/DesignDocuments'}
+        }))
+        self.assertEqual(self.served_root(), self.project / 'Assets/Documentation/Features')
+        environment = {'SESSION_FEATURES_ROOT': str(self.project / 'EnvironmentFeatures')}
+        self.assertEqual(self.served_root(environment=environment), self.project / 'EnvironmentFeatures')
+        self.assertEqual(self.served_root(override=self.project / 'ExplicitFeatures', environment=environment),
+                         self.project / 'ExplicitFeatures')
+
+    def test_project_without_config_uses_legacy_directory(self):
+        self.assertEqual(self.served_root(), self.project / 'Assets/GitIgnoreAssets/Features')
+
+    def test_invalid_config_fails_before_binding(self):
+        (self.project / 'ai-agent-core.json').write_text('{invalid')
+        with mock.patch.dict(os.environ, {}, clear=True), \
+             mock.patch.object(project_server.view, '_bind_server') as bind:
+            with self.assertRaises(RuntimeError):
+                project_server.serve_project(self.project)
+        bind.assert_not_called()
 
 
 if __name__ == '__main__':

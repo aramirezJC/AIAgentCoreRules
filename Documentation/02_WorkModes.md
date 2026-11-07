@@ -132,3 +132,10 @@ after a session retrospective found "ad-hoc tool calls" alone were 24% of that s
 ---
 
 ← [[01_Setup|Setup]] · [[00_Overview|Overview]] · [[03_CreateFeature|Create Feature Process]] →
+
+## Project output paths
+
+Before feature creation/discovery or investigation output, resolve the configured document
+roots with `Tools/setup/project_config.py` as described in [[01_Setup|Setup]]. The project's
+tracked `ai-agent-core.json` is the common configuration; rules and skills must not substitute
+a hard-coded root for a configured one.

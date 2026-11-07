@@ -127,7 +127,8 @@ with the evidence. They prevent the next session re-investigating.
 
 ```yaml
 investigation_output:
-  location: "Assets/GitIgnoreAssets/DesignDocuments/<Topic>.md"
+  root: "Resolve with Tools/setup/project_config.py --project <project-root> get design_documents"
+  location: "<design_documents>/<Topic>.md"
   contains:
     - problem statement and the decision reached
     - verified findings, each cited, traps flagged prominently

@@ -14,8 +14,12 @@ Resolve all paths from the project root; `<tools>` is AIAgentCoreRules/Tools.
    it restarts it instead and prints `restarted (tool code changed)` before the new URL — the
    port may change, so report the new URL. The server is independent of this LLM session; do
    not stop it at session end.
+   After editing project configuration or relocating feature folders, run `stop` then `start`
+   explicitly: those changes do not trigger the code-mtime restart check.
 2. No name: open the returned Home URL. A name: use the exact feature directory under
-   `$SESSION_FEATURES_ROOT`, otherwise `Assets/GitIgnoreAssets/Features`.
+   the root returned by
+   `python3 <tools>/setup/project_config.py --project <project-root> get features`.
+   It honors `SESSION_FEATURES_ROOT`, then project configuration, then the legacy default.
    If no match exists, list the available feature names and ask; never guess.
 3. Open the returned URL with `?feature=<URL-encoded-name>` when a feature was supplied.
    Use available browser-opening tools, reporting failures without claiming it opened.

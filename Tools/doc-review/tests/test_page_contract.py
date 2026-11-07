@@ -30,6 +30,7 @@ LOCAL_MODULE_NAMES = {path.stem for path in TOOL_DIR.glob("*.py")}
 IN_REPO_TOOL_MODULES = {
     "feature_state": TOOL_DIR.parent / "feature-state" / "feature_state.py",
     "project_root": TOOL_DIR.parent / "setup" / "project_root.py",
+    "project_config": TOOL_DIR.parent / "setup" / "project_config.py",
     "token_breakdown": TOOL_DIR.parent / "session-lifecycle" / "token_breakdown.py",
 }
 
@@ -71,14 +72,14 @@ class StdlibOnlyImportsTests(unittest.TestCase):
                         "module -- this tool is meant to need no pip install",
                     )
 
-    def test_inRepoToolModules_importOnlyStdlib(self):
+    def test_inRepoToolModules_importOnlyStdlibOrVerifiedSharedModules(self):
         for name, file_path in IN_REPO_TOOL_MODULES.items():
             with self.subTest(module=name):
                 for imported in _imported_top_level_names(file_path):
                     self.assertTrue(
-                        imported not in IN_REPO_TOOL_MODULES and _is_stdlib_or_local(imported)
-                        and imported not in LOCAL_MODULE_NAMES,
-                        f"{file_path.name} imports {imported!r}, which is not stdlib",
+                        imported in IN_REPO_TOOL_MODULES or (
+                            _is_stdlib_or_local(imported) and imported not in LOCAL_MODULE_NAMES),
+                        f"{file_path.name} imports {imported!r}, which is not stdlib or a verified shared module",
                     )
 
 

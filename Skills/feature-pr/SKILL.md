@@ -22,7 +22,7 @@ MetaRouter.md). Run commands from the project root.
 
 ```yaml
 paths:
-  features_root: "$SESSION_FEATURES_ROOT, else Assets/GitIgnoreAssets/Features"
+  features_root: "Run python3 <core>/Tools/setup/project_config.py --project <project-root> get features (CLI/env/config/legacy precedence)"
   progress_file: "<features_root>/<FeatureName>/<FeatureName>_Progress.md"
   tdd:           "<features_root>/<FeatureName>/<FeatureName>_TDD.md"
   cli:           "Tools/doc-review/doc_review.py"
