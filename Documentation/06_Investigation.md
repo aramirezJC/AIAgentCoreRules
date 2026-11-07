@@ -67,3 +67,10 @@ Escalating to feature work is the engineer's call.
 ---
 
 ← [[14_LargeTask|Large Task Process]] · [[00_Overview|Overview]] · [[07_SessionTracking|Session Tracking and Retrospectives]] →
+
+## Configured output directory
+
+Resolve the output root with `python3 <core>/Tools/setup/project_config.py --project <project-root> get design_documents` and write `<Topic>.md` beneath it.
+`paths.design_documents` in project-root `ai-agent-core.json` is relative to that project.
+Without configuration, the legacy root is `Assets/GitIgnoreAssets/DesignDocuments`.
+See [[01_Setup|Setup]]; relocation remains explicit.

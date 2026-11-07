@@ -2,11 +2,15 @@
 
 `state.json` in each feature directory is authoritative. The tool generates `<Name>_Progress.md` for human review; edits to that projection are overwritten. Runtime uses Python's standard library only.
 
+Resolve the feature root first (run these examples from the project root; replace `<core>`
+with the actual AIAgentCoreRules path):
+
 ```bash
-python3 Tools/feature-state/feature_state.py list --root Assets/GitIgnoreAssets/Features
-python3 Tools/feature-state/feature_state.py get Assets/GitIgnoreAssets/Features/Example --section checkpoint
-python3 Tools/feature-state/feature_state.py create Assets/GitIgnoreAssets/Features/Example
-python3 Tools/feature-state/feature_state.py checkpoint Assets/GitIgnoreAssets/Features/Example --revision 1 --payload /tmp/checkpoint.json
+features_root=$(python3 <core>/Tools/setup/project_config.py --project . get features)
+python3 <core>/Tools/feature-state/feature_state.py list --root "$features_root"
+python3 <core>/Tools/feature-state/feature_state.py get "$features_root/Example" --section checkpoint
+python3 <core>/Tools/feature-state/feature_state.py create "$features_root/Example"
+python3 <core>/Tools/feature-state/feature_state.py checkpoint "$features_root/Example" --revision 1 --payload /tmp/checkpoint.json
 ```
 
 All mutating commands require the revision returned by `get`. A stale revision fails without writing; re-read the selected feature, reconcile your update, then retry. Writes lock a stable side file, validate the entire state, and atomically replace JSON. Reads never modify state. `render DIR --revision N` repairs the Markdown projection without changing the revision.
@@ -33,10 +37,10 @@ Commands accept a JSON payload file:
 ## Explicit migration
 
 ```bash
-python3 Tools/feature-state/feature_state.py migrate Assets/GitIgnoreAssets/Features/Example
-python3 Tools/feature-state/feature_state.py migrate Assets/GitIgnoreAssets/Features/Example --apply --expected-fingerprint <dry-run-fingerprint>
-python3 Tools/feature-state/feature_state.py migrate --root Assets/GitIgnoreAssets/Features
-python3 Tools/feature-state/feature_state.py migrate --root Assets/GitIgnoreAssets/Features --apply
+python3 <core>/Tools/feature-state/feature_state.py migrate "$features_root/Example"
+python3 <core>/Tools/feature-state/feature_state.py migrate "$features_root/Example" --apply --expected-fingerprint <dry-run-fingerprint>
+python3 <core>/Tools/feature-state/feature_state.py migrate --root "$features_root"
+python3 <core>/Tools/feature-state/feature_state.py migrate --root "$features_root" --apply
 ```
 
 Without `--apply`, migration performs no writes. A fingerprint allows a single-feature apply to reject changes since the reviewed dry-run. Every apply also rechecks its source snapshot before committing. Project migration processes each feature separately and reports any blocked features.
@@ -52,3 +56,9 @@ Legacy document sidecars merge into feature-level `review.json`. Every thread ke
 ```bash
 python3 -m unittest discover -s Tools/feature-state/tests -p 'test_*.py'
 ```
+
+The resolver honors `SESSION_FEATURES_ROOT`, then `paths.features` in the project's
+`ai-agent-core.json`, then the legacy `Assets/GitIgnoreAssets/Features` default. Configuration
+changes do not relocate existing features. Move complete feature directories explicitly,
+preserving `state.json`, generated Progress Markdown, `review.json`, relative anchors, and
+existing Unity `.meta` files. Keep `.feature-state.lock` local and out of Git.

@@ -32,6 +32,7 @@ import subprocess
 import sys
 
 import project_root
+import project_config
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORE_ROOT = os.path.realpath(os.path.join(SCRIPT_DIR, "..", ".."))
@@ -418,7 +419,9 @@ def cmd_install(args, root):
     layers = find_layers(root)
     log = []
     location = choose_host_location(args, root, layers)
+    config = project_config.prepare_install(args, root)
     layers = scaffold_host(root, layers, location, args.dry_run, log)
+    project_config.write_install(config, root, args.dry_run, log)
     agents = ("claude", "codex") if args.agent == "both" else (args.agent,)
     for agent in agents:
         if agent == "claude":
@@ -463,6 +466,10 @@ def main():
     check.add_argument("--metadata-location", choices=("externals", "project"),
                        help="preview a new host metadata location")
     check.set_defaults(func=cmd_install, dry_run=True)
+    for command in (install, check):
+        command.add_argument("--features-dir", help="initial project-relative feature documentation folder")
+        command.add_argument("--design-documents-dir", help="initial project-relative investigation documentation folder")
+        command.add_argument("--defaults", action="store_true", help="use GitIgnore documentation defaults without a picker")
     prepare = sub.add_parser("prepare-worktree", help="symlink worktree.symlinkDirectories into a worktree")
     prepare.add_argument("path")
     prepare.set_defaults(func=cmd_prepare_worktree)

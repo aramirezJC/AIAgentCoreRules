@@ -197,3 +197,22 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
 `Documentation/` (in this repo and in the host metadata repo) is the human-facing copy of the
 Rules, Processes, Skills and Tools. Never load it for routing — load the source files above.
 When you change one of those source files, update the matching `Documentation/` page with it.
+
+## Project document paths
+
+Before creating or discovering feature artifacts or investigation documents, resolve their
+output root through `Tools/setup/project_config.py` under AIAgentCoreRules:
+
+```bash
+python3 <core>/Tools/setup/project_config.py --project <project-root> get features
+python3 <core>/Tools/setup/project_config.py --project <project-root> get design_documents
+```
+
+The project-root `ai-agent-core.json` stores `schema_version: 1` and relative
+`paths.features` / `paths.design_documents`. Resolve paths against that project, not the
+agent's current subdirectory. Explicit CLI overrides and `SESSION_FEATURES_ROOT` take
+precedence for features. Missing configuration keeps the legacy roots
+`Assets/GitIgnoreAssets/Features` and `Assets/GitIgnoreAssets/DesignDocuments`; malformed
+configuration is an error when consulted, not permission to invent another location. An
+explicit feature-root override bypasses configuration lookup and validation. The installer creates
+configuration without moving existing artifacts. Preserve an existing project's choices.

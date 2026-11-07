@@ -84,6 +84,38 @@ class MetadataInstallTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--metadata-location", result.stderr)
 
+    def test_documentation_defaults_and_custom_targets_are_persisted(self):
+        result = self.run_install("install", "--agent", "codex", "--metadata-location", "project",
+                                  "--features-dir", "Assets/Documentation/Features",
+                                  "--design-documents-dir", "Assets/Documentation/DesignDocuments")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        path = self.root / "ai-agent-core.json"
+        value = json.loads(path.read_text())
+        self.assertEqual(value["paths"]["features"], "Assets/Documentation/Features")
+        value["custom"] = {"keep": True}
+        path.write_text(json.dumps(value))
+        before = path.read_bytes()
+        result = self.run_install("install", "--agent", "codex")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(path.read_bytes(), before)
+        result = self.run_install("install", "--agent", "codex", "--features-dir", "Different")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("already defines", result.stderr)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_config_preview_is_read_only_and_bad_paths_do_not_scaffold(self):
+        result = self.run_install("check", "--agent", "codex", "--metadata-location", "project",
+                                  "--features-dir", "Assets/Documentation/Features")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ai-agent-core.json", result.stdout)
+        self.assertFalse((self.root / "ai-agent-core.json").exists())
+        self.assertFalse((self.root / "Assets").exists())
+        result = self.run_install("install", "--agent", "codex", "--metadata-location", "project",
+                                  "--features-dir", "../Outside")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "AIMetaData").exists())
+        self.assertFalse((self.root / "ai-agent-core.json").exists())
+
     def test_picker_selects_project_root(self):
         spec = importlib.util.spec_from_file_location("setup_install", INSTALLER)
         installer = importlib.util.module_from_spec(spec)

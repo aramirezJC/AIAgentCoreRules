@@ -42,8 +42,8 @@ host project:
 
 | Output | Path | Set in |
 |---|---|---|
-| Feature working folder | `Assets/GitIgnoreAssets/Features/<FeatureName>/` | `Processes/CreateFeature/index.md` |
-| Investigation documents | `Assets/GitIgnoreAssets/DesignDocuments/<Topic>.md` | `Rules/InvestigationMode.md` |
+| Feature working folder | `<paths.features>/<FeatureName>/` (legacy fallback: `Assets/GitIgnoreAssets/Features`) | `Processes/CreateFeature/index.md` |
+| Investigation documents | `<paths.design_documents>/<Topic>.md` (legacy fallback: `Assets/GitIgnoreAssets/DesignDocuments`) | `Rules/InvestigationMode.md` |
 | Session reports | `GitIgnoreReports/Sessions/` | `Tools/session-lifecycle` (override with `SESSION_REPORTS_ROOT`) |
 
 ## Growing the host layer
@@ -58,3 +58,7 @@ change.
 ---
 
 ← [[09_CodingRules|Coding Rules]] · [[00_Overview|Overview]] · [[11_Contributing|Contributing]] →
+
+Document roots are project-relative values in the tracked `ai-agent-core.json`, created by
+the installer. Agents and tools resolve them with `Tools/setup/project_config.py`; editing
+this configuration does not migrate existing documents. See [[01_Setup|Setup]].
