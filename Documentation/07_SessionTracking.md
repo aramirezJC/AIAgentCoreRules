@@ -120,7 +120,7 @@ resume.
 | Router check | The files the lane's process expects to be loaded vs. what the trace shows — misses and unnecessary loads |
 | Corrections | Each inaccuracy with a root cause: missing rule, missing index entry, rule ignored, signature guessed, or scope misread |
 | Discovery gaps | Anything looked up mid-task that the host project's SystemIndex or Systems docs should have supplied |
-| Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied**. Each row is self-contained (no "see above"), because the session that applies it reads only this table. The File cell lists every copy of the changed text, including the matching Documentation/ page |
+| Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied**. Each row is self-contained (no "see above"), because the session that applies it reads only this table. The File cell lists every copy of the changed text, including the matching Documentation/ page, and names one concrete path — never "engineer's choice"; when the right home is unclear, the agent asks before writing the row |
 | Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable |
 
 In a background session, `/end-session` cannot write `retro.md` into the session folder: once its
