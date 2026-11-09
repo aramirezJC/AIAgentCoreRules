@@ -123,7 +123,9 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
 <concrete, minimal edits. Not applied. Each Change cell is self-contained — state the facts
  inline, never "the facts above": the applying session reads only this table.
  The File cell lists every copy of the changed text, including the matching Documentation/
- page: grep the old text across the repo before writing the row.>
+ page: grep the old text across the repo before writing the row.
+ The File cell names one concrete path — never 'location: engineer's choice'. If the right home
+ is unclear, ask the engineer before writing the row.>
 
 ## Cost
 <total tokens, turns, subagents from metrics.md; the 3 heaviest turns and whether each was necessary.
