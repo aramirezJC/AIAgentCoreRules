@@ -15,8 +15,9 @@ Code: `Tools/code-graph/` (details and the full API in its `README.md`).
 | `code-graph.sh status` | Show the URL, database and refresh command, or `Stopped` |
 | `code-graph.sh stop` | Stop the server |
 
-The database defaults to `<project>/Library/codeindex.sqlite`. The host project's SystemIndex
-gives the exact start command, including its refresh command.
+The database defaults to `<project>/Library/codeindex.sqlite`, built by the core
+[[16_UnityTools|`Tools/unity-tools/codeindex.py`]]. The host project's SystemIndex gives the exact
+start command, including its refresh command.
 
 ## The page
 

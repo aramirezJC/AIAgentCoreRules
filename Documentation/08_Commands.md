@@ -39,6 +39,7 @@ commands — see the host project's documentation.
 | `/discover <area>` | Surveys a system or directory in a subagent and returns a compact map: key types, entry points, integration points, gotchas and negative findings, each with `file:line`. Uses the host's Runnable tools when available. Offers to save the map as a Systems entry if none exists. |
 | `/generate-meta-review [time frame]` | Runs the Meta Review over the sessions in a window (`last 2 weeks`, `since 2026-09-01`, `2026-09-01..2026-09-30`; default since the previous review) and produces the report page and ticket list. |
 | `/audit [files]` | Checks C# files (default: changed files) against the coding standards, architecture principles, resource rules, rule tags and host project rules. Reports violations with `file:line` and a minimal fix. Report only — no edits unless asked. Fans out to subagents for more than 5 files. |
+| `/uses <Type> [Members]` | Who uses a type and which sites call the named members, via [[16_UnityTools\|`usages.py` and `codeindex.py`]]: declares/implements, calls (with lines), everything else per assembly. Lexical — confirm with `typecheck.py`. |
 
 ## Worktrees
 

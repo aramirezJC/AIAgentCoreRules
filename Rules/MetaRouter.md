@@ -191,7 +191,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /audit [files]:  "rules compliance check, report only"
   /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"
   /new-session <prompt>: "open a fresh session with that prompt in a new Terminal.app window or Rider terminal tab (macOS)"
-  /uses <Type>:    "who uses a type / calls its members (host project tool)"
+  /uses <Type>:    "who uses a type / calls its members (Tools/unity-tools)"
 ```
 
 `Documentation/` (in this repo and in the host metadata repo) is the human-facing copy of the
