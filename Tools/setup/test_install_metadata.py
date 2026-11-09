@@ -130,6 +130,34 @@ class MetadataInstallTests(unittest.TestCase):
              mock.patch("builtins.input", return_value="2"):
             self.assertEqual(installer.choose_host_location(args, str(self.root), layers), "project")
 
+    def test_skill_moved_between_layers_is_relinked_in_one_run(self):
+        spec = importlib.util.spec_from_file_location("setup_install", INSTALLER)
+        installer = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(INSTALLER.parent))
+        try:
+            spec.loader.exec_module(installer)
+        finally:
+            sys.path.pop(0)
+        core = self.root / "Core"
+        host = self.root / "Host"
+        (core / "Skills/uses").mkdir(parents=True)
+        (core / "Skills/uses/SKILL.md").write_text("---\nname: uses\n---\n")
+        (host / "Skills").mkdir(parents=True)
+        skills_dir = self.root / ".claude/skills"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "uses").symlink_to("../../Host/Skills/uses")   # skill moved Host -> Core
+        layers = [("Core", str(core)), ("Host", str(host))]
+
+        preview = []
+        installer.install_skills(str(self.root), layers, True, preview)
+        self.assertTrue(any("prune stale uses" in line for line in preview), preview)
+        self.assertTrue(any(line.startswith("skills: link uses") for line in preview), preview)
+        self.assertFalse(any("CONFLICT" in line for line in preview), preview)
+
+        log = []
+        installer.install_skills(str(self.root), layers, False, log)
+        self.assertEqual((skills_dir / "uses").resolve(), (core / "Skills/uses").resolve())
+
 
 if __name__ == "__main__":
     unittest.main()
