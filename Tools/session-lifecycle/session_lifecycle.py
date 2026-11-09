@@ -53,6 +53,7 @@ import codex_transcript
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "setup"))
 import project_root  # noqa: E402  shared with install.py
+import project_config  # noqa: E402  shared documentation output paths
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "feature-state"))
 from feature_state import load_state as load_feature_state
 
@@ -757,7 +758,7 @@ def closed_features(project_dir, features_root=None):
 
 
 def scan_features(project_dir, features_root, keep):
-    root = features_root or os.environ.get("SESSION_FEATURES_ROOT") or os.path.join(project_dir, DEFAULT_FEATURES_DIR)
+    root = project_config.resolve_path(project_dir, "features", override=features_root)
     models = phase_models()
     found = []
     if not os.path.isdir(root):
@@ -1213,7 +1214,7 @@ def main():
     sub.add_parser("hook-prompt").set_defaults(func=cmd_hook_prompt)
     sub.add_parser("hook-bash").set_defaults(func=cmd_hook_bash)
     features = sub.add_parser("features", help="list CreateFeature features that are not complete or closed (/active-features)")
-    features.add_argument("--features-root", help="default <cwd>/%s, or $SESSION_FEATURES_ROOT" % DEFAULT_FEATURES_DIR)
+    features.add_argument("--features-root", help="override $SESSION_FEATURES_ROOT, ai-agent-core.json paths.features, or legacy <project>/%s" % DEFAULT_FEATURES_DIR)
     features.add_argument("--json", action="store_true")
     features.add_argument("--closed", action="store_true",
                           help="list features closed by /close-feature that can be reopened (%s)" % ", ".join(REOPENABLE_STATUSES))

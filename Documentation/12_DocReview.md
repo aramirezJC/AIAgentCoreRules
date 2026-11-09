@@ -173,3 +173,15 @@ or more threads needing investigation, subagents research them in parallel and r
 edits plus draft replies; only the main session edits the document, one proposal at a time, then
 replies. Edits are never queued through the server — text anchors orphan under concurrent edits.
 The CLI no longer collects inline `@CLAUDE` markers; existing source markers remain untouched.
+
+## Configured feature root
+
+Project preview resolves its feature root in this order: explicit `--features-root`,
+`SESSION_FEATURES_ROOT`, `paths.features` from project-root `ai-agent-core.json`, legacy
+`Assets/GitIgnoreAssets/Features`. Relative configured paths are based on the selected project.
+After changing configuration or relocating a feature directory, run
+`preview-control.sh stop`, then `preview-control.sh start`. A plain `start` can reuse the
+healthy old server; config and setup-resolver edits do not trigger automatic restart.
+An explicit feature-root override bypasses config lookup and its validation.
+Comments remain in each feature's `review.json`; move the whole directory to retain anchors.
+See [[01_Setup|Setup]].

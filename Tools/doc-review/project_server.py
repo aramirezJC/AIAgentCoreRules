@@ -14,6 +14,9 @@ from sidecar_store import SidecarStore
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'feature-state'))
 import feature_state
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'setup'))
+import project_config
+
 TITLES = ('Home', 'Plan', 'TDD', 'GDD', 'Class Diagram', 'Flow Diagram', 'LLM Performance')
 ROLES = ('plan', 'tdd', 'gdd', 'class_diagram', 'flow_diagram', 'performance')
 
@@ -165,7 +168,7 @@ class ProjectHandler(view.ReviewRequestHandler):
 
 def serve_project(project, features_root=None, port=None, open_browser=False):
     project = project.resolve()
-    root = Path(features_root or os.environ.get('SESSION_FEATURES_ROOT') or project / 'Assets/GitIgnoreAssets/Features').resolve()
+    root = project_config.resolve_path(project, 'features', override=features_root)
     factory = functools.partial(ProjectHandler, features_root=root, project=project)
     server = view._bind_server(factory, port)
     url = f'http://127.0.0.1:{server.server_address[1]}/'

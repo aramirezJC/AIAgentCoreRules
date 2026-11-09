@@ -12,7 +12,7 @@ Everything the process produces for a feature lives in one folder in the host pr
 personal, git-ignored path set in `CreateFeature/index.md`):
 
 ```
-Assets/GitIgnoreAssets/Features/<FeatureName>/
+<configured features root>/<FeatureName>/
   <FeatureName>_GDD.md           AI-friendly copy of the source GDD
   <FeatureName>_TDD.md           Technical design document — the only design doc; Phase 3 updates it
   <FeatureName>_TaskList.md      Ordered tasks from the development plan
@@ -294,3 +294,8 @@ and explicit migration for legacy features. Preserve engineer approval gates.
 
 Lifecycle skills retain engineer approvals while using these validated operations.
 Home and active-feature listings share per-feature JSON state; no central registry is authoritative.
+
+Resolve the working root with `python3 <core>/Tools/setup/project_config.py --project <project-root> get features` before creating or discovering a feature.
+The tracked project `ai-agent-core.json` sets `paths.features`; existing explicit CLI and
+`SESSION_FEATURES_ROOT` overrides take precedence. Missing config retains the legacy root.
+See [[01_Setup|Setup]] for installation and relocation.

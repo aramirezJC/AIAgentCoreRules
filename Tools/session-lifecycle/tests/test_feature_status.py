@@ -7,10 +7,13 @@ the active list and the session-start hint but listed by `features --closed`. co
 """
 
 import os
+import json
+from pathlib import Path
 import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 import session_lifecycle  # noqa: E402
@@ -47,6 +50,41 @@ class FeatureStatusTest(unittest.TestCase):
         self.assertIn("Feature_in_progress", hint)
         for status in ("complete", "abandoned", "superseded", "on_hold"):
             self.assertNotIn("Feature_%s " % status, hint)
+
+
+    def test_configured_feature_directory_is_used_for_active_and_closed_lists(self):
+        with tempfile.TemporaryDirectory(prefix="configured-project-") as project:
+            project = Path(project).resolve()
+            configured = project / "Assets/Documentation/Features"
+            shutil.copytree(self.root, configured)
+            (project / "ai-agent-core.json").write_text(json.dumps({
+                "schema_version": 1, "paths": {"features": "Assets/Documentation/Features", "design_documents": "Assets/Documentation/DesignDocuments"}
+            }))
+            with mock.patch.dict(os.environ, {}, clear=True):
+                active = session_lifecycle.active_features(str(project))
+                closed = session_lifecycle.closed_features(str(project))
+            self.assertEqual(self.statuses(active), ["at_gate", "in_progress"])
+            self.assertEqual(self.statuses(closed), ["abandoned", "on_hold", "superseded"])
+            self.assertTrue(all(Path(item["progress_file"]).is_relative_to(configured) for item in active + closed))
+
+    def test_feature_directory_overrides_take_precedence_over_config(self):
+        with tempfile.TemporaryDirectory(prefix="configured-project-") as project:
+            project = Path(project).resolve()
+            (project / "ai-agent-core.json").write_text(json.dumps({
+                "schema_version": 1, "paths": {"features": "UnusedFeatures", "design_documents": "UnusedDesignDocuments"}
+            }))
+            with mock.patch.dict(os.environ, {"SESSION_FEATURES_ROOT": self.root}, clear=True):
+                self.assertEqual(self.statuses(session_lifecycle.active_features(str(project))),
+                                 ["at_gate", "in_progress"])
+                self.assertEqual(session_lifecycle.active_features(str(project), str(project / "ExplicitEmpty")), [])
+
+    def test_project_without_config_discovers_legacy_directory(self):
+        with tempfile.TemporaryDirectory(prefix="legacy-project-") as project:
+            project = Path(project).resolve()
+            shutil.copytree(self.root, project / "Assets/GitIgnoreAssets/Features")
+            with mock.patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(self.statuses(session_lifecycle.active_features(str(project))),
+                                 ["at_gate", "in_progress"])
 
 
 if __name__ == "__main__":
