@@ -254,8 +254,14 @@ class CodeIndex:
         """Indexed files that no .csproj claims — present in source and queryable, but
         outside what Unity builds for the current target, so typecheck.py will not
         verify them."""
-        return [os.path.join(self.root, r["path"]) for r in
+        return [self._abs(r["path"]) for r in
                 self.conn.execute("SELECT path FROM file WHERE in_csproj = 0 ORDER BY path")]
+
+    def _abs(self, rel):
+        """Absolute path of a stored (root-relative) path. normpath folds the `..` that
+        relpath writes for a file outside the root (e.g. under a symlinked Assets/ folder),
+        so it matches the realpath keys of _source_map()."""
+        return os.path.normpath(os.path.join(self.root, rel))
 
     def _meta_get(self, key):
         row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -264,7 +270,7 @@ class CodeIndex:
     def status(self):
         sources = self._source_map()
         known = {
-            os.path.join(self.root, r["path"]): (r["mtime"], r["size"])
+            self._abs(r["path"]): (r["mtime"], r["size"])
             for r in self.conn.execute("SELECT path, mtime, size FROM file")
         }
         added, modified = [], []
@@ -310,7 +316,7 @@ class CodeIndex:
         asm_ids = {r["name"]: r["id"] for r in self.conn.execute("SELECT id, name FROM assembly")}
 
         known = {
-            os.path.join(self.root, r["path"]): (r["mtime"], r["size"], r["sha1"])
+            self._abs(r["path"]): (r["mtime"], r["size"], r["sha1"])
             for r in self.conn.execute("SELECT path, mtime, size, sha1 FROM file")
         }
 
