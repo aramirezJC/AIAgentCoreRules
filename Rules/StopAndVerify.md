@@ -92,6 +92,7 @@ behaviour:
   - "[BEHAV] A claim about what an engine, library, API or CLI does at runtime is a hypothesis until grounded: its source (the host's engine-source tool, if any), `--help`, official docs, or a run."
   - "[BEHAV] Until then, say 'hypothesis' and name the check: 'Hypothesis: the getter returns a copy — check: unitysource show <Type> --member <name>'."
   - "[BEHAV] Applies to diagnoses and explanations as much as to code: a 'likely trigger' is a hypothesis, not a cause."
+  - "[BEHAV] A TDD's or Discovery doc's own stated generator/tooling mechanism for a new type is a hypothesis too — cross-check it against the host project's authoritative rule file for that domain (e.g. its persistent player-data rules for anything nested in a saved data graph) before implementing against it, even when the TDD states it confidently and in detail."
 ```
 
 ## Secrets — any command, any mode
