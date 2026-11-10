@@ -52,6 +52,7 @@ steps:
     - "A meta-review ticket or handoff note with Change and Done-when already is the approved plan: state the file list and proceed; wait only if the plan departs from it."
     - "Always name the model: 'Extending <X> (found via <search>)', or 'No existing utility found (searched: <queries>) — is there an example you want me to follow?' The engineer answers in the same round-trip as the plan; no extra stop."
     - "If the engineer points to an example the metadata did not list, propose a Systems/SystemIndex entry for it in the retrospective."
+    - "Background job + target files in an unversioned or gitignored folder (the host's personal_not_in_repo list, e.g. Assets/GitIgnoreAssets): the isolation guard refuses every edit there, even through a worktree symlink. The plan must say 'staged in <worktree>/Staging/ + one engineer `! bash` install script', never 'edit in place'. Plan for typecheck to run only after the install."
   5_implement:
     - "StopAndVerify pre-generation checks, then write."
     - "In an EnterWorktree session, run git as plain single commands from the worktree cwd. The isolation guard refuses `cd … &&`, loops and `xargs` around git. Pass multiple SHAs to one `git cherry-pick` instead of looping."
@@ -64,7 +65,7 @@ steps:
     - "port_or_cherry_pick: porting already-reviewed commits to another branch (no hand-written C#) → skip /audit and CodingStandards and say so; verify with 6_verify's port_or_cherry_pick recipe."
   6_verify:
     - "Run typecheck.py. Report its result verbatim if it fails."
-    - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new`."
+    - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new` (it only picks up files git reports as changed — a new .cs file in a gitignored folder such as Assets/GitIgnoreAssets/ is not compiled, so its types show as CS0246, until Unity regenerates the .csproj; focus the Editor once)."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
     - "A change to a tool that renders a view (preview tab, report): compare the rendered VALUES (statuses, counts, ids) against the source data for at least one real item — a model that builds is not verification. If a long-running server serves it, restart it and check the served page."
     - "A tool that writes to an external service (GitHub, Confluence, Slack): verify its reads and dry run on real data, cover the write path with a faked client, and run a real write only on a target the engineer names; otherwise report the real write as untested."

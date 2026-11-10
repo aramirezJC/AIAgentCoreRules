@@ -84,7 +84,10 @@ Two behaviours worth knowing:
   refresh once first** — a new file that is not yet in a `.csproj` will not be compiled,
   and the script says so when it detects one. `--include-new` attaches such files (from
   the git changes) to the assembly Unity would put them in: nearest `.asmdef`, else the
-  predefined assemblies.
+  predefined assemblies. It only picks up files git reports as changed (`git diff` plus
+  `ls-files --others --exclude-standard`): a new `.cs` file in a gitignored folder (such as
+  `Assets/GitIgnoreAssets/`) is not compiled, so its types show as CS0246, until Unity
+  regenerates the `.csproj` (focus the Editor once).
 - Code inside `#if SYMBOL` is compiled out when the `.csproj` does not define `SYMBOL`,
   and the check still reports clean. Pass `--define SYMBOL` (repeatable) to include it.
 - **Git worktrees** (background jobs, `.claude/worktrees/<name>`) hold only tracked files,
