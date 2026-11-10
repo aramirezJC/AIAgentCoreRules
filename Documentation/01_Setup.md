@@ -55,7 +55,8 @@ python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py         # ap
 
 It merges `Tools/setup/settings.core.json` into `.claude/settings.json` (session hooks and the
 worktree settings below), then each host layer's `Setup/settings.host.json`; links every layer's
-skills into `.claude/skills/`; and creates `CLAUDE.md` with the core and new host imports if it is missing.
+skills into `.claude/skills/` (re-linking a skill that moved between layers, whose old link is now
+dangling); and creates `CLAUDE.md` with the core and new host imports if it is missing.
 It only adds or updates what the fragments define, backs `settings.json` up to
 `settings.json.bak` before changing it, and is safe to re-run — run it again after pulling
 AIAgentCoreRules or the host layer. Details: [[Tools/setup/README|setup README]].

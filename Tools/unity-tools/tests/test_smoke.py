@@ -87,6 +87,26 @@ class FakeProjectTests(unittest.TestCase):
         self.assertIn("Thing", result.stdout)
         self.assertTrue((self.root / "Library" / "codeindex.sqlite").is_file())
 
+    def test_codeindex_stays_fresh_with_symlinked_folder_outside_root(self):
+        # A folder symlinked into Assets/ from outside the project is stored as ../X.cs;
+        # it must not be removed and re-added on every refresh.
+        outside = Path(tempfile.mkdtemp(prefix="unity-tools-ext-"))
+        self.addCleanup(shutil.rmtree, outside, True)
+        (outside / "Linked.cs").write_text("namespace Demo\n{\n    public class Linked\n    {\n    }\n}\n")
+        (self.root / "Assets" / "Ext").symlink_to(outside, target_is_directory=True)
+        csproj = CSPROJ.replace('<Compile Include="Assets\\Scripts\\Caller.cs" />',
+                                '<Compile Include="Assets\\Scripts\\Caller.cs" />\n'
+                                '    <Compile Include="Assets\\Ext\\Linked.cs" />')
+        self.assertIn("Linked.cs", csproj)
+        (self.root / "Assembly-CSharp.csproj").write_text(csproj)
+
+        first = run("codeindex.py", "--project", str(self.root), "where", "Linked")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("Linked", first.stdout)
+        second = run("codeindex.py", "--project", str(self.root), "where", "Linked")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertNotIn("index refreshed", second.stdout + second.stderr)
+
     def test_usages_finds_member_call(self):
         result = run("usages.py", "--project", str(self.root), "IThing", "--members", "Run")
         self.assertEqual(result.returncode, 0, result.stderr)

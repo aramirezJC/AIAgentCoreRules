@@ -35,8 +35,10 @@ there or from root `AIMetaData/`. Merge rules:
 objects merge key by key, lists of plain values are unioned, other values are set, and hooks are
 matched by command — an existing hook with the same command is left alone. Nothing else is deleted:
 a skill link that points elsewhere is reported as a conflict and kept. The one exception is a
-dangling skill link into a layer's `Skills/` folder (a renamed or deleted skill): it is reported
-as `skills: prune stale <name>` and removed (`check` only reports it).
+dangling skill link into a layer's `Skills/` folder (a renamed, deleted or moved skill): it is
+reported as `skills: prune stale <name>` and removed (`check` only reports it). Pruning runs
+before linking, so a skill that moved to another layer (e.g. `/uses`, host → core) is re-linked
+to its new layer in the same run instead of reported as a conflict.
 
 
 ## Codex setup
