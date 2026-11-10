@@ -54,7 +54,7 @@ steps:
 
 ```yaml
 rules:
-  - "Never force-push. Push the target branch only when the engineer explicitly asks in this request; before pushing, show `git log --oneline --first-parent origin/<branch>..HEAD` so commits unrelated to this landing are visible before they go out."
+  - "Never force-push. Push the target branch only when the engineer explicitly asks in this request; before pushing, show `git log --oneline --first-parent origin/<branch>..HEAD` so commits unrelated to this landing are visible before they go out. If that list contains commits that are not from this landing, push nothing yet: list them and ask whether to push them too, even when the request was 'push'. Push the repos that only carry this landing's commits."
   - "Running /land-worktree (or answering yes in /end-session) is the confirmation to merge, including into the default branch. Do not ask again before merging."
   - "Never commit the merge before the engineer says keep."
   - "Removing a worktree deletes only its folder: symlinked directories (worktree.symlinkDirectories) are links, so the main checkout's copies are untouched."
