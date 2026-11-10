@@ -44,6 +44,9 @@ Notes
   - An .asmdef added in a worktree is wired into Assembly-CSharp(-Editor) when it is
     autoReferenced and the main checkout has its .csproj; with no .csproj it cannot be
     compiled, and the script warns so its CS0246 errors are not taken for real ones.
+  - A references entry added to an existing .asmdef is not in its .csproj until Unity
+    regenerates the project files (worktree or main checkout). The script warns naming
+    the pair; CS0246/CS0234 errors for the referenced types are false until then.
 """
 
 import argparse
@@ -199,6 +202,13 @@ def main():
                   % ", ".join(sorted(project.unbuilt_asmdefs)), file=sys.stderr)
         # The borrowed .csproj files cannot list files added in this worktree.
         args.include_new = True
+
+    stale_refs = project.missing_asmdef_references()
+    if stale_refs:
+        print("warning: .asmdef reference(s) not in the .csproj yet: %s\n"
+              "         CS0246/CS0234 errors in those assemblies for the referenced types are\n"
+              "         not real. Let Unity regenerate the project files to verify."
+              % ", ".join("%s -> %s" % pair for pair in stale_refs), file=sys.stderr)
 
     if args.define:
         for asm in project.assemblies.values():

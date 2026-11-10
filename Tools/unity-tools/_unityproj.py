@@ -84,6 +84,18 @@ def editor_version(root):
     raise ProjectError("Could not read m_EditorVersion from ProjectVersion.txt")
 
 
+def _meta_guid(meta_path):
+    """The `guid:` of a Unity .meta file, lower-case, or None."""
+    try:
+        with open(meta_path, errors="replace") as f:
+            for line in f:
+                if line.startswith("guid:"):
+                    return line.split(":", 1)[1].strip().lower()
+    except OSError:
+        pass
+    return None
+
+
 def find_compiler(root):
     """Return (dotnet, csc.dll) from the Unity install matching this project."""
     version = editor_version(root)
@@ -272,6 +284,58 @@ class Project:
                 except (OSError, ValueError):
                     continue
         return found
+
+    def missing_asmdef_references(self):
+        """[(assembly, referenced assembly)] for every `references` entry of an .asmdef
+        changed since Unity last regenerated the project files that its .csproj does not
+        list yet. Until Unity regenerates them, the referenced types fail with false
+        CS0246 / CS0234 errors. Only changed .asmdef files count: Unity leaves orphaned
+        .csproj files (platform-gated assemblies) whose references are never filled in."""
+        newest_sync = max(os.path.getmtime(a.csproj) for a in self.assemblies.values())
+
+        def unsynced(path):
+            if self.is_worktree:
+                synced = os.path.join(self.project_files_root, os.path.relpath(path, self.root))
+                try:
+                    with open(path, "rb") as mine, open(synced, "rb") as theirs:
+                        if mine.read() != theirs.read():
+                            return True
+                except OSError:
+                    return True
+                path = synced
+            return os.path.getmtime(path) > newest_sync
+
+        asmdefs = []
+        by_guid = {}
+        for top in ("Assets", "Packages"):
+            for dirpath, dirnames, filenames in os.walk(os.path.join(self.root, top)):
+                dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                for filename in filenames:
+                    if not filename.endswith(".asmdef"):
+                        continue
+                    path = os.path.join(dirpath, filename)
+                    try:
+                        with open(path, errors="replace") as fh:
+                            data = json.load(fh)
+                    except (OSError, ValueError):
+                        continue
+                    asmdefs.append((path, data))
+                    guid = _meta_guid(path + ".meta")
+                    if guid and data.get("name"):
+                        by_guid[guid] = data["name"]
+
+        live = self.live()
+        missing = []
+        for path, data in asmdefs:
+            name = data.get("name")
+            if name not in live or not unsynced(path):
+                continue
+            asm = self.assemblies[name]
+            for ref in data.get("references") or []:
+                dep = by_guid.get(ref[len("GUID:"):].lower()) if ref.startswith("GUID:") else ref
+                if dep in live and dep not in asm.proj_refs:
+                    missing.append((name, dep))
+        return sorted(set(missing))
 
     # -- lookups ---------------------------------------------------------
 

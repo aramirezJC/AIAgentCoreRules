@@ -1,10 +1,12 @@
 """Smoke tests: every script starts from this folder, and codeindex / usages answer on a tiny
 synthetic Unity project (ProjectVersion.txt + one generated-style .csproj). typecheck and
 unitysource need an installed Unity editor, so only their --help is covered here."""
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -106,6 +108,61 @@ class FakeProjectTests(unittest.TestCase):
         second = run("codeindex.py", "--project", str(self.root), "where", "Linked")
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertNotIn("index refreshed", second.stdout + second.stderr)
+
+    def test_asmdef_reference_missing_from_csproj_is_reported(self):
+        sys.path.insert(0, str(TOOL_DIR))
+        from _unityproj import Project
+
+        lib = self.root / "Assets" / "Lib"
+        lib.mkdir()
+        (lib / "Lib.asmdef").write_text('{"name": "Lib"}')
+        (lib / "Lib.asmdef.meta").write_text("fileFormatVersion: 2\nguid: ABC123\n")
+        user = self.root / "Assets" / "User"
+        user.mkdir()
+        (user / "User.asmdef").write_text('{"name": "User", "references": ["GUID:abc123"]}')
+        empty = CSPROJ.replace("Assets\\Scripts", "Assets\\None")
+        (self.root / "Lib.csproj").write_text(empty)
+        (self.root / "User.csproj").write_text(empty)
+
+        # Edited before the last project sync: an orphaned .csproj, not a pending reference.
+        os.utime(user / "User.asmdef", (1, 1))
+        self.assertEqual(Project(str(self.root)).missing_asmdef_references(), [])
+
+        # Edited after the last sync: Unity has not added the reference yet.
+        os.utime(user / "User.asmdef", (time.time() + 60, time.time() + 60))
+        self.assertEqual(Project(str(self.root)).missing_asmdef_references(), [("User", "Lib")])
+
+        listed = empty.replace("</Project>", '  <ItemGroup>\n    <ProjectReference Include="Lib.csproj" />\n'
+                                             "  </ItemGroup>\n</Project>")
+        (self.root / "User.csproj").write_text(listed)
+        self.assertEqual(Project(str(self.root)).missing_asmdef_references(), [])
+
+    def test_worktree_asmdef_reference_missing_from_main_csproj_is_reported(self):
+        sys.path.insert(0, str(TOOL_DIR))
+        from _unityproj import Project
+
+        main = self.root
+        worktree = Path(tempfile.mkdtemp(prefix="unity-tools-wt-"))
+        self.addCleanup(shutil.rmtree, worktree, True)
+        for checkout in (main, worktree):
+            lib = checkout / "Assets" / "Lib"
+            lib.mkdir(parents=True)
+            (lib / "Lib.asmdef").write_text('{"name": "Lib"}')
+            (lib / "Lib.asmdef.meta").write_text("guid: abc123\n")
+            (checkout / "Assets" / "User").mkdir()
+            (checkout / "Assets" / "User" / "User.asmdef").write_text('{"name": "User"}')
+        os.utime(main / "Assets" / "User" / "User.asmdef", (1, 1))
+        empty = CSPROJ.replace("Assets\\Scripts", "Assets\\None")
+        (main / "Lib.csproj").write_text(empty)
+        (main / "User.csproj").write_text(empty)
+
+        # Fresh worktree files are newer than every .csproj, but match the main checkout.
+        self.assertEqual(Project(str(worktree), str(main)).missing_asmdef_references(), [])
+
+        (worktree / "Assets" / "User" / "User.asmdef").write_text(
+            '{"name": "User", "references": ["GUID:abc123"]}')
+        self.assertEqual(Project(str(worktree), str(main)).missing_asmdef_references(),
+                         [("User", "Lib")])
 
     def test_usages_finds_member_call(self):
         result = run("usages.py", "--project", str(self.root), "IThing", "--members", "Run")

@@ -100,6 +100,10 @@ Two behaviours worth knowing:
   checkout has its `.csproj`. If the main checkout has no `.csproj` for it, its sources
   cannot be compiled: the script prints a warning naming it, and CS0246 errors for its
   types in other assemblies are false — let Unity refresh the main checkout on the branch.
+  A `references` entry added to an existing `.asmdef` is not in the main checkout's
+  `.csproj` either: CS0246/CS0234 for the newly referenced assembly's types in that
+  assembly are false until Unity regenerates the project files (after landing). The
+  script warns naming each `assembly -> reference` pair, in a worktree or the main checkout.
 - `--project` pointing at a different checkout than the one you are in compiles **that
   checkout's** files and can report clean for edits it never saw. The script warns when
   this happens.
