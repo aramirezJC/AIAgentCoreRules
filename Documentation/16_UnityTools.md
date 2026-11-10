@@ -148,6 +148,13 @@ Unity leaves project files behind when an assembly is renamed or removed; this p
 about 26 from 2023–24. Both `typecheck.py` and `usages.py` detect and ignore them;
 `typecheck.py --verbose` lists them.
 
+A second kind is not detected: `.csproj` files Unity stopped regenerating (here 6 dated
+2026-09-17 — Adjust, Disney.RainbowCore.Environment.Android/iOS,
+Disney.RainbowCore.SignInWithGoogle.Android/iOS, JamCity.InboxSdk.Editor). Their hint paths
+still resolve, so they count as live, but their ProjectReferences are not maintained. A check
+that compares `.asmdef` references to `.csproj` must limit itself to `.asmdef` files changed
+since the last sync, as `missing_asmdef_references` does.
+
 ## Tests
 
 ```bash

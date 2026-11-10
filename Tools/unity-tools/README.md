@@ -274,3 +274,10 @@ project currently has ~26 such files dating to 2023–24, still listing sources 
 since moved. Both scripts detect them (under half their references resolve on disk) and
 ignore them; `typecheck.py --verbose` lists which. They are harmless but they do shadow
 live assemblies in a naive file-to-assembly lookup, which is why the detection exists.
+
+A second kind is not detected: `.csproj` files Unity stopped regenerating (in this project 6
+dated 2026-09-17 — Adjust, Disney.RainbowCore.Environment.Android/iOS,
+Disney.RainbowCore.SignInWithGoogle.Android/iOS, JamCity.InboxSdk.Editor). Their hint paths
+still resolve, so they count as live, but their ProjectReferences are not maintained. A check
+that compares `.asmdef` references to `.csproj` must limit itself to `.asmdef` files changed
+since the last sync, as `missing_asmdef_references` does.
