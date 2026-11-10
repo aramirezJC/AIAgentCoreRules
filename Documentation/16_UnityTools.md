@@ -56,7 +56,10 @@ python3 typecheck.py Assembly-CSharp-Editor --define USING_TOOLS   # code behind
   script warns about it. An `.asmdef` added in the worktree is referenced from
   `Assembly-CSharp` / `Assembly-CSharp-Editor` when it is `autoReferenced` and the main
   checkout has its `.csproj`. If there is no `.csproj`, the script warns: CS0246 errors for
-  its types are false — let Unity refresh the main checkout on the branch.
+  its types are false — let Unity refresh the main checkout on the branch. A `references`
+  entry added to an existing `.asmdef` is not in the main checkout's `.csproj` either:
+  CS0246/CS0234 for the newly referenced assembly's types in that assembly are false until
+  Unity regenerates the project files (after landing). The script warns naming each pair.
 - It is a type check, not a build: it catches signature and reference breakage, not broken
   `[SerializeField]` wiring or missing assets.
 
