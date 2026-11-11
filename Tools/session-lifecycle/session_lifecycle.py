@@ -42,6 +42,7 @@ Hooks must never break a session: hook-* subcommands always exit 0.
 """
 
 import argparse
+import collections
 import datetime
 import json
 import os
@@ -329,6 +330,25 @@ def transcript_started_at(transcript_path):
     return None
 
 
+def main_model(transcript_path):
+    """The model behind most of the transcript's assistant messages ('claude-sonnet-5'), or None."""
+    if not transcript_path or not os.path.isfile(transcript_path):
+        return None
+    counts = collections.Counter()
+    with open(transcript_path, errors="replace") as handle:
+        for line in handle:
+            if '"model"' not in line:
+                continue
+            try:
+                message = json.loads(line).get("message")
+            except ValueError:
+                continue
+            model = message.get("model") if isinstance(message, dict) else None
+            if model and model != "<synthetic>":
+                counts[model] += 1
+    return counts.most_common(1)[0][0] if counts else None
+
+
 def import_roots(project_dir):
     """Directories imported by CLAUDE.md, plus their real paths (they are often symlinks)."""
     imports, roots = [], set()
@@ -516,6 +536,7 @@ def render(folder, state, project_dir):
         "| --- | --- |",
         "| Session | `%s` |" % state["session_id"],
         "| Agent | %s |" % state.get("agent", "claude"),
+        "| Model | %s |" % (state.get("model") or "–"),
         "| Name | %s |" % (state.get("name") or "–"),
         "| Title | %s |" % (state.get("title") or "–"),
         "| Lane | %s |" % (state.get("lane") or "**not set**"),
@@ -621,6 +642,7 @@ def compile_folder(folder, state, project_dir):
     # A resumed session's transcript may predate tracking; report the real start.
     state["started_at"] = transcript_started_at(state.get("transcript_path")) or state["started_at"]
     state["agent"] = "codex" if codex_transcript.is_codex(state.get("transcript_path")) else "claude"
+    state["model"] = main_model(state.get("transcript_path"))
     state["tokens"] = token_report(folder, state)
     state["typecheck"] = dict(load_typecheck(folder),
                               runs=typecheck_runs(state.get("transcript_path"), state["session_id"]))
