@@ -107,22 +107,29 @@ One row per file added, modified or removed; types named so the reviewer can fin
 ## Batch plan table
 
 The `plan` step's proposal. One bold line per batch (`**Batch <k>/<N> — <title>** · <total> lines`),
-then one table row per file it adds, modifies or removes. No bullets or numbered lists anywhere
-in the proposal. End with one line totalling the files and lines across all batches.
+then one table row per file it adds, modifies or removes, then one summary table for the whole
+plan. Tables only: no bullets, numbered lists or listing prose anywhere in the proposal.
 
-**Batch 1/2 — Foo service contract** · ~45 lines
+**Batch 1/2 — Foo service contract** · ~55 lines
 
-| Type/File changing | Why (TLDR) | How (TLDR) | Line count |
+| Type/File changing | Type of change | Why (TLDR) | How (TLDR) | Line count |
+|---|---|---|---|---|
+| `IFooService` · `Scripts/Foo/IFooService.cs` | 🟢 **NEW** | HUD depends on the service, not the manager (TDD §3.2) | New interface: `Load()`, `IsReady` | ~20 |
+| `FooManager` · `Scripts/Foo/FooManager.cs` | 🟡 **MOD** | Design step 2 | Implements `IFooService` | ~25 |
+| `FooHelper` · `Scripts/Foo/FooHelper.cs` | 🔴 **DELETE** | Logic folded into `FooManager` | File removed | −10 |
+
+| Batch | Files | Lines | Within batch_size |
 |---|---|---|---|
-| `IFooService` · `Scripts/Foo/IFooService.cs` (added) | HUD depends on the service, not the manager (TDD §3.2) | New interface: `Load()`, `IsReady` | ~20 |
-| `FooManager` · `Scripts/Foo/FooManager.cs` (modified) | Design step 2 | Implements `IFooService` | ~25 |
+| 1/2 Foo service contract | 3 | ~55 | yes |
+| 2/2 HUD wiring | 2 | ~120 | yes |
 
 ```yaml
 batch_plan_table:
-  type_file:  "The type first, then the path, then (added | modified | removed | generated)."
-  why_how:    "One short clause each. Why cites the TDD section or design decision; How names the concrete change."
-  line_count: "Added + removed lines. Files already written in the worktree: the exact count from git diff --numstat <base> (or wc -l for a new untracked file). Not yet written: an estimate from the TDD design, prefixed ~."
-  totals:     "Each batch's bold line carries its line total; the closing line checks each batch against batch_size (≤ ~300 lines, ≤ ~5 files) and flags any that exceed it."
+  type_file:      "The type first, then the path. A generated file adds (generated) after the path."
+  type_of_change: "🟢 **NEW** · 🟡 **MOD** · 🔴 **DELETE** — the change-tag emoji colors of Rules/ChangeClassification.md, so the plan matches the TDD's file list and diagrams."
+  why_how:        "One short clause each. Why cites the TDD section or design decision; How names the concrete change."
+  line_count:     "Added + removed lines. Files already written in the worktree: the exact count from git diff --numstat <base> (or wc -l for a new untracked file). Not yet written: an estimate from the TDD design, prefixed ~."
+  summary:        "One row per batch: files, line total, and whether it is within batch_size (≤ ~300 lines, ≤ ~5 files); 'no — <reason>' when it exceeds it."
 ```
 
 ## Rules
