@@ -55,14 +55,16 @@ _ATTR_LINE_RE = re.compile(r"^\s*\[.*\]\s*$")
 
 
 class TypeDecl:
-    __slots__ = ("name", "arity", "namespace", "container", "kind", "line", "access",
-                 "is_abstract", "is_sealed", "is_static", "is_partial", "bases", "members")
+    __slots__ = ("name", "arity", "namespace", "container", "kind", "line", "end_line",
+                 "signature", "access", "is_abstract", "is_sealed", "is_static", "is_partial",
+                 "bases", "members", "attributes")
 
     def __init__(self, **kw):
         for slot in self.__slots__:
             setattr(self, slot, kw.get(slot))
         self.bases = self.bases or []
         self.members = self.members or []
+        self.attributes = self.attributes or []
 
     def __repr__(self):
         return "<TypeDecl %s.%s %s line=%d bases=%d members=%d>" % (
@@ -70,12 +72,13 @@ class TypeDecl:
 
 
 class MemberDecl:
-    __slots__ = ("name", "kind", "signature", "line", "access", "is_static",
-                 "is_abstract", "is_virtual", "is_override", "is_async")
+    __slots__ = ("name", "kind", "signature", "line", "end_line", "access", "is_static",
+                 "is_abstract", "is_virtual", "is_override", "is_async", "attributes")
 
     def __init__(self, **kw):
         for slot in self.__slots__:
             setattr(self, slot, kw.get(slot))
+        self.attributes = self.attributes or []
 
 
 def blank_literals(text):
@@ -242,29 +245,105 @@ def _access_of(text):
     return None
 
 
+def _leading_attributes(clean_line, raw_line):
+    """Attribute sections at the start of a line: `[A, B(x)] [C] public int X;`.
+
+    Returns (end column, [(simple name, raw text)], is_global). Columns line up between the
+    clean and raw lines because blank_literals preserves length, so names come from the clean
+    line (a `]` inside a string cannot end a section) and the raw text, arguments included,
+    from the raw line. is_global marks `[assembly: …]` / `[module: …]`, which belong to no
+    declaration.
+    """
+    attrs, pos, n, is_global = [], 0, len(clean_line), False
+    while True:
+        while pos < n and clean_line[pos] in " \t":
+            pos += 1
+        if pos >= n or clean_line[pos] != "[":
+            break
+        depth, end, cuts = 0, None, []
+        for k in range(pos, n):
+            ch = clean_line[k]
+            if ch in "[(<{":
+                depth += 1
+            elif ch in "])>}":
+                depth -= 1
+                if depth == 0:
+                    end = k
+                    break
+            elif ch == "," and depth == 1:
+                cuts.append(k)
+        if end is None:
+            break
+        bounds = [pos] + cuts + [end]
+        for a, b in zip(bounds, bounds[1:]):
+            clean_part = clean_line[a + 1:b].strip()
+            target = re.match(r"(\w+)\s*:(?!:)\s*", clean_part)
+            if target:
+                is_global = is_global or target.group(1) in ("assembly", "module")
+                clean_part = clean_part[target.end():]
+            name = _simple_name(clean_part.split("(", 1)[0])
+            if re.fullmatch(r"[A-Za-z_]\w*", name or ""):
+                raw_part = raw_line[a + 1:b].strip()
+                if target:
+                    raw_part = raw_part[target.end():] if raw_part.startswith(target.group(0)) else raw_part
+                attrs.append((name, raw_part))
+        pos = end + 1
+    return (pos if attrs else 0), attrs, is_global
+
+
+def _block_end(depths_after, here, header_end):
+    """Last line of a declaration whose header ends on header_end. A header that opened a
+    body (depth after it is deeper than the declaration's own) runs to the line where the
+    depth returns; otherwise the declaration ends on its header's last line."""
+    k = header_end
+    while k < len(depths_after) and depths_after[k] > here:
+        k += 1
+    return min(k, len(depths_after) - 1)
+
+
 class SourceParser:
     def parse(self, path, text):
         clean = blank_literals(text)
         clean_lines = clean.split("\n")
         raw_lines = text.split("\n")
 
-        depths = []
+        depths, depths_after = [], []
         depth = 0
         for line in clean_lines:
             depths.append(depth)
             depth += line.count("{") - line.count("}")
+            depths_after.append(depth)
 
         types = []
         ns_stack = []          # (name, depth) ; file-scoped uses depth -1
         type_stack = []        # (TypeDecl, depth)
         consumed_until = -1
+        pending_attrs = []     # attribute sections on lines of their own, waiting for a declaration
 
         for i, line in enumerate(clean_lines):
             if i <= consumed_until:
                 continue
             stripped = line.strip()
-            if not stripped or stripped.startswith("#") or _ATTR_LINE_RE.match(line):
+            if not stripped or stripped.startswith("#"):
                 continue
+
+            # Attributes: a line of its own is held for the next declaration; a leading
+            # section on a declaration line is taken and blanked (columns kept), so the
+            # declaration is matched as if it were not there.
+            attr_end, attrs, is_global = _leading_attributes(line, raw_lines[i])
+            if attrs:
+                if not line[attr_end:].strip():
+                    if not is_global:
+                        pending_attrs.extend(attrs)
+                    continue
+                line = " " * attr_end + line[attr_end:]
+                clean_lines[i] = line
+                attrs = pending_attrs + ([] if is_global else attrs)
+            elif _ATTR_LINE_RE.match(line):
+                continue
+            else:
+                attrs = pending_attrs
+            pending_attrs = []
 
             here = depths[i]
 
@@ -291,6 +370,8 @@ class SourceParser:
             decl = self._try_type(clean_lines, raw_lines, i, here, ns_stack, type_stack)
             if decl is not None:
                 type_decl, end_line = decl
+                type_decl.end_line = _block_end(depths_after, here, end_line) + 1
+                type_decl.attributes = attrs
                 types.append(type_decl)
                 type_stack.append((type_decl, here))
                 consumed_until = end_line
@@ -300,6 +381,9 @@ class SourceParser:
                 member = self._try_member(clean_lines, raw_lines, i, type_stack[-1][0])
                 if member is not None:
                     member_decl, end_line = member
+                    member_decl.end_line = (i + 1 if member_decl.kind == "enum_member"
+                                            else _block_end(depths_after, here, end_line) + 1)
+                    member_decl.attributes = attrs
                     type_stack[-1][0].members.append(member_decl)
                     consumed_until = end_line
 
@@ -360,6 +444,7 @@ class SourceParser:
             container=container,
             kind=kind,
             line=i + 1,
+            signature=" ".join((line[:tail_start] + " " + body).split())[:600],
             access=_access_of(line[: match.start()]),
             is_abstract=int(bool(re.search(r"\babstract\b", line[: match.start()]))),
             is_sealed=int(bool(re.search(r"\bsealed\b", line[: match.start()]))),

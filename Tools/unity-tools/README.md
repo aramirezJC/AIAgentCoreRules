@@ -25,13 +25,26 @@ Every script must:
 - Exit non-zero on failure so it can be used in a hook or CI step
 - Never write into `Assets/`, and be safe to run while the Unity editor is open
 
+## Running them
+
+Call a script by its **literal path** from the project root, one plain command per call:
+
+```bash
+python3 GitIgnoredExternals/AIAgentCoreRules/Tools/unity-tools/codeindex.py where LivesManager
+```
+
+Never through a shell variable (`R=…; python3 $R/codeindex.py`): in a worktree-isolated
+session the guard cannot tell what a computed program path runs and refuses the command
+("runs python with a value computed at runtime (the variable R)"), which is how agents
+ended up falling back to grep (audit 2026-11-10). The examples below omit the directory.
+
 ## Scripts
 
 | Script | Purpose |
 |---|---|
 | `typecheck.py` | Compile assemblies with Unity's bundled Roslyn and report only errors |
-| `codeindex.py` | SQLite index of every type and member declaration; relationship queries |
-| `usages.py` | Map every use of a type, partitioned by which members each site calls |
+| `codeindex.py` | SQLite index of every type, member and attribute declaration, with start/end lines; relationship queries and source slices |
+| `usages.py` | Every use of a type or member as `path:line: code`, partitioned by what each site does |
 | `unitysource.py` | Decompiled Unity engine source (UnityEngine.* / UnityEditor.*), cached per Unity version as it is asked for |
 | `_unityproj.py` | Shared model of the generated `.csproj` files (not run directly) |
 | `_csparse.py` | Declaration-level C# parser used by `codeindex.py` (not run directly) |
@@ -41,8 +54,11 @@ Every script must:
 | Question | Tool |
 |---|---|
 | Does my change compile? | `typecheck.py` |
-| What does this type look like / who implements it? | `codeindex.py` |
-| Who *calls* this member? | `usages.py` |
+| Where is this type *or member* declared? Show me just its source. | `codeindex.py where` / `show` |
+| What does this type look like, inherited members included? Who implements it? | `codeindex.py members --inherited` / `implementers` |
+| What carries `[SomeAttribute]`? | `codeindex.py attributed` |
+| Who *uses* this type, or *calls* this member? | `usages.py` |
+| Free text (a log message, a string key, `#if !RC`) | `grep` — the index does not hold it |
 | What does this *Unity engine* API really do? | `unitysource.py` |
 
 `codeindex.py` knows declarations, not call sites. `usages.py` knows call sites, but
@@ -125,16 +141,28 @@ answered without reading files. The codebase is ~5,400 indexed files / ~7,300 ty
 ~71,000 members — roughly 24 MB of source, several times what fits in an agent context.
 
 ```bash
-python3 codeindex.py build                    # ~8s cold, ~0.5s incremental
+python3 codeindex.py build                    # ~6s cold, ~0.5s incremental
+python3 codeindex.py where IEventQuery                        # types and members named IEventQuery
+python3 codeindex.py where FetchEvents                        # every member called FetchEvents
+python3 codeindex.py where GemEventManager.FetchEvents        # just that type's
+python3 codeindex.py show GemEventManager.FetchEvents         # its source lines, numbered
+python3 codeindex.py show LivesManager --max-lines 80         # a type, leading [attributes] and /// docs included
 python3 codeindex.py implementers IEventManager
 python3 codeindex.py subclasses Screen                        # transitive
 python3 codeindex.py members DummyEventManager --kind method
+python3 codeindex.py members StateLevelExtender --inherited   # + members of indexed bases and interfaces
 python3 codeindex.py bases GemEventManager
-python3 codeindex.py where IEventQuery
+python3 codeindex.py attributed RootPlayerData                # [RootPlayerData] or [RootPlayerDataAttribute]
 python3 codeindex.py types --assembly Assembly-CSharp --kind interface
 python3 codeindex.py sql "SELECT name, COUNT(*) FROM base_ref GROUP BY name"
 python3 codeindex.py schema                   # tables + example queries
 ```
+
+`where`, `members`, `show` and `attributed` print `path:start-end` and the **full**
+signature. `start-end` maps straight onto Read: `offset=start`, `limit=end-start+1`. `show`
+caps each declaration at `--max-lines` (default 200) and prints the Read call for the rest.
+`members --inherited` walks base lists by simple name (like `subclasses`), nearest first, and
+ends with `not indexed: …` for bases with no source in the project (`MonoBehaviour`, BCL types).
 
 `--json` on any query. The database lives at `Library/codeindex.sqlite` — gitignored,
 and outside `Assets/` so Unity does not try to import it.
@@ -188,6 +216,14 @@ name collision can otherwise produce a cycle that `UNION` alone will not termina
 appears even though it is `#if !RC`. The index answers "what exists in source", not
 "what exists in an RC build".
 
+End lines come from the same brace-depth pass as membership: a type or member ends on the
+line where depth returns to its own (a field, abstract member or `=>` body on its terminator
+line). An `#if` that leaves braces unbalanced skews this the same way it skews membership.
+
+Attributes are stored per type or member (`attribute` table), names as written: a section on
+its own line belongs to the next declaration, an inline one (`[SerializeField] private int _x;`)
+to its own line. `[assembly: …]` / `[module: …]` belong to nothing and are not stored.
+
 Member signatures are stored as the **raw source text**, not parsed into components.
 Multi-line signatures, expression bodies, and generic constraints make full parsing
 high-noise, and the raw line is what you actually want to read anyway.
@@ -204,15 +240,22 @@ the question behind any interface split.
 
 ```bash
 python3 usages.py IEventManager
+python3 usages.py FetchEvents                                 # a member, in any type
+python3 usages.py GemEventManager.FetchEvents                 # declarations narrowed to that type
 python3 usages.py IEventManager --members FetchEvents,FetchEvent,RefreshEventStatus
 python3 usages.py IPrizeManager --assembly Assembly-CSharp --full
 ```
 
-Output is three buckets: `DECLARES / IMPLEMENTS`, `CALLS <members>` (listed in full,
-with line numbers), and everything else (summarised per assembly unless `--full`).
+Every site prints as `path:line: code`, in buckets: `DECLARES` (from codeindex),
+`IMPLEMENTS / EXTENDS` (a base list naming the type), `CALLS <members>` (with `--members`),
+and `REFERENCES`. Each bucket shows `--limit` lines (default 60) and summarises the rest per
+assembly; `--full` lifts the cap.
 
-**The buckets are lexical, not semantic.** A file lands in `CALLS` if a member name
-appears with a `(` anywhere in it — a local method with a colliding name will show up.
+**The buckets are lexical, not semantic.** A line lands in `CALLS` if a member name
+appears with a `(` in a file that mentions the symbol — a local method with a colliding name
+will show up. For `Type.Member` only the declarations are narrowed; references are every
+`\bMember\b`, and the output says so. When codeindex has no declaration for the symbol it
+says that too, rather than printing an empty `DECLARES`.
 Use it to narrow a large surface down to the handful of files worth reading, then
 confirm with `typecheck.py`, which is authoritative.
 
@@ -234,15 +277,15 @@ It found the DT-20157 root cause (`MinMaxGradientBlittable.ToMinMaxGradient` →
 `new Gradient(IntPtr)`, a non-owning view over native memory).
 
 ```bash
-python3 $R/unitysource.py where MinMaxGradientBlittable           # which module declares it
-python3 $R/unitysource.py show Gradient                           # outline: one line per member
-python3 $R/unitysource.py show Gradient --member Gradient         # full bodies of the constructors
-python3 $R/unitysource.py show ParticleSystem.MainModule --member startColor
-python3 $R/unitysource.py show Gradient --full                    # whole type (capped by --max-lines)
-python3 $R/unitysource.py module UnityEngine.UIModule             # whole module, for wide greps
-python3 $R/unitysource.py grep "new Gradient\(" -C 2              # search everything cached so far
-python3 $R/unitysource.py cached                                  # what has been pulled in
-python3 $R/unitysource.py status                                  # version, paths, ilspycmd
+python3 unitysource.py where MinMaxGradientBlittable           # which module declares it
+python3 unitysource.py show Gradient                           # outline: one line per member
+python3 unitysource.py show Gradient --member Gradient         # full bodies of the constructors
+python3 unitysource.py show ParticleSystem.MainModule --member startColor
+python3 unitysource.py show Gradient --full                    # whole type (capped by --max-lines)
+python3 unitysource.py module UnityEngine.UIModule             # whole module, for wide greps
+python3 unitysource.py grep "new Gradient\(" -C 2              # search everything cached so far
+python3 unitysource.py cached                                  # what has been pulled in
+python3 unitysource.py status                                  # version, paths, ilspycmd
 ```
 
 ### The cache grows as questions come up

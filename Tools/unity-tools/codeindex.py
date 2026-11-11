@@ -12,11 +12,13 @@ Usage
   codeindex.py status                       what is out of date
   codeindex.py schema                       tables + example queries
 
-  codeindex.py where <Name>                 where a type is declared
+  codeindex.py where <Name|Type.Member>     where a type or member is declared: path:start-end  signature
+  codeindex.py show <Type|Type.Member>      print just that declaration's source lines
   codeindex.py implementers <Interface>     types whose base list names it
   codeindex.py subclasses <Base> [--direct] transitive by default
   codeindex.py bases <Type>                 what it inherits / implements
-  codeindex.py members <Type> [--kind method]
+  codeindex.py members <Type> [--kind method] [--inherited]
+  codeindex.py attributed <Attribute>       types and members carrying [Attribute]
   codeindex.py types [--assembly A] [--namespace N] [--kind interface]
   codeindex.py sql "SELECT ..."             read-only passthrough
 
@@ -34,6 +36,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -42,7 +45,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _csparse import SourceParser  # noqa: E402
 from _unityproj import Project, ProjectError, find_project_root, main_checkout_of  # noqa: E402
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 
 SCHEMA = """
 PRAGMA foreign_keys = ON;
@@ -78,6 +81,8 @@ CREATE TABLE IF NOT EXISTS type(
     kind        TEXT NOT NULL,
     file_id     INTEGER NOT NULL REFERENCES file(id) ON DELETE CASCADE,
     line        INTEGER NOT NULL,
+    end_line    INTEGER NOT NULL,
+    signature   TEXT NOT NULL DEFAULT '',
     access      TEXT,
     is_abstract INTEGER, is_sealed INTEGER, is_static INTEGER, is_partial INTEGER
 );
@@ -97,11 +102,23 @@ CREATE TABLE IF NOT EXISTS member(
     kind        TEXT NOT NULL,
     signature   TEXT NOT NULL,
     line        INTEGER NOT NULL,
+    end_line    INTEGER NOT NULL,
     access      TEXT,
     is_static   INTEGER, is_abstract INTEGER, is_virtual INTEGER,
     is_override INTEGER, is_async INTEGER
 );
 
+-- One row per attribute on a type (member_id NULL) or a member. name is as written,
+-- so [Serializable] and [SerializableAttribute] differ; queries match both spellings.
+CREATE TABLE IF NOT EXISTS attribute(
+    id        INTEGER PRIMARY KEY,
+    type_id   INTEGER NOT NULL REFERENCES type(id) ON DELETE CASCADE,
+    member_id INTEGER REFERENCES member(id) ON DELETE CASCADE,
+    name      TEXT NOT NULL,
+    raw       TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_attr_name     ON attribute(name);
 CREATE INDEX IF NOT EXISTS ix_type_name     ON type(name);
 CREATE INDEX IF NOT EXISTS ix_type_file     ON type(file_id);
 CREATE INDEX IF NOT EXISTS ix_base_name     ON base_ref(name);
@@ -127,16 +144,34 @@ SELECT t.name, f.path FROM base_ref b
 -- Interfaces with the most implementers
 SELECT b.name, COUNT(*) n FROM base_ref b GROUP BY b.name ORDER BY n DESC LIMIT 20;
 
+-- Types and members carrying [RootPlayerData]
+SELECT t.name, m.name AS member, x.raw, f.path, COALESCE(m.line, t.line) AS line
+  FROM attribute x JOIN type t ON t.id = x.type_id
+  LEFT JOIN member m ON m.id = x.member_id
+  JOIN file f ON f.id = t.file_id
+ WHERE x.name IN ('RootPlayerData', 'RootPlayerDataAttribute');
+
 -- Async methods that return void (a common bug source)
 SELECT t.name, m.name, m.signature FROM member m JOIN type t ON t.id = m.type_id
  WHERE m.is_async = 1 AND m.signature LIKE '%async void%';
 """
 
 TYPE_SELECT = """
-SELECT t.id, t.name, t.arity, t.namespace, t.container, t.kind, t.line,
-       t.access, t.is_abstract, t.is_sealed, t.is_static, t.is_partial,
+SELECT t.id, t.name, t.arity, t.namespace, t.container, t.kind, t.line, t.end_line,
+       t.signature, t.access, t.is_abstract, t.is_sealed, t.is_static, t.is_partial,
        f.path AS file, a.name AS assembly
   FROM type t
+  JOIN file f ON f.id = t.file_id
+  LEFT JOIN assembly a ON a.id = f.assembly_id
+"""
+
+
+MEMBER_SELECT = """
+SELECT m.name, m.kind, m.signature, m.line, m.end_line, m.access, m.is_static,
+       m.is_abstract, m.is_virtual, m.is_override, m.is_async,
+       t.name AS type, t.kind AS type_kind, t.namespace, f.path AS file, a.name AS assembly
+  FROM member m
+  JOIN type t ON t.id = m.type_id
   JOIN file f ON f.id = t.file_id
   LEFT JOIN assembly a ON a.id = f.assembly_id
 """
@@ -186,7 +221,7 @@ class CodeIndex:
             "SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
         if row is None or row["value"] == SCHEMA_VERSION:
             return
-        for table in ("member", "base_ref", "type", "file", "assembly", "meta"):
+        for table in ("attribute", "member", "base_ref", "type", "file", "assembly", "meta"):
             self.conn.execute("DROP TABLE IF EXISTS %s" % table)
         self.conn.executescript(SCHEMA)
         self.conn.commit()
@@ -379,10 +414,11 @@ class CodeIndex:
             for decl in parser.parse(path, text):
                 cur = self.conn.execute(
                     "INSERT INTO type(name, arity, namespace, container, kind, file_id, "
-                    "line, access, is_abstract, is_sealed, is_static, is_partial) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "line, end_line, signature, access, is_abstract, is_sealed, is_static, "
+                    "is_partial) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (decl.name, decl.arity, decl.namespace or "", decl.container or "",
-                     decl.kind, file_id, decl.line, decl.access, decl.is_abstract,
+                     decl.kind, file_id, decl.line, decl.end_line or decl.line,
+                     decl.signature or "", decl.access, decl.is_abstract,
                      decl.is_sealed, decl.is_static, decl.is_partial))
                 type_id = cur.lastrowid
                 report.types += 1
@@ -392,13 +428,20 @@ class CodeIndex:
                     [(type_id, simple, raw, pos)
                      for pos, (simple, raw) in enumerate(decl.bases)])
 
+                attributes = [(type_id, None, name, raw) for name, raw in decl.attributes]
+                for m in decl.members:
+                    member_id = self.conn.execute(
+                        "INSERT INTO member(type_id, name, kind, signature, line, end_line, "
+                        "access, is_static, is_abstract, is_virtual, is_override, is_async) "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (type_id, m.name, m.kind, m.signature, m.line, m.end_line or m.line,
+                         m.access, m.is_static, m.is_abstract, m.is_virtual, m.is_override,
+                         m.is_async)).lastrowid
+                    attributes.extend((type_id, member_id, name, raw)
+                                      for name, raw in m.attributes)
                 self.conn.executemany(
-                    "INSERT INTO member(type_id, name, kind, signature, line, access, "
-                    "is_static, is_abstract, is_virtual, is_override, is_async) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                    [(type_id, m.name, m.kind, m.signature, m.line, m.access,
-                      m.is_static, m.is_abstract, m.is_virtual, m.is_override, m.is_async)
-                     for m in decl.members])
+                    "INSERT INTO attribute(type_id, member_id, name, raw) VALUES(?,?,?,?)",
+                    attributes)
                 report.members += len(decl.members)
 
         for key, value in (("schema_version", SCHEMA_VERSION),
@@ -422,6 +465,29 @@ class CodeIndex:
     def where_declared(self, name):
         return self._rows(TYPE_SELECT + " WHERE t.name = ?" + self._scope() +
                           " ORDER BY t.namespace, f.path", (name,))
+
+    def where_member(self, name, owner=None):
+        """Members called `name`, optionally only those declared directly in type `owner`."""
+        sql = MEMBER_SELECT + " WHERE m.name = ?"
+        params = [name]
+        if owner:
+            sql += " AND t.name = ?"
+            params.append(owner)
+        return self._rows(sql + self._scope() + " ORDER BY f.path, m.line", tuple(params))
+
+    def lookup(self, target):
+        """`Type`, `Member` or `Type.Member` -> (types, members). A dotted name that is not a
+        member of that type is retried as a nested or namespace-qualified type name."""
+        if "." in target:
+            owner, name = target.rsplit(".", 1)
+            members = self.where_member(name, owner.rsplit(".", 1)[-1])
+            if members:
+                return [], members
+            types = [t for t in self.where_declared(name)
+                     if (t["container"] + "." + t["name"]).endswith(target)
+                     or (t["namespace"] + "." + t["name"]).endswith(target)]
+            return types, []
+        return self.where_declared(target), self.where_member(target)
 
     def bases_of(self, name):
         return self._rows(
@@ -465,17 +531,57 @@ class CodeIndex:
         """ % self._scope(), (name,))
 
     def members_of(self, name, kind=None):
-        sql = ("SELECT m.name, m.kind, m.signature, m.line, m.access, m.is_static, "
-               "       m.is_abstract, m.is_virtual, m.is_override, m.is_async, "
-               "       t.name AS type, t.namespace, f.path AS file "
-               "  FROM member m JOIN type t ON t.id = m.type_id "
-               "  JOIN file f ON f.id = t.file_id "
-               " WHERE t.name = ?")
+        sql = MEMBER_SELECT + " WHERE t.name = ?"
         params = [name]
         if kind:
             sql += " AND m.kind = ?"
             params.append(kind)
         return self._rows(sql + self._scope() + " ORDER BY f.path, m.line", tuple(params))
+
+    def ancestors_of(self, name, max_depth=16):
+        """Base types and interfaces of `name`, nearest first, by simple name (like
+        subclasses_of). Returns (indexed, external): indexed is [(depth, type row)], external
+        the base names with no declaration in the index (engine and BCL types)."""
+        indexed, external, seen = [], [], {name}
+        frontier = [name]
+        for depth in range(1, max_depth + 1):
+            following = []
+            for current in frontier:
+                for base in self.bases_of(current):
+                    if base["name"] in seen:
+                        continue
+                    seen.add(base["name"])
+                    rows = self.where_declared(base["name"])
+                    if not rows:
+                        external.append(base["name"])
+                        continue
+                    indexed.extend((depth, row) for row in rows)
+                    following.append(base["name"])
+            if not following:
+                break
+            frontier = following
+        return indexed, external
+
+    def attributed(self, name):
+        """Types and members carrying [name]; `Foo` and `FooAttribute` are the same attribute."""
+        base = name[:-len("Attribute")] if name.endswith("Attribute") and name != "Attribute" else name
+        return self._rows(
+            "SELECT x.name AS attribute, x.raw, t.name AS type, t.kind AS type_kind, "
+            "       m.name AS member, m.kind AS member_kind, "
+            "       COALESCE(m.line, t.line) AS line, COALESCE(m.end_line, t.end_line) AS end_line, "
+            "       COALESCE(m.signature, t.signature) AS signature, f.path AS file "
+            "  FROM attribute x JOIN type t ON t.id = x.type_id "
+            "  LEFT JOIN member m ON m.id = x.member_id "
+            "  JOIN file f ON f.id = t.file_id "
+            " WHERE x.name IN (?, ?)" + self._scope() + " ORDER BY f.path, line",
+            (base, base + "Attribute"))
+
+    def source_lines(self, rel_path):
+        try:
+            with open(self._abs(rel_path), "r", errors="replace") as handle:
+                return handle.read().split("\n")
+        except OSError:
+            return None
 
     def types_in(self, assembly=None, namespace=None, kind=None):
         sql, params, where = TYPE_SELECT, [], []
@@ -517,11 +623,77 @@ def emit(rows, as_json, columns=None, empty="(none)"):
         return
     columns = columns or list(rows[0].keys())
     widths = {c: min(max(len(c), *(len(str(r.get(c, ""))) for r in rows)), 78) for c in columns}
-    print("  ".join(c.ljust(widths[c]) for c in columns))
-    print("  ".join("-" * widths[c] for c in columns))
+
+    # The last column is printed whole: it is usually a signature or path, and a cut one
+    # sends the reader back to grep for the rest.
+    def cells(values):
+        head = [str(v)[: widths[c]].ljust(widths[c]) for c, v in zip(columns[:-1], values[:-1])]
+        return "  ".join(head + [str(values[-1])]).rstrip()
+
+    print(cells(columns))
+    print(cells(["-" * widths[c] for c in columns]))
     for row in rows:
-        print("  ".join(str(row.get(c, ""))[: widths[c]].ljust(widths[c]) for c in columns))
+        print(cells([row.get(c, "") for c in columns]))
     print("\n%d row(s)" % len(rows))
+
+
+def span(row):
+    """`path:start-end` — paste-ready for Read's offset (start) and limit (end - start + 1)."""
+    return "%s:%d-%d" % (row["file"], row["line"], row.get("end_line") or row["line"])
+
+
+def emit_declarations(types, members, as_json, empty="(none)"):
+    """One line per declaration: path:start-end  kind  Owner.Name  full signature."""
+    if as_json:
+        print(json.dumps({"types": types, "members": members}, indent=2))
+        return
+    if not types and not members:
+        print(empty)
+        return
+    for t in types:
+        owner = (t["container"] + ".") if t["container"] else ""
+        print("%s  %s %s%s  %s  [%s%s]" % (
+            span(t), t["kind"], owner, t["name"], t["signature"],
+            (t["namespace"] + ", ") if t["namespace"] else "", t["assembly"] or "?"))
+    for m in members:
+        print("%s  %s %s.%s  %s" % (span(m), m["kind"], m["type"], m["name"], m["signature"]))
+
+
+def emit_members(rows, as_json, heading=None):
+    """Members grouped by file: `start-end  kind  signature`, signatures in full."""
+    if as_json:
+        print(json.dumps(rows, indent=2))
+        return
+    current = None
+    for row in rows:
+        if row["file"] != current:
+            current = row["file"]
+            print("%s%s" % (heading + " — " if heading else "", current))
+        print("  %5d-%-5d %-11s %s" % (row["line"], row["end_line"], row["kind"], row["signature"]))
+
+
+def show_slices(index, types, members, max_lines):
+    """Print each declaration's source, with leading attributes and /// docs, numbered."""
+    total = 0
+    for row in types + members:
+        lines = index.source_lines(row["file"])
+        if lines is None:
+            print("%s  (file unreadable)" % span(row))
+            continue
+        start, end = row["line"], row.get("end_line") or row["line"]
+        while start > 1 and re.match(r"\s*(\[|///)", lines[start - 2]):
+            start -= 1
+        owner = row.get("type") or row.get("container") or ""
+        print("== %s:%d-%d  %s%s" % (row["file"], start, end,
+                                      owner + "." if owner else "", row["name"]))
+        stop = min(end, start + max_lines - 1) if max_lines else end
+        for number in range(start, stop + 1):
+            print("%5d  %s" % (number, lines[number - 1] if number <= len(lines) else ""))
+        if stop < end:
+            print("  … %d more line(s): Read %s offset=%d limit=%d"
+                  % (end - stop, row["file"], stop + 1, end - stop))
+        total += 1
+    return total
 
 
 def main():
@@ -551,6 +723,13 @@ def main():
     add("status")
     add("schema")
     add("where").add_argument("name")
+
+    show = add("show")
+    show.add_argument("name")
+    show.add_argument("--max-lines", type=int, default=200,
+                      help="per declaration; 0 = no limit (default 200)")
+
+    add("attributed").add_argument("name")
     add("bases").add_argument("name")
 
     impl = add("implementers")
@@ -564,6 +743,8 @@ def main():
     mem = add("members")
     mem.add_argument("name")
     mem.add_argument("--kind", default=None)
+    mem.add_argument("--inherited", action="store_true",
+                     help="also list members of indexed base types and interfaces")
 
     typ = add("types")
     typ.add_argument("--assembly", default=None)
@@ -627,8 +808,24 @@ def main():
             print("[index refreshed: %s]\n" % rebuilt, file=sys.stderr)
 
         if args.cmd == "where":
-            emit(index.where_declared(args.name), as_json,
-                 ["name", "kind", "namespace", "container", "assembly", "file", "line"])
+            types, members = index.lookup(args.name)
+            emit_declarations(types, members, as_json)
+        elif args.cmd == "show":
+            types, members = index.lookup(args.name)
+            if as_json:
+                emit_declarations(types, members, True)
+            elif not show_slices(index, types, members, args.max_lines):
+                print("(none)")
+        elif args.cmd == "attributed":
+            rows = index.attributed(args.name)
+            if as_json:
+                print(json.dumps(rows, indent=2))
+            elif not rows:
+                print("(none)")
+            for row in ([] if as_json else rows):
+                owner = row["type"] + ("." + row["member"] if row["member"] else "")
+                print("%s  %s %s  [%s]  %s" % (span(row), row["member_kind"] or row["type_kind"],
+                                               owner, row["raw"], row["signature"]))
         elif args.cmd == "bases":
             emit(index.bases_of(args.name), as_json, ["name", "raw", "position", "file"])
         elif args.cmd == "implementers":
@@ -638,8 +835,30 @@ def main():
             emit(index.subclasses_of(args.name, transitive=not args.direct), as_json,
                  ["name", "kind", "depth", "namespace", "assembly", "file"])
         elif args.cmd == "members":
-            emit(index.members_of(args.name, args.kind), as_json,
-                 ["kind", "name", "access", "line", "signature"])
+            rows = index.members_of(args.name, args.kind)
+            if not args.inherited:
+                if not rows and not as_json:
+                    print("(none)")
+                emit_members(rows, as_json)
+            else:
+                indexed, external = index.ancestors_of(args.name)
+                groups = [(0, args.name, rows)] + [
+                    (depth, "from %s (%s)" % (t["name"], t["kind"]),
+                     [r for r in index.members_of(t["name"], args.kind) if r["file"] == t["file"]])
+                    for depth, t in indexed]
+                if as_json:
+                    print(json.dumps({"declared": rows,
+                                      "inherited": [{"depth": d, "from": label[5:].split(" ")[0],
+                                                     "members": r} for d, label, r in groups[1:]],
+                                      "not_indexed": external}, indent=2))
+                else:
+                    for depth, label, members in groups:
+                        if depth == 0:
+                            emit_members(members, False, args.name)
+                        elif members:
+                            emit_members(members, False, label)
+                    if external:
+                        print("not indexed: %s" % ", ".join(external))
         elif args.cmd == "types":
             emit(index.types_in(args.assembly, args.namespace, args.kind), as_json,
                  ["name", "kind", "namespace", "assembly", "file"])

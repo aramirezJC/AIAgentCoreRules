@@ -15,13 +15,28 @@ otherwise take many exploratory greps. Every script:
 - exits non-zero on failure, so it works in a hook or CI step,
 - never writes into `Assets/`, and is safe to run with the Unity Editor open.
 
+## Running them
+
+Call a script by its **literal path** from the project root, one plain command per call —
+`python3 GitIgnoredExternals/AIAgentCoreRules/Tools/unity-tools/codeindex.py where LivesManager`.
+Never through a shell variable (`R=…; python3 $R/codeindex.py`): in a worktree-isolated session
+the guard cannot tell what a computed program path runs and refuses the command, which is how
+agents fell back to grep (audit 2026-11-10). The examples below omit the directory.
+
+A grep over C# for a type or member name gets the matching command suggested by the
+`hook-bash` PreToolUse hook (see [[07_SessionTracking|Session Tracking]]); free-text
+greps are left alone.
+
 ## Which one do I want?
 
 | Question | Tool |
 |---|---|
 | Does my change compile? | `typecheck.py` |
-| What does this type look like / who implements it? | `codeindex.py` |
-| Who *calls* this member? | `usages.py` |
+| Where is this type *or member* declared? Show me just its source. | `codeindex.py where` / `show` |
+| What does this type look like, inherited members included? Who implements it? | `codeindex.py members --inherited` / `implementers` |
+| What carries `[SomeAttribute]`? | `codeindex.py attributed` |
+| Who *uses* this type, or *calls* this member? | `usages.py` |
+| Free text (a log message, a string key, `#if !RC`) | `grep` |
 | What does this *Unity engine* API really do? | `unitysource.py` |
 
 `codeindex.py` knows declarations, not call sites. `usages.py` knows call sites, but lexically.
@@ -70,20 +85,30 @@ and end of a session. Reading `Editor.log` is not a substitute — it is large a
 
 ## codeindex.py
 
-A SQLite index of every type and member declaration (about 5,400 files, 7,300 types and 71,000
-members), so relationship questions are answered without reading files.
+A SQLite index of every type, member and attribute declaration with its start and end line
+(about 5,400 files, 7,200 types, 71,000 members and 14,000 attributes), so lookups and
+relationship questions are answered without reading or grepping files.
 
 ```bash
+python3 codeindex.py where FetchEvents                        # types and members with that name
+python3 codeindex.py where GemEventManager.FetchEvents        # just that type's
+python3 codeindex.py show GemEventManager.FetchEvents         # its source lines, numbered
+python3 codeindex.py members StateLevelExtender --inherited   # + members of indexed bases
+python3 codeindex.py attributed RootPlayerData
 python3 codeindex.py implementers IEventManager
 python3 codeindex.py subclasses Screen                        # transitive
 python3 codeindex.py members DummyEventManager --kind method
 python3 codeindex.py bases GemEventManager
-python3 codeindex.py where IEventQuery
 python3 codeindex.py types --assembly Assembly-CSharp --kind interface
 python3 codeindex.py sql "SELECT name, COUNT(*) FROM base_ref GROUP BY name"
 python3 codeindex.py schema                   # tables + example queries
 ```
 
+- **Paste-ready spans.** `where`, `members`, `show` and `attributed` print `path:start-end` and
+  the full signature; `start-end` is Read's `offset` and `limit`. `show` includes leading
+  attributes and `///` docs and caps each declaration at `--max-lines` (default 200).
+- **`--inherited`** walks base lists by simple name, nearest first, and lists bases with no
+  source in the project (`MonoBehaviour`) as `not indexed`.
 - **Always fresh.** Every query refreshes the index first if anything changed, including files
   Unity has never seen. No manual rebuild is needed.
 - Stored at `Library/codeindex.sqlite` (git-ignored, outside `Assets/`). `--json` works on any
@@ -108,12 +133,15 @@ question behind any interface split.
 
 ```bash
 python3 usages.py IEventManager
+python3 usages.py FetchEvents                                 # a member, in any type
+python3 usages.py GemEventManager.FetchEvents                 # declarations narrowed to that type
 python3 usages.py IEventManager --members FetchEvents,FetchEvent,RefreshEventStatus
 python3 usages.py IPrizeManager --assembly Assembly-CSharp --full
 ```
 
-Output has three groups: declares/implements, calls to the named members (with line numbers),
-and everything else (summarised per assembly unless `--full`).
+Every site prints as `path:line: code`, grouped as declares (from codeindex), implements /
+extends, calls to the named members, and other references. Each group shows `--limit` lines
+(default 60) and summarises the rest per assembly; `--full` shows all.
 
 - **Lexical, not semantic.** A local method with the same name shows up as a call. Use it to
   narrow the files worth reading, then confirm with `typecheck.py`.
@@ -129,10 +157,10 @@ rather than our code, for example whether a getter copies a value or wraps nativ
 was the DT-20157 root cause.
 
 ```bash
-python3 $R/unitysource.py where MinMaxGradientBlittable      # which module declares it
-python3 $R/unitysource.py show Gradient                      # outline, one line per member
-python3 $R/unitysource.py show Gradient --member Gradient    # full bodies of the named members
-python3 $R/unitysource.py grep "new Gradient\(" -C 2         # search what is cached so far
+python3 unitysource.py where MinMaxGradientBlittable      # which module declares it
+python3 unitysource.py show Gradient                      # outline, one line per member
+python3 unitysource.py show Gradient --member Gradient    # full bodies of the named members
+python3 unitysource.py grep "new Gradient\(" -C 2         # search what is cached so far
 ```
 
 - **The cache grows as you ask.** There's no full pass. Each lookup lists modules only until it

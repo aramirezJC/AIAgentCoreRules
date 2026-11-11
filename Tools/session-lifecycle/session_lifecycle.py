@@ -17,7 +17,8 @@ Subcommands:
     hook-stop    Stop hook. Recompiles after a reply (throttled), for sessions that never exit.
     hook-prompt  UserPromptSubmit hook. After an idle gap past the prompt-cache TTL, notes the cost.
                  Warns once when the per-call context reaches 90% of the median session peak.
-    hook-bash    PreToolUse hook on Bash. Reminds the agent to Read rule files it cat/sed/head/tails.
+    hook-bash    PreToolUse hook on Bash. Reminds the agent to Read rule files it cat/sed/head/tails,
+                 and suggests codeindex/usages for a grep over C# for a type or member name.
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
@@ -40,6 +41,7 @@ import datetime
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -92,6 +94,11 @@ SHELL_RULE_READ = re.compile(r"(?:^|[;&|]|\$\()\s*(?:cat|sed|head|tail)\b[^|;&\n
                              re.MULTILINE)
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.MULTILINE | re.DOTALL)
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
+# hook-bash (audit 2026-11-10): a grep for a C# type or member name, which codeindex/usages answer.
+GREP_PROGRAMS = ("grep", "egrep", "rg")
+GREP_VALUE_OPTIONS = ("-A", "-B", "-C", "-m", "-f", "-g", "--glob", "-t", "--type", "--include", "--exclude")
+CS_TARGET = re.compile(r"\.cs\b|(?:^|/)Assets(?:/|$)|^cs$|--type=cs|-tcs")
+TYPE_DECL_PATTERN = re.compile(r"\b(class|interface|enum|struct|record)\s+([A-Z]\w*)")
 # `file --to` targets (MR-20261016-06): folders next to the sessions root that background jobs
 # cannot Write into directly.
 FILE_TARGETS = ["MetaReviews"]
@@ -1024,18 +1031,114 @@ def shell_rule_reads(command):
     return SHELL_RULE_READ.findall(command)
 
 
+def _grep_segments(command):
+    """(pattern alternatives, paths and file filters) for each grep/egrep/rg in a command.
+    Quotes are honoured, so a `|` inside a pattern does not split it."""
+    try:
+        lexer = shlex.shlex(HEREDOC.sub("", command), posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        tokens = list(lexer)
+    except ValueError:   # unbalanced quotes: not worth guessing at
+        return []
+    segments, current = [], []
+    for token in tokens + [";"]:
+        if token and set(token) <= set(";&|()"):
+            if current:
+                segments.append(current)
+            current = []
+        else:
+            current.append(token)
+    found = []
+    for words in segments:
+        if os.path.basename(words[0]) not in GREP_PROGRAMS:
+            continue
+        patterns, operands, filters, k = [], [], [], 1
+        while k < len(words):
+            word = words[k]
+            if word in ("-e", "--regexp"):
+                patterns.append(words[k + 1] if k + 1 < len(words) else "")
+                k += 2
+                continue
+            if word in GREP_VALUE_OPTIONS:
+                filters.append(words[k + 1] if k + 1 < len(words) else "")
+                k += 2
+                continue
+            if word.startswith("-"):
+                filters.append(word)
+            else:
+                operands.append(word)
+            k += 1
+        if not patterns and operands:
+            patterns.append(operands.pop(0))
+        # A grep with no path reads stdin (`… | grep Foo`): output, not source. rg with no path
+        # searches the cwd, so it counts when a file filter (-t cs, -g *.cs) names C#.
+        if operands or (os.path.basename(words[0]) == "rg" and filters):
+            found.append((patterns, operands + filters))
+    return found
+
+
+def type_grep_suggestions(command):
+    """codeindex/usages commands for a grep over C# whose pattern is a type or member name:
+    `class|interface|enum|struct|record <Name>` → where/show, `[Name` → attributed, a bare
+    PascalCase name (optionally `Name(` or `Name<`) → usages. Free text gets nothing."""
+    suggestions = []
+    for patterns, targets in _grep_segments(command):
+        if not any(CS_TARGET.search(t) for t in targets) and "cs" not in targets:
+            continue
+        for pattern in patterns:
+            plain = re.sub(r"\\[sS][+*]?|\\b|\\<|\\>", " ", pattern)
+            for alternative in re.split(r"\\\||\|", plain):
+                alternative = alternative.replace("\\", "").strip()
+                decl = TYPE_DECL_PATTERN.search(alternative)
+                if decl:
+                    name = decl.group(2)
+                    suggestions.append(("codeindex.py where %s" % name, "codeindex.py show %s" % name))
+                    continue
+                attr = re.fullmatch(r"\[\s*([A-Z]\w*)\W*", alternative)
+                if attr and re.search(r"[a-z]", attr.group(1)):
+                    suggestions.append(("codeindex.py attributed %s" % attr.group(1),))
+                    continue
+                name = re.fullmatch(r"\.?([A-Z]\w*)\s*[(<]?\s*\)?", alternative)
+                if name and re.search(r"[a-z]", name.group(1)):
+                    suggestions.append(("usages.py %s" % name.group(1), "codeindex.py where %s" % name.group(1)))
+    unique = []
+    for suggestion in suggestions:
+        if suggestion not in unique:
+            unique.append(suggestion)
+    return unique[:3]
+
+
+def unity_tools_prefix():
+    """How to call the unity-tools scripts from the hook's cwd (the project root): a literal
+    relative path when the core sits inside the project, else absolute. Never a shell variable —
+    the worktree guard refuses `python3 $R/…`."""
+    tools = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "unity-tools")
+    relative = os.path.relpath(tools, os.getcwd())
+    return "python3 " + (tools if relative.startswith("..") else relative) + "/"
+
+
 def cmd_hook_bash(args):
     """PreToolUse hook on Bash: remind the agent to load rule and process files with Read when a
-    command cat/sed/head/tails one. Warns only; never blocks the command."""
+    command cat/sed/head/tails one, and suggest codeindex/usages for a type-shaped grep over C#.
+    Warns only; never blocks the command."""
     hook = {}
     try:
         hook = read_hook_input()
-        paths = shell_rule_reads((hook.get("tool_input") or {}).get("command", ""))
+        command = (hook.get("tool_input") or {}).get("command", "")
+        notes = []
+        paths = shell_rule_reads(command)
         if paths:
+            notes.append("Use the Read tool for rule, process, index and skill files (%s) so the "
+                         "router trace is exact; shell reads are only inferred." % ", ".join(paths))
+        lookups = type_grep_suggestions(command)
+        if lookups:
+            prefix = unity_tools_prefix()
+            notes.append("This grep looks up a C# name; the index answers it with file:start-end and full "
+                         "signatures: %s. Keep grep for free text." %
+                         "; ".join(" or ".join(prefix + c for c in s) for s in lookups))
+        if notes:
             print(json.dumps({"hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "additionalContext": "Use the Read tool for rule, process, index and skill files (%s) so the "
-                                     "router trace is exact; shell reads are only inferred." % ", ".join(paths)}}))
+                "hookEventName": "PreToolUse", "additionalContext": "\n".join(notes)}}))
     except Exception as error:   # a hook must never block a command
         hook_log(args, "bash", hook, "ERROR %s" % error)
     return 0
