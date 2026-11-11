@@ -4,12 +4,22 @@ How to install the core framework in a local checkout of a project. The core fra
 local to your machine. On first install, choose whether the host project's AI metadata stays
 local or lives in the project repository.
 
-## 1. Clone and link the repository
+## 1. Clone the repository and run the installer
 
-Clone **AIAgentCoreRules** outside the game project, then link it in:
+Clone **AIAgentCoreRules** outside the game project, then run its installer from the project:
 
 ```bash
+git clone git@github.com:aramirezJC/AIAgentCoreRules.git <path to>/AIAgentCoreRules
 cd <game project root>
+<path to>/AIAgentCoreRules/Tools/setup/install.sh check   # preview
+<path to>/AIAgentCoreRules/Tools/setup/install.sh         # apply
+```
+
+On the first run the installer links the clone as `GitIgnoredExternals/AIAgentCoreRules`, then
+does everything in steps 2–4. Run `install.sh` with any shell; do not `source` it. Linking by hand
+still works and is left alone:
+
+```bash
 mkdir -p GitIgnoredExternals
 ln -s <path to>/AIAgentCoreRules GitIgnoredExternals/AIAgentCoreRules
 ```
@@ -20,7 +30,7 @@ them to the game repository's `.gitignore`.
 
 ## 2. Choose the host metadata location
 
-Run the installer in step 4. On a new install, it offers a picker:
+The installer (steps 1 and 4) handles this. On a new install, it offers a picker:
 
 1. `GitIgnoredExternals/AIMetaData/` (or `GitIgnoreExternals/AIMetaData/`) for local metadata.
 2. `AIMetaData/` at the project root for metadata that can be committed with the project.
@@ -48,10 +58,14 @@ Use the chosen host metadata path in these imports. On a new install, the instal
 
 ## 4. Run the installer
 
+After the first install, re-run it through the linked copy:
+
 ```bash
-python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py check   # preview
-python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py         # apply
+GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh check   # preview
+GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh         # apply
 ```
+
+`install.sh` runs `install.py` with the same arguments; `python3 …/install.py` still works.
 
 It merges `Tools/setup/settings.core.json` into `.claude/settings.json` (session hooks and the
 worktree settings below), then each host layer's `Setup/settings.host.json`; links every layer's
@@ -75,8 +89,8 @@ Claude remains the default. Select Codex explicitly to link every layer's existi
 into `.agents/skills/` and create a minimal `AGENTS.md` only when it does not already exist:
 
 ```bash
-python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py check --agent codex
-python3 GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.py install --agent codex
+GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh check --agent codex
+GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh install --agent codex
 ```
 
 Use the actual externals folder spelling: both `GitIgnoredExternals/` and `GitIgnoreExternals/`
@@ -108,7 +122,7 @@ Background agents work in git worktrees under `.claude/worktrees/`. The installe
 
 Test agent work in the project you already have open, not by opening the worktree: run
 `/land-worktree` to merge the branch, test it, then remove the worktree and branch. For a
-worktree made by hand with `git worktree add`, run `install.py prepare-worktree <path>` to add
+worktree made by hand with `git worktree add`, run `install.sh prepare-worktree <path>` to add
 the symlinks.
 
 ## 6. Verify
