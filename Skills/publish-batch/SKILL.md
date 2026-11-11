@@ -61,7 +61,7 @@ plan:
   - "Fresh base: git -C <main checkout> fetch origin <base>, then git rev-list --count HEAD..origin/<base>. Non-zero → ask the engineer to pull in their main checkout and stop — the worktree branches from local HEAD, so a stale checkout re-shows merged batches."
   - "Task ids: the TDD has '### V<n>' headings under '## Development plan' but its task tables have no '#' column → before anything else, propose adding it as the first column of every V-phase table. Ids: the TaskList {id:} of the same task (match by title) when the TaskList has ids, so both files agree; else T1, T2 … across the whole plan. Show the id per row and wait for the engineer's OK, then edit the TDD (the feature folder is not in any repo). A TDD source of truth elsewhere (sources_of_truth, e.g. Confluence) → say the column must be added there too."
   - "Worktree: EnterWorktree(name: <worktree>) — the project settings branch it from HEAD and symlink the ignored folders. Then git branch -m <branch> so the branch name is stable."
-  - "Batch plan: split the task's files from the TDD design into batches by batch_size. Show it as a numbered list (batch title, files) and wait for the engineer's OK; they may merge, split or reorder."
+  - "Batch plan: split the task's files from the TDD design into batches by batch_size. Show it as the batch plan table (format below) — never as a bulleted or numbered list — and wait for the engineer's OK; they may merge, split or reorder."
   - "Record (progress header, batches block): <task_id>: branch, base, plan (the batch titles), merged: 0, open_pr: null, prs: []. Set updated_at."
 
 publish:
@@ -103,6 +103,27 @@ One row per file added, modified or removed; types named so the reviewer can fin
 ```
 
 `Why` cites the TDD section, the design decision or the review note — never "requested".
+
+## Batch plan table
+
+The `plan` step's proposal. One bold line per batch (`**Batch <k>/<N> — <title>** · <total> lines`),
+then one table row per file it adds, modifies or removes. No bullets or numbered lists anywhere
+in the proposal. End with one line totalling the files and lines across all batches.
+
+**Batch 1/2 — Foo service contract** · ~45 lines
+
+| Type/File changing | Why (TLDR) | How (TLDR) | Line count |
+|---|---|---|---|
+| `IFooService` · `Scripts/Foo/IFooService.cs` (added) | HUD depends on the service, not the manager (TDD §3.2) | New interface: `Load()`, `IsReady` | ~20 |
+| `FooManager` · `Scripts/Foo/FooManager.cs` (modified) | Design step 2 | Implements `IFooService` | ~25 |
+
+```yaml
+batch_plan_table:
+  type_file:  "The type first, then the path, then (added | modified | removed | generated)."
+  why_how:    "One short clause each. Why cites the TDD section or design decision; How names the concrete change."
+  line_count: "Added + removed lines. Files already written in the worktree: the exact count from git diff --numstat <base> (or wc -l for a new untracked file). Not yet written: an estimate from the TDD design, prefixed ~."
+  totals:     "Each batch's bold line carries its line total; the closing line checks each batch against batch_size (≤ ~300 lines, ≤ ~5 files) and flags any that exceed it."
+```
 
 ## Rules
 
