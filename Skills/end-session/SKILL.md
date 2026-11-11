@@ -137,7 +137,11 @@ Short retrospective — write `retro.md` in the session folder with exactly thes
       **Partly necessary** — <what was avoidable>. | **Avoidable** — <why>.
  If tokens/ is missing or metrics.md marks tokens unavailable, label the list "estimated" and say why.
  Then one line from metrics.md's "Token breakdown (estimated)": the standardized-operations share and
- the top saving mechanism. retro.html charts these next to the session-vs-average comparison.>
+ the top saving mechanism. retro.html charts these next to the session-vs-average comparison.
+ Then one line on the code index: what the "code-graph API" saving row records (uses, tokens,
+ round-trips; "not used" when 0), and from "Missed index opportunities" the count and tokens lost per
+ kind with up to 3 of its examples. A kind that recurs (2+ examples, or one in an earlier retro) is a
+ Proposed changes row: the rule or index entry that should have routed the lookup to the index.>
 ```
 
 **Background session.** Once Step 0 has removed the worktree, the isolation guard refuses Write

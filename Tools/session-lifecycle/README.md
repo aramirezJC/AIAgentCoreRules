@@ -153,7 +153,13 @@ its size × every later call that re-reads it. The savings assumptions are in `A
 and `MIRO_CONFLUENCE_BY_COMMAND` for doc-review preview calls. The breakdown's `doc_review` block
 holds the preview calls (count, tokens, per command), their Miro/Confluence estimate and
 round-trips, and the measured Miro/Confluence MCP calls (`miro_confluence`); metrics.md prints it as
-one line and the doc-review Performance tab charts it.
+one line and the doc-review Performance tab charts it. Code-graph calls (`curl …/api/type|graph|search`)
+are the *code-graph API* saving, against the grep work in `GREP_BY_CODE_GRAPH_ROUTE`. The `missed`
+block (`missed_opportunities()`) counts lookups done by hand that the index answers — greps over C#
+for a type or member name (`type_grep_suggestions`, passed into `analyse()` so the module stays
+dependency-free), 2+ codeindex shape queries on one type, whole-file `.cs` reads never edited after —
+with tokens/round-trips lost and up to 5 examples per kind; metrics.md renders it as *Missed index
+opportunities* (`missed_lines`). Main thread only.
 To add a saving mechanism, add its name to `token_breakdown.SAVINGS` and fill `savings[name]` in
 `analyse()`; metrics.md (`session_lifecycle.py` `breakdown_lines`) and retro.html
 (`retro_page.savings_chart`) render every entry and its assumptions generically.

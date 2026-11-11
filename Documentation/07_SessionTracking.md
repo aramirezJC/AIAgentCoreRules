@@ -107,7 +107,8 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
   The hooks keep this in `typecheck.json` rather than session.json, because the async metrics
   recompile rewrites session.json and would drop a concurrent update
 - **Token breakdown (estimated)** — tokens per category with the standardized-operations share,
-  and tokens and round-trips saved per mechanism (see *Token charts* below)
+  and tokens and round-trips saved per mechanism (see *Token charts* below), followed by
+  *Missed index opportunities*: lookups done by hand that code-graph, codeindex or usages answers
 
 The router trace is read from the session transcript, not from the agent's memory. Rows loaded
 with the Read tool are exact; rows inferred from shell commands are heuristic (a `grep` over a
@@ -132,7 +133,7 @@ resume.
 | Corrections | Each inaccuracy with a root cause: missing rule, missing index entry, rule ignored, signature guessed, or scope misread |
 | Discovery gaps | Anything looked up mid-task that the host project's SystemIndex or Systems docs should have supplied |
 | Proposed changes | Concrete, minimal edits to rules, processes or index — **not applied**. Each row is self-contained (no "see above"), because the session that applies it reads only this table. The File cell lists every copy of the changed text, including the matching Documentation/ page, and names one concrete path — never "engineer's choice"; when the right home is unclear, the agent asks before writing the row |
-| Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable |
+| Cost | Tokens, turns, subagents, and the heaviest turns ranked by **fresh** tokens (plus the heaviest by total, if different), each judged necessary, partly necessary or avoidable; then what code-graph saved and the missed index opportunities (a recurring kind becomes a proposed change) |
 
 In a background session, `/end-session` cannot write `retro.md` into the session folder: once its
 worktree is removed, Claude Code's isolation guard refuses Write in the shared checkout. The agent
@@ -173,7 +174,7 @@ retro.html gets a **Token charts** section just before Cost, with three charts:
    the lifecycle script, skills, rule/process loads, subagents), as a total and a share. The
    remainder is split into ad-hoc tool calls and conversation/base context.
 3. **What saved tokens and round-trips.** Parallel tool calls, subagent delegation, partial file
-   reads, and each Runnable tool, with tokens and round-trips saved.
+   reads, each Runnable tool and the code-graph API, with tokens and round-trips saved.
 
 All of these are estimates. Each model call is counted once, in the breakdown and in the token
 report's Total Tokens alike, so metrics.md quotes a single total. A tool result costs its size
@@ -183,7 +184,13 @@ one ~3k-token exploratory read plus 2 round-trips; the assumptions are listed on
 `AVOIDED_BY_TOOL`. Doc-review preview calls are compared with doing the same through Miro and
 Confluence (`MIRO_CONFLUENCE_BY_COMMAND`: serve ≈ 18.4k tokens + 3 round-trips, comments ≈ 2.4k + 2,
 reply ≈ 1.3k + 1, from averages of real MCP calls); the breakdown's `doc_review` block also measures
-the Miro/Confluence MCP calls a session really made. To add a saving mechanism, add its name to
+the Miro/Confluence MCP calls a session really made. Code-graph calls (`curl …/api/type|graph|search`)
+are compared with the grep work each replaces (`GREP_BY_CODE_GRAPH_ROUTE`: type ≈ 5k tokens + 3
+round-trips, graph ≈ 6k + 4, search ≈ 2k + 1). The breakdown's `missed` block counts the opposite:
+greps over C# for a type or member name (the hook-bash matcher), chains of 2+ codeindex
+where/members/subclasses/implementers calls on one type, and whole-file `.cs` reads never followed by an
+edit of that file. Each miss costs its result minus an index call (~800 tokens) times later calls; files
+smaller than that are not misses. Main thread only — subagent tool calls are not inspected. To add a saving mechanism, add its name to
 `token_breakdown.SAVINGS` and fill `savings[name]` in `analyse()`; metrics.md and retro.html render
 every entry generically.
 
