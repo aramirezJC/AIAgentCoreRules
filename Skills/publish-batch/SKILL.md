@@ -93,13 +93,14 @@ finish:
 ## Change table
 
 One row per file added, modified or removed; types named so the reviewer can find them.
+`Change` uses the same 🟢 **NEW** · 🟡 **MOD** · 🔴 **DELETE** tags as the batch plan table.
 
 ```markdown
 | Change | File · Type | What changed | Why |
 |---|---|---|---|
-| added | `Scripts/Foo/IFooService.cs` · `IFooService` | New interface: `Load()`, `IsReady` | Lets HUD code depend on the service, not the manager (TDD §3.2) |
-| modified | `Scripts/Foo/FooManager.cs` · `FooManager` | Implements `IFooService`; `Load` now awaits config | Design step 2; was blocking the main thread |
-| removed | `Scripts/Foo/FooHelper.cs` · `FooHelper` | Deleted | Logic folded into `FooManager.Load` |
+| 🟢 **NEW** | `Scripts/Foo/IFooService.cs` · `IFooService` | New interface: `Load()`, `IsReady` | Lets HUD code depend on the service, not the manager (TDD §3.2) |
+| 🟡 **MOD** | `Scripts/Foo/FooManager.cs` · `FooManager` | Implements `IFooService`; `Load` now awaits config | Design step 2; was blocking the main thread |
+| 🔴 **DELETE** | `Scripts/Foo/FooHelper.cs` · `FooHelper` | Deleted | Logic folded into `FooManager.Load` |
 ```
 
 `Why` cites the TDD section, the design decision or the review note — never "requested".
