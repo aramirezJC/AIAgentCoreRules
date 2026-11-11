@@ -2,6 +2,34 @@
 This project contains general rules that can be used by AI agents to better
 help with the development of other projects.
 
+## Installation
+
+Requires git and stock `python3`. Clone this repository outside the host project, then run the
+installer from inside the project:
+
+```bash
+git clone git@github.com:aramirezJC/AIAgentCoreRules.git ~/Projects/AIAgentCoreRules
+cd <host project>
+~/Projects/AIAgentCoreRules/Tools/setup/install.sh check   # preview, writes nothing
+~/Projects/AIAgentCoreRules/Tools/setup/install.sh         # install
+```
+
+The first run links the clone as `<project>/GitIgnoredExternals/AIAgentCoreRules`, asks where
+the project's AI metadata should live, and sets up `.claude/settings.json` (session hooks,
+worktree settings), `.claude/skills/`, `CLAUDE.md` and `ai-agent-core.json`. Keep
+`GitIgnoredExternals/`, `.claude/`, `CLAUDE.md` and `GitIgnoreReports/` out of the project
+repository through your **global** gitignore (patterns `*GitIgnore*` and `*CLAUDE*`); the
+installer warns when `GitIgnoredExternals/` is not ignored. Restart Claude Code in the project afterwards.
+
+- Run the script with any shell (bash, zsh, sh); do not `source` it.
+- Scripts and CI: `install.sh --metadata-location externals --defaults` never prompts.
+- Codex: add `--agent codex` (or `--agent both`).
+- From elsewhere: `install.sh --project <path> …`.
+- Updating: `git pull` in the clone, then re-run
+  `GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh` — it is safe to re-run.
+
+Details: [Setup](Documentation/01_Setup.md) and the [setup README](Tools/setup/README.md).
+
 ## Session Lifecycle
 
 `Tools/session-lifecycle/session_lifecycle.py` tracks every Claude Code session in the host
@@ -99,8 +127,8 @@ writes a Confluence-ready copy to `GitIgnoreConfluenceExport/`.
 
 ## Skills
 
-Install into a host project with `python3 Tools/setup/install.py` (run from the project; see
-`Tools/setup/README.md`). It links each folder into `<project>/.claude/skills/`, merges the
+Install into a host project with `Tools/setup/install.sh` (run from the project; see
+[Installation](#installation)). It links each folder into `<project>/.claude/skills/`, merges the
 session hooks and worktree settings into `.claude/settings.json`, and is safe to re-run.
 
 - `start-session`, `end-session`, `inaccuracy`, `iteration` — session lifecycle.
