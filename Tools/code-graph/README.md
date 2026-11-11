@@ -18,9 +18,14 @@ Tools/code-graph/code-graph.sh stop
 ```
 
 - `--db` defaults to `<project>/Library/codeindex.sqlite`.
-- `--refresh-cmd` is the command the page's **Force refresh index** button runs (cwd = project,
-  split with `shlex`, no shell, 15-minute timeout, output in `.code-graph/refresh.log`). Without
-  it the button is hidden. The command is fixed at start; a request can only trigger it.
+- `--refresh-cmd "<cmd>"` (optional) overrides the command the page's **Force refresh index**
+  button runs. Default: `unity-tools/codeindex.py build --force --project <project> --db <db>`
+  (the sibling tool in this repo), so plain `start` already shows the button; `--refresh-cmd ""`
+  hides it. Pass a real command line, e.g. `--refresh-cmd "python3 path/to/codeindex.py build --force"`.
+  How it runs: from the project root, split with `shlex` (no shell), 15-minute timeout, output in
+  `.code-graph/refresh.log`. The command is fixed at start; a request can only trigger it.
+- `start` warns when the DB is missing — usually a sign it was run from the wrong folder (e.g.
+  from `Tools/code-graph/` itself, which then becomes the project).
 - Runtime state: `<project>/.code-graph/` (self-ignoring): `server.json`, `server.log`,
   `refresh.log`, `launcher.lock`.
 - `start` restarts the server when this tool's code (`*.py`, `web/*`) is newer than the running
