@@ -49,6 +49,7 @@ steps:
     - "  risks and open questions; test plan (which tests, which real-data runs)"
     - "Present the plan's summary and wait for approval. Changes asked for → update plan.md and re-present."
     - "A meta-review ticket or handoff note that already has Change and Done-when is the goal and done-when; still write the file plan and steps."
+    - "A deliverable that is only a document or report (no code or rule edits) needs no plan.md. The Scope Gate answers (shape, output location) are its plan; state 'done when' in chat and go on to discovery. Any follow-up edits the report recommends go through 3_plan as usual."
   3_rules:   # routing table, by what the change touches
     csharp:                    [../Rules/CodingStandards.md]
     new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
@@ -57,6 +58,7 @@ steps:
     csharp_tests:              [../Rules/TestingRules.md]   # Python tool tests: 5_tests (unittest in the tool's tests/), no rule file
   4_implement:   # one plan step at a time
     - "Isolate first. Host project: EnterWorktree. Layer repo (AIAgentCoreRules, the host metadata repo): follow SmallTask 5_implement's layer-worktree rule (absolute paths, check the main checkout is clean). Exception: if verification needs the live Unity Editor (MCP tools, real-data runs), the Editor only compiles the main checkout. Offer the engineer worktree + land-before-verify, or work in the main checkout, at 3_plan time, and record the choice in plan.md. In a background job the main-checkout option is unavailable (the isolation guard rejects writes outside a worktree, including gitignored folders such as session reports and Assets/GitIgnoreAssets/). Spot this at 1_scope, write plan.md to $CLAUDE_JOB_DIR/tmp (or ~/.claude/plans/ when it must outlive the job), and hand implementation to a foreground session with a plan-path command."
+    - "In a worktree-isolated session, follow SmallTask 5_implement's guard rule: no heredocs or computed variables in compound commands, no `git -C <shared checkout>`; scripts go to $CLAUDE_JOB_DIR/tmp/<name>.py and run as one plain `python3 <file>`; ExitWorktree (keep) before any git command on the main checkout."
     - "Discovery skipped because plan.md was approved in an earlier session → still Read the host SystemIndex Systems/ entry for every system the plan's steps use (match the SystemIndex trigger comments) before the step that writes code against it. Their gotchas are what this session will otherwise hit live."
     - "Per step: StopAndVerify pre-generation checks, write, then /audit on the step's changed C# files and typecheck.py. Moving code verbatim into a new file still counts as changed C#: audit it in the step that moves it. Fix or report each violation before the next step."
     - "After each step: one line to the engineer — step N of M done, what was checked. Do not wait for an OK unless the step departed from plan.md."
