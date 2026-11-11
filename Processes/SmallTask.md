@@ -30,7 +30,7 @@ steps:
   1_scope:
     - "If the request is a tool/script/report: StopAndVerify Scope Gate — ask one-off vs reusable, and Editor/runtime/CLI. Wait."
     - "Restate the deliverable in one line: what it does, where it runs, what it is modelled on."
-    - "A question with no change → set --work-type question. If it later turns into a change, re-run `set --work-type <small_feature|other>` before 4_propose."
+    - "A question with no change → set --work-type question, but only while the session has no change work yet; a question after a delivered change keeps the session's work type. If it later turns into a change, re-run `set --work-type <small_feature|other>` before 4_propose."
     - "A request for a warning, limit or threshold: name the cost it is meant to reduce and pick the metric that drives that cost (e.g. per-call context vs session total) before proposing."
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
