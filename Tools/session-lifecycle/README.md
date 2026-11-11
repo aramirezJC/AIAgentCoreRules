@@ -8,6 +8,7 @@ trace (which rule and process files were loaded, in order, read from the session
 ```
 <project>/GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/   # lane and name once set
   session.json   state
+  typecheck.json typecheck baseline, last .cs edit, end-check blocks, cslint counts (hook-edit / hook-lint / hook-stop-check)
   metrics.md     rendered report
   retro.md       written by /end-session; "## Applied" tracks each proposal's status
   retro.html     rendered from retro.md by retro_page.py (`retro`, `open`), with token charts
@@ -52,6 +53,33 @@ every folder, for one-off cleanup.
 }
 ```
 
+`../setup/settings.core.json` is the full wiring the installer merges, including the hooks below.
+
+| Subcommand | Event (matcher) | Timeout | What it does |
+|---|---|---|---|
+| `hook-start` | SessionStart | 30 | Session tracking block for the agent |
+| `hook-end` | SessionEnd | 60 | Final compile; deletes a still-empty folder |
+| `hook-stop` | Stop, `async` | 30 | Throttled recompile after each reply |
+| `hook-stop-check` | Stop, sync | 20 | Blocks the stop once when a .cs file changed after the last `typecheck.py` run |
+| `hook-prompt` | UserPromptSubmit | 10 | Idle-gap cost note; context-size warning |
+| `hook-bash` | PreToolUse (`Bash`) | 10 | Read-not-cat reminder for rule files; codeindex/usages for a C# grep |
+| `hook-edit` | PreToolUse (`Edit\|Write`) | 30 | First .cs edit: typecheck baseline; every .cs edit: `last_cs_edit` |
+| `hook-lint` | PostToolUse (`Edit\|Write`) | 10 | `cslint.py` on the edited .cs file's changed lines |
+
+**Typecheck and lint hooks.** On the session's first `.cs` edit inside a Unity project, `hook-edit`
+runs `typecheck.py --files <file>` on the still-untouched tree (~3-4 s) and hands the agent the
+result as `additionalContext`, so pre-existing errors are not blamed on the change. Every `.cs`
+edit records `last_cs_edit`. `hook-lint` runs `../unity-tools/cslint.py` on the edited file's
+changed lines and returns violations (at most 15 rows) as `additionalContext`; silent when clean.
+`hook-stop-check` reads the transcript, subagent transcripts included, for the last `typecheck.py`
+run (`--list` runs do not count); when a `.cs` edit is newer it returns `{"decision": "block",
+"reason": …}` with the literal command to run. It never blocks when `stop_hook_active` is set, and
+returns at once when the session has no `.cs` edit. State lives in the sidecar `typecheck.json`, not
+session.json, because the async `hook-stop` compile rewrites session.json and would drop a
+concurrent update. `compile` copies it into session.json `typecheck`, adds `runs` (each
+`typecheck.py` call and its result, read from the transcript), and metrics.md renders it as
+*Typecheck*. Tests: `tests/test_typecheck_hooks.py`.
+
 `SessionEnd` only fires when the Claude process exits (clear, resume, logout, exit). A session
 the app marks completed after going idle never exits, and Claude Code has no idle hook. `Stop`
 fires after every main-agent reply, and `hook-stop` recompiles then (at most every 2 minutes,
@@ -66,7 +94,9 @@ Who sees what a hook prints. Check here before designing a warning or a nudge.
 | SessionStart | stdout and `hookSpecificOutput.additionalContext`. Re-fires with source `clear` or `compact`, so it can re-inject context after either | JSON `systemMessage` |
 | UserPromptSubmit | stdout and `hookSpecificOutput.additionalContext` — the only way to reach the agent mid-session | JSON `systemMessage` |
 | PreToolUse | `hookSpecificOutput.additionalContext` | JSON `systemMessage` |
-| Stop | Nothing — it runs `async`, so its output reaches no one | Nothing |
+| PostToolUse | `hookSpecificOutput.additionalContext` | JSON `systemMessage` |
+| Stop (async, `hook-stop`) | Nothing — it runs `async`, so its output reaches no one | Nothing |
+| Stop (sync, `hook-stop-check`) | `{"decision": "block", "reason": …}` — the reason reaches the agent, which keeps working; `stop_hook_active` marks the retry | JSON `systemMessage` |
 | Any hook | — | JSON `systemMessage` reaches the engineer only, never the agent |
 
 No hook or model action can run `/clear` or `/compact`; the most a hook can do is tell the agent

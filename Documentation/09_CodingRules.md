@@ -1,7 +1,8 @@
 # Coding Rules
 
 The standards every piece of agent-generated code must meet. They are enforced by the process
-checklists and by `/audit`.
+checklists, by `cslint.py` (the mechanical tags, run by a hook on every `.cs` edit) and by
+`/audit` (the judgement review).
 
 ## Non-negotiables
 

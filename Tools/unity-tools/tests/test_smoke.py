@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 TOOL_DIR = Path(__file__).resolve().parent.parent
-SCRIPTS = ["codeindex.py", "usages.py", "typecheck.py", "unitysource.py"]
+SCRIPTS = ["codeindex.py", "usages.py", "typecheck.py", "unitysource.py", "cslint.py"]
 
 CSPROJ = """<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">

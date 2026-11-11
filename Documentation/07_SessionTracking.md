@@ -21,6 +21,9 @@ engineer's part is logging corrections and running `/end-session`.
 | You send a prompt after a long break | When the last reply is over an hour old and its context was over ~100k tokens, the UserPromptSubmit hook tells the agent the prompt cache has expired and what the next call costs, so new work can be offered a fresh session (`/new-session`) | Automatic |
 | The agent reads a rule file through the shell | A PreToolUse hook on Bash notices `cat`/`sed`/`head`/`tail` of a `.md` under `Rules/`, `Processes/`, `Systems/`, `SystemPatterns/` or `Skills/` and reminds the agent to use Read, so the router trace stays exact. Only a command in command position counts (start of the line, or after `;`, `&&`, `\|`): a mention inside quoted text or a heredoc stays silent. It never blocks the command | Automatic |
 | The agent greps C# for a type or member name | The same hook suggests the index command that answers it, by literal path: `class\|interface\|enum\|struct\|record Name` → `codeindex.py where/show Name`, `[Name` → `codeindex.py attributed Name`, a bare PascalCase name (or `Name(`) → `usages.py Name`. Only greps over `.cs` files or `Assets/` count; free text, `grep -v` filters and greps of piped output stay silent. It never blocks the command | Automatic |
+| The agent first edits a `.cs` file in a Unity project | A PreToolUse hook on Edit/Write runs `typecheck.py --files <file>` on the still-untouched tree (~3-4 s) and tells the agent the result, so errors that predate the change are not blamed on it. Every later `.cs` edit only records the time of the last edit. It never blocks the edit | Automatic |
+| The agent saves a `.cs` file | A PostToolUse hook on Edit/Write runs `cslint.py` on the file's changed lines and hands the agent any violations of the mechanical tags ([EXPLICIT] [ALLMAN] [ACCESS] [FIELD] [DI] [LOG] [ASYNC]) to fix at once. Silent when clean | Automatic |
+| The agent tries to finish after editing C# | A second, synchronous Stop hook checks the transcript (subagents' included) for a `typecheck.py` run after the last `.cs` edit (`--list` does not count). With none, it blocks the stop once and tells the agent the exact command to run. It never blocks twice in a row, and is instant in a session with no `.cs` edits | Automatic |
 | The context gets large | When the last call's context reaches 90% of the median **peak per-call context** of finished sessions (122k on 2026-11-02, from 100 sessions; needs at least 5 with a compiled `peak_context`), the UserPromptSubmit hook shows you a warning and tells the agent to offer a reset (`/compact <what to keep>` or a fresh session with a handoff) at the next task boundary. Once per crossing: `context-warning.json` in the session folder re-arms when the context drops back below. Every call re-sends the whole context, so "Conversation & base context" is most of a session's cost | Automatic; you decide |
 | The lane changes in a large session | Recording a lane change on a session past ~30M tokens prints a fresh-session offer with the matching command (`/new-session "/bug-fix <symptom>"`, …) | Agent offers, you decide |
 | Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit. It fires only when the process exits, not when the app marks an idle session completed | Automatic |
@@ -43,7 +46,9 @@ Who sees what a hook prints — check here before designing a new warning or nud
 | SessionStart | stdout and `additionalContext`; re-fires after `/clear` and `/compact`, so it can re-inject context | `systemMessage` |
 | UserPromptSubmit | stdout and `additionalContext` — the only way to reach the agent mid-session | `systemMessage` |
 | PreToolUse | `additionalContext` | `systemMessage` |
-| Stop | Nothing (runs async) | Nothing |
+| PostToolUse | `additionalContext` | `systemMessage` |
+| Stop (async metrics recompile) | Nothing | Nothing |
+| Stop (sync typecheck check) | A `{"decision": "block"}` reason — the agent keeps working on it | `systemMessage` |
 
 A JSON `systemMessage` from any hook reaches the engineer only. No hook or agent action can run
 `/clear` or `/compact` — a hook can only tell the agent to offer one. The auto-compact threshold
@@ -77,6 +82,7 @@ tokens or typed prompt), the SessionEnd hook removes it, and `session_lifecycle.
 ```
 GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
   session.json   state (source of truth)
+  typecheck.json typecheck baseline, last .cs edit, end-check blocks, cslint counts (written by the hooks)
   metrics.md     rendered report
   retro.md       written by /end-session
   retro.html     the retro as a page: progress bar and a status badge per proposal
@@ -96,6 +102,10 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
 - A count of each of the host project's Runnable tools the agent ran (for example `typecheck.py`,
   `codeindex.py`, `usages.py`). Only real invocations count: a `python3 codeindex.py …` inside a
   heredoc body or quoted text (an edit script, a doc string) is not a run
+- **Typecheck** — the baseline (result, seconds, file), every `typecheck.py` run with its result,
+  the last `.cs` edit, how many times the stop was blocked, and cslint runs and violations.
+  The hooks keep this in `typecheck.json` rather than session.json, because the async metrics
+  recompile rewrites session.json and would drop a concurrent update
 - **Token breakdown (estimated)** — tokens per category with the standardized-operations share,
   and tokens and round-trips saved per mechanism (see *Token charts* below)
 
