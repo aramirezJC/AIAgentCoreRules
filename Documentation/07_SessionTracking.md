@@ -156,6 +156,11 @@ session is marked in its original retro with `--folder <id8>`, so the page stays
 are worked through. The page cannot write to disk itself; each open card has a button that copies
 the command that marks it applied — run it, or ask Claude to.
 
+### Model
+
+`compile` records the session's main model (the one behind most assistant messages, e.g.
+`claude-sonnet-5`) as `model` in session.json and as the **Model** row in metrics.md.
+
 ### Token charts
 
 `compile` also estimates where the tokens went (`token_breakdown.py`, read from the transcript)

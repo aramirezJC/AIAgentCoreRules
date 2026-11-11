@@ -165,6 +165,7 @@ consumers:   # renaming or renumbering a phase means updating every one of these
   progress_view_tests: "Tools/doc-review/tests/test_progress_view.py fixtures"
   retrospective: "Phase8_Retrospective.md `phase_N_<name>` keys"
   in_flight: "`current_phase` in every in-flight <Feature>_Progress.md"
+  phase_models: "Tools/session-lifecycle/session_lifecycle.py phase_models() reads each phase's recommended_model with '^\\s+recommended_model:\\s*(\\w+)' — keep the value a bare alias on the same line"
 ```
 
 ---

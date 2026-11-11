@@ -138,6 +138,10 @@ another session's retro: a path, a folder name, or a unique part of one such as 
 first 8 characters, so a proposal resolved in a later session can be marked where it was raised.
 `open` re-renders the page and opens it with metrics.md.
 
+`compile` records `model` in session.json — the model behind most of the transcript's assistant
+messages, e.g. `claude-sonnet-5` — and shows it as the *Model* row in metrics.md, so per-phase
+model reviews read session.json instead of every transcript.
+
 `compile` also runs `token_breakdown.py` and stores `breakdown` (tokens per category, the
 standardized-operations total, and the savings per mechanism) and `comparison` (every session's
 de-duplicated total, for the average) in session.json. metrics.md renders them as *Token breakdown
