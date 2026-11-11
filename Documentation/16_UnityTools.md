@@ -25,7 +25,9 @@ agents fell back to grep (audit 2026-11-10). The examples below omit the directo
 
 A grep over C# for a type or member name gets the matching command suggested by the
 `hook-bash` PreToolUse hook (see [[07_SessionTracking|Session Tracking]]); free-text
-greps are left alone.
+greps are left alone. Two more hooks use these tools on their own: the session's first `.cs`
+edit triggers a `typecheck.py --files` baseline, and every `.cs` edit is run through
+`cslint.py`; a stop after a `.cs` edit with no later `typecheck.py` run is blocked once.
 
 ## Which one do I want?
 
@@ -38,6 +40,7 @@ greps are left alone.
 | Who *uses* this type, or *calls* this member? | `usages.py` |
 | Free text (a log message, a string key, `#if !RC`) | `grep` |
 | What does this *Unity engine* API really do? | `unitysource.py` |
+| Does my new code break a mechanical coding-standards tag? | `cslint.py` |
 
 `codeindex.py` knows declarations, not call sites. `usages.py` knows call sites, but lexically.
 `typecheck.py` is the only authoritative one.
@@ -53,6 +56,7 @@ python3 typecheck.py Assembly-CSharp     # named assemblies + their dependents
 python3 typecheck.py --all
 python3 typecheck.py --changed --base develop
 python3 typecheck.py --list              # show the plan, compile nothing
+python3 typecheck.py --files Assets/Scripts/Foo.cs   # those files' assemblies + dependents, changed or not
 python3 typecheck.py --include-new       # also compile new .cs files not yet in a .csproj
 python3 typecheck.py Assembly-CSharp-Editor --define USING_TOOLS   # code behind a define that is off
 ```
@@ -171,6 +175,27 @@ python3 unitysource.py grep "new Gradient\(" -C 2         # search what is cache
   `DOTNET_ROOT=~/.dotnet` itself.
 - **Managed code only.** Native behaviour isn't visible, so confirm what you find on the real
   object in the Editor.
+
+## cslint.py
+
+Checks the coding-standards tags a regex or the declaration parser can decide, on **changed
+lines only** (against HEAD; an untracked file counts as all lines), so old code in a legacy file
+does not drown the new code.
+
+```bash
+python3 cslint.py                       # changed .cs files of the repo (vs HEAD, plus untracked)
+python3 cslint.py path/A.cs path/B.cs   # those files, changed lines only
+python3 cslint.py --all-lines path.cs   # every line
+python3 cslint.py --base develop        # changed lines vs another ref
+```
+
+It flags `var` [EXPLICIT], a `{` at the end of a code line [ALLMAN], a type or member with no
+access modifier [ACCESS], a public non-const field [FIELD], `ServiceLocator.Instance` [DI],
+`Debug.Log*` [LOG], and an `async void` that is not an override or event handler [ASYNC]. It is
+deliberately quiet on initialisers, interface and enum members, static constructors and partial
+methods, and skips auto-generated files. The judgement tags ([SRP] [IFACE] [RES] [SYM], method
+design, host rules) are `/audit`'s. Output is `path:line: [TAG] message`; exit 1 on violations.
+The session's PostToolUse hook runs it on every edited `.cs` file.
 
 ## Orphaned .csproj files
 

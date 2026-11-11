@@ -37,8 +37,8 @@ steps:
     - "Load rules by what the fix touches: CodingStandards always; ResourceManagementRules for subscriptions/timers/loads; MultyStepOperationsRules for async ordering."
     - "Smallest change that removes the cause. [SURG] — no drive-by refactors; list them as follow-ups instead."
   5b_audit:   # checkpoint — do not start step 6 until it has run
-    - "Run /audit on every changed file (fix, repro/debug tooling, and later the test file). Fix or report each violation."
-    - "Self-review is not a substitute: /end-session flags a skipped audit as a router miss."
+    - "Run /audit once over every changed C# file (fix, repro/debug tooling, and later the test file) — Skill tool, it forks a fresh subagent; wait for its report. Fix or report each violation. cslint already checked the mechanical tags per edit."
+    - "Self-review is not a substitute: applying the audit brief inline in this context counts as skipped, and /end-session flags a skipped audit as a router miss."
   6_test:
     - "Load TestingRules.md and the host project's testing setup."
     - "Write one regression test that fails without the fix and passes with it. If the bug cannot be unit-tested (timing, platform, Editor-only), write the manual repro steps instead and say why."

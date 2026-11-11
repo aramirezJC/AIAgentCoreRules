@@ -16,6 +16,8 @@ Usage
   typecheck.py --all                  # every assembly in the project
   typecheck.py --changed --base develop
   typecheck.py --list                 # show what would be compiled, compile nothing
+  typecheck.py --files Assets/Scripts/Foo.cs   # the assemblies these files belong to, plus
+                                      # their dependents, whether or not the files changed
   typecheck.py --include-new          # also compile new .cs files Unity has not added to a .csproj yet
   typecheck.py Assembly-CSharp-Editor --define USING_TOOLS   # code behind a define that is off
 
@@ -172,6 +174,9 @@ def main():
                         help="extra preprocessor symbol for every compiled assembly (repeatable)")
     parser.add_argument("--include-new", action="store_true",
                         help="compile changed .cs files that no .csproj lists yet")
+    parser.add_argument("--files", nargs="+", default=[], metavar="PATH",
+                        help="check the assemblies these .cs files belong to (inferred for a file no "
+                             ".csproj lists) plus their dependents; the session baseline hook uses it")
     args = parser.parse_args()
 
     try:
@@ -231,6 +236,15 @@ def main():
             return 2
         targets = project.dependents_of(args.assemblies)
         why = "%s + %d dependents" % (", ".join(args.assemblies), len(targets) - len(args.assemblies))
+    elif args.files:
+        named = {project.assembly_for(os.path.abspath(f)) or project.infer_assembly(os.path.abspath(f))
+                 for f in args.files}
+        named = {n for n in named if n in project.assemblies}
+        if not named:
+            print("None of the %d file(s) belong to a known assembly. Nothing to check." % len(args.files))
+            return 0
+        targets = project.dependents_of(named)
+        why = "%d file(s) -> %s + dependents" % (len(args.files), ", ".join(sorted(named)))
     else:
         files = changed_files(root, args.base)
         if not files:

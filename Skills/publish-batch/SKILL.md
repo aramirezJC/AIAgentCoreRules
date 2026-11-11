@@ -65,7 +65,7 @@ plan:
   - "Record (progress header, batches block): <task_id>: branch, base, plan (the batch titles), merged: 0, open_pr: null, prs: []. Set updated_at."
 
 publish:
-  - "Preconditions: every file in the batch passed /audit (Phase 4 per-file checklist), and typecheck.py passes in the worktree. Either fails → fix or report, do not publish."
+  - "Preconditions: one /audit run over the batch's files (Skill tool — a fresh subagent, not a self-review) with every violation fixed or reported, each file's cslint violations fixed or explained, and typecheck.py passes in the worktree. Any fails → fix or report, do not publish."
   - "Stage only the batch's files by path (git add <files>, git rm <files>); never git add -A or ., and never a file outside the batch."
   - "New C# files have no .meta until Unity imports them: say so in the PR body; the engineer commits the generated .meta files after pulling."
   - "Commit message: the pr_title, then the attribution lines the session requires."

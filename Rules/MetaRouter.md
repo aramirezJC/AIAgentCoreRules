@@ -186,7 +186,7 @@ commands:   # skills in ../Skills/ (project-specific ones in the host metadata r
   /feature-pr <PR> [Name] [V-phase]: "tie a PR to a feature's V-phase in its progress file, read its review notes, record addressed ones there"
   /publish-batch [plan|publish|status|finish]: "Phase 4: publish a task's C# in small batch PRs against the user branch, one at a time; change table per batch; next batch after merge"
   /kill-server [port|pid|all]: "stop a running doc-review preview server"
-  /audit [files]:  "rules compliance check, report only"
+  /audit [files]:  "judgement review (SRP, interfaces, resources, method design, host rules) in a fresh forked subagent, once per step/batch; report only. Mechanical tags: cslint hook"
   /land-worktree [name]: "merge an agent worktree into the current branch, test, then remove it (or roll back)"
   /new-session <prompt>: "open a fresh session with that prompt in a new Terminal.app window or Rider terminal tab (macOS)"
   /token-usage-reports: "sanitized token-usage and session-telemetry reports (current, recent or all sessions)"

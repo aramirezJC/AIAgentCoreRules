@@ -36,7 +36,7 @@ commands — see the host project's documentation.
 | Command | What it does |
 |---|---|
 | `/generate-meta-review [time frame]` | Runs the Meta Review over the sessions in a window (`last 2 weeks`, `since 2026-09-01`, `2026-09-01..2026-09-30`; default since the previous review) and produces the report page and ticket list. |
-| `/audit [files]` | Checks C# files (default: changed files) against the coding standards, architecture principles, resource rules, rule tags and host project rules. Reports violations with `file:line` and a minimal fix. Report only — no edits unless asked. Fans out to subagents for more than 5 files. |
+| `/audit [files]` | Independent judgement review of C# files (default: changed files): single responsibility, interface boundaries, resource symmetry, method design and host project rules, plus the `cslint.py` output for the mechanical tags. Runs as a fresh forked subagent in the background (it sees only `CLAUDE.md` and its brief, never the conversation), once per plan step, task checkpoint or publish batch — never applied inline by the context that wrote the code. Reports violations with `file:line` and a minimal fix. Report only — no edits unless asked. Fans out to subagents for more than 8 files. |
 
 ## Worktrees
 

@@ -33,7 +33,7 @@ and `/publish-batch` names a task's branch after its id, so it stops on a task w
 | 1 | **Intake** | Convert the GDD into a TDD, task list, use cases and edge cases | All documents reviewed and approved; every TBD item has an owner |
 | 2 | **Discovery** | Load rules, explore the codebase, confirm every dependency is visible | Discovery report approved, with no missing source files |
 | 3 | **Design** | Reconcile the TDD with Discovery: file plan, missing contracts, TBDs left for Phase 3, corrections — written back into the TDD | Design delta approved, or confirmed empty — **no code is written before this gate** |
-| 4 | **Implementation** | Write code file by file | Every file written, audited and acknowledged by the engineer |
+| 4 | **Implementation** | Write code file by file | Every file written, linted and acknowledged by the engineer; every batch audited |
 | 5 | **Unit Tests** | JSON deserialization, behavior and boundary tests traced to the use cases | All tests passing; deferred cases logged as follow-up tasks |
 | 6 | **Integration** | Wire into factories, registries and manifests; run generators | Project compiles; every integration step confirmed |
 | 7 | **Verification** | Final rules-compliance pass across every file | Engineer confirms the feature is complete |
@@ -143,9 +143,12 @@ every changed page, and any task the delta added or split is added to `TaskList.
 ### Phase 4 — Implementation
 
 Order: interfaces → concrete classes → integration glue. Before the first file the agent
-re-reads the rule files, because Phase 2 may be several sessions ago. Every file runs through
-`/audit` **before** it is presented to the engineer (required, recorded as `(audited)` in the
-checkpoint); the next file is not started until the current one is acknowledged. Before writing
+re-reads the rule files, because Phase 2 may be several sessions ago. Every file's cslint
+violations (reported by the hook after each edit) are fixed or explained **before** it is
+presented to the engineer (recorded as `(linted)` in the checkpoint); the next file is not
+started until the current one is acknowledged. `/audit` runs once per publish batch, over all of
+its files, before the batch is published (then `(audited)`), as a fresh subagent — never a
+self-review. Before writing
 a test file, the agent reads `Rules/TestingRules.md` (and the host project's testing-setup rule,
 if it has one); the coding standards and architectural principles do not cover tests. For files with poll handlers, event listeners, or subscription-based updates: verification includes steady-state behavior (state unchanged across multiple ticks with no data change), not just post-action snapshots.
 
@@ -171,13 +174,13 @@ For browser-based or UI features, also include **idle-behavior fixtures** for an
 
 The agent runs the host project's compile check (`typecheck.py`); the engineer runs the tests in the Unity Test Runner and
 reports the result. The agent never claims a pass it has not seen. Test files are run through
-`/audit` before the gate.
+one `/audit` before the gate.
 
 ### Phase 6 — Integration
 
 Registration in factories, registries and manifests, and running code generators. Editor-only
 generators (for example a JSON parser generator window) are listed with exact menu paths for
-the engineer to run. Changed C# files (not generated ones) are run through `/audit` before the
+the engineer to run. Changed C# files (not generated ones) are run through one `/audit` before the
 gate.
 
 ### Phase 7 — Verification
@@ -187,8 +190,8 @@ for the final check of naming, file organization, accessibility, interface bound
 symmetry and tests. It closes with a completion summary of what was built, the files created and
 modified, the tools run, the audit result and anything deferred.
 
-A phase retro flags any file from phases 4–6 written without an `/audit` run, or a Gate 7
-without the full run.
+A phase retro flags any file from phases 4–6 that no `/audit` run covered, an audit applied
+inline instead of through the Skill tool (a self-review), or a Gate 7 without the full run.
 
 ### Phase 8 — Retrospective
 

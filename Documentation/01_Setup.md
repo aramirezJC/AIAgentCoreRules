@@ -61,9 +61,12 @@ It only adds or updates what the fragments define, backs `settings.json` up to
 `settings.json.bak` before changing it, and is safe to re-run — run it again after pulling
 AIAgentCoreRules or the host layer. Details: [[Tools/setup/README|setup README]].
 
-The session hooks never block a session — if tracking fails, Claude Code carries on. Session
+The session hooks never block a session — if tracking fails, Claude Code carries on. The one
+deliberate exception is the synchronous `Stop` check: after a `.cs` edit with no later
+`typecheck.py` run it blocks the stop once and tells the agent to run it. Session
 folders are written to `GitIgnoreReports/Sessions/`; override with `SESSION_REPORTS_ROOT`. The
-`Stop` hook keeps metrics current for sessions that never exit.
+async `Stop` hook keeps metrics current for sessions that never exit. The `Edit|Write` hooks take
+a typecheck baseline on the first `.cs` edit and run `cslint.py` on every one.
 
 
 ## Codex setup

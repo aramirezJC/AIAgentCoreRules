@@ -125,7 +125,7 @@ phases:
     gate: All files written and engineer-reviewed
     report: <FeatureName>_Implementation.md
     recommended_agent: general-purpose
-    recommended_model: sonnet         # run /audit on each file before presenting it
+    recommended_model: sonnet         # cslint clean per file before presenting it; one /audit per batch
 
   5_unit_tests:
     file: ./Phase5_UnitTests.md
@@ -198,11 +198,11 @@ expected_loads:
   - "this index and the phase file for the session's phase"
   - "the rule files the phase names (Phase 4 re-reads CodingStandards and ArchitecturalPrinciples)"
 expected_tools:
-  4_implementation: ["/audit per file, before it is presented", typecheck.py, "/publish-batch per batch of C# files"]
-  5_unit_tests:     ["/audit on test files", typecheck.py]
-  6_integration:    ["/audit on changed files", typecheck.py]
+  4_implementation: ["/audit once per publish batch, before it is published", typecheck.py, "/publish-batch per batch of C# files"]
+  5_unit_tests:     ["/audit once over the test files", typecheck.py]
+  6_integration:    ["/audit once over the changed files", typecheck.py]
   7_verification:   ["/audit over all created and modified files"]
-missed_audit: "A file written in phases 4–6 without an /audit run, or a Gate 7 without the full run, is a router miss."
+missed_audit: "A file written in phases 4–6 that no /audit run covered, an audit applied inline instead of through the Skill tool (a self-review), or a Gate 7 without the full run, is a router miss."
 ```
 
 ---
