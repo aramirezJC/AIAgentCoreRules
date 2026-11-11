@@ -42,8 +42,9 @@ SAVINGS = ["Parallel tool calls", "Subagent delegation", "Partial file reads",
 #   type:   a declaration grep, a grep for derived types and a whole-file read for the members.
 #   graph:  a grep chain up or down the hierarchy, one grep per level plus a read.
 #   search: one grep -rn for the name.
-# /api/sources and /api/health are doc-review / launcher routes, not lookups.
-CODE_GRAPH_PATTERN = r"\bcurl\b[^\n|;&]*?/api/(type|graph|search)\b"
+# /api/sources and /api/health are doc-review / launcher routes, not lookups. Only a curl at a command
+# position (start, or after ; && || | $( ) counts, so a mention in a commit message or echo is silent.
+CODE_GRAPH_PATTERN = re.compile(r"(?:^|[;&|]|\$\()\s*curl\b[^\n|;&]*?/api/(type|graph|search)\b", re.MULTILINE)
 GREP_BY_CODE_GRAPH_ROUTE = {"type": (5000, 3), "graph": (6000, 4), "search": (2000, 1)}
 # Missed index opportunities: work done by hand that code-graph, codeindex or usages answers.
 #   grep:  a grep over C# for a type or member name (the hook-bash matcher, passed in by the caller).

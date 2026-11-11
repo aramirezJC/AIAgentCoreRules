@@ -67,6 +67,14 @@ class CodeGraphBreakdownTests(unittest.TestCase):
             bash('curl -s "$URL/api/health"') + ("{}",)])
         self.assertEqual(breakdown["savings"][token_breakdown.CODE_GRAPH_SAVING]["count"], 0)
 
+    def test_only_a_curl_at_a_command_position_counts(self):
+        breakdown = self.analyse([
+            bash('git commit -m "counts curl /api/type as a saving"') + ("ok",),
+            bash('echo "curl /api/type"') + ("ok",),
+            bash('curl -s "$URL/api/type?name=X&members=0"') + ("{}",),
+            bash('cd x && curl -s "$URL/api/graph?name=Y"') + ("{}",)])
+        self.assertEqual(breakdown["savings"][token_breakdown.CODE_GRAPH_SAVING]["count"], 2)
+
     def test_type_grep_over_cs_is_missed_and_free_text_is_not(self):
         breakdown = self.analyse([
             bash('grep -rn "class LivesManager" Assets/Scripts') + (BIG_RESULT,),
