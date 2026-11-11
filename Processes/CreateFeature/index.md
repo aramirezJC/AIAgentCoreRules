@@ -140,16 +140,16 @@ phases:
     goal: Wire feature into factories, registries, manifests; run required tools
     gate: Project compiles, all integration steps confirmed
     report: <FeatureName>_Integration.md
-    recommended_agent: explore        # verify integration points exist before editing
-    recommended_model: haiku
+    recommended_agent: general-purpose  # edits registries/manifests and runs generators — Explore is read-only
+    recommended_model: sonnet
 
   7_verification:
     file: ./Phase7_Verification.md
     goal: Final rules compliance pass across all files
     gate: Engineer confirms feature complete
     report: <FeatureName>_Verification.md
-    recommended_agent: explore        # grep for rule violations, no generation needed
-    recommended_model: haiku
+    recommended_agent: general-purpose  # full /audit judgement review; mechanical tags are the cslint hook's
+    recommended_model: sonnet
 
   8_retrospective:
     file: ./Phase8_Retrospective.md

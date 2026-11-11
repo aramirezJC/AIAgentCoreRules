@@ -187,7 +187,7 @@ gate.
 
 One full `/audit` over every file the feature created or modified. Its report is the evidence
 for the final check of naming, file organization, accessibility, interface boundaries, resource
-symmetry and tests. It closes with a completion summary of what was built, the files created and
+symmetry and tests. `/audit` runs on Sonnet whatever the session's model. It closes with a completion summary of what was built, the files created and
 modified, the tools run, the audit result and anything deferred.
 
 A phase retro flags any file from phases 4–6 that no `/audit` run covered, an audit applied
@@ -225,7 +225,7 @@ and each phase can start on its recommended model. When the engineer confirms a 
 2. runs `/end-session`, which writes a short retro for the phase (the full retrospective is
    Phase 8, which reads all of them),
 3. prints the command for the next phase and stops, for example
-   `claude --model haiku "/resume-work MyFeature"`.
+   `claude --model haiku "/resume-work MyFeature"` (Phase 2 Discovery's recommended model).
 
 A phase that takes several sittings ends each one with `/checkpoint`; the next sitting is a new
 session for the same phase. To keep going in the same session anyway, say so at the gate, and

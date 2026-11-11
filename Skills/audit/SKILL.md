@@ -4,6 +4,7 @@ description: Independent judgement review of changed C# files - single responsib
 argument-hint: "[file ...]  (default: changed .cs files)"
 context: fork
 agent: general-purpose
+model: sonnet
 ---
 
 # Audit
