@@ -77,6 +77,7 @@ steps:
     - "Tell the engineer how to try it (menu path, debug command, steps). Editor-only steps are theirs to run."
   7_close:
     - "Commit in the worktree; land a layer worktree with /land-worktree. Offer /end-session."
+    - "Work for a CreateFeature feature (session set with --feature): record it with Tools/feature-state/feature_state.py — `checkpoint <feature-dir> --revision <n> --payload <file.json>` for done/next/open_items, `task` with payload {id, title, status} for a task's status. --payload is a JSON file path; the revision comes from state.json. Never edit <Name>_Progress.md: it is generated from state.json and overwritten on render."
 ```
 
 ## Router check (used by /end-session)
