@@ -47,6 +47,7 @@ steps:
     - "  file plan: every file NEW / MODIFIED / DELETED, one line each, with the repository it belongs to"
     - "  2–4 ordered steps, each leaving the tree compiling and independently checkable"
     - "  risks and open questions; test plan (which tests, which real-data runs)"
+    - "  A done-when that only holds in a worktree-isolated session (guard or isolation behaviour) names how it will be checked: an engineer-approved EnterWorktree at 6_verify, or the evidence that stands in for it (e.g. the refusal in past transcripts), so it is not left partly met."
     - "Present the plan's summary and wait for approval. Changes asked for → update plan.md and re-present."
     - "A meta-review ticket or handoff note that already has Change and Done-when is the goal and done-when; still write the file plan and steps."
     - "A deliverable that is only a document or report (no code or rule edits) needs no plan.md. The Scope Gate answers (shape, output location) are its plan; state 'done when' in chat and go on to discovery. Any follow-up edits the report recommends go through 3_plan as usual."

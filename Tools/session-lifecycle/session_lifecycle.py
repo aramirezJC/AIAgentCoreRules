@@ -393,10 +393,8 @@ def router_trace(state, project_dir):
                         targets = [path for path in [tool_input.get("file_path", "")] if path.endswith(".md")]
                     elif block.get("name") == "Bash":
                         command = tool_input.get("command", "")
-                        for tool in RUNNABLE_TOOLS:
-                            count = len(re.findall(r"python3?\s+\S*" + re.escape(tool), command))
-                            if count:
-                                tools[tool] = tools.get(tool, 0) + count
+                        for tool, count in runnable_tool_calls(command).items():
+                            tools[tool] = tools.get(tool, 0) + count
                         # Relative paths after `cd <dir>` resolve against that dir.
                         for cd_target in re.findall(r"\bcd\s+([^\s;&|]+)", command):
                             cd_target = os.path.expanduser(cd_target.strip("\"'"))
@@ -1023,12 +1021,28 @@ def cmd_hook_prompt(args):
     return 0
 
 
+def _strip_prose(command):
+    """The command without heredoc bodies or quoted prose."""
+    # A quoted single word is a path argument and stays; quoted text with spaces is prose.
+    return QUOTED.sub(lambda m: m.group(0)[1:-1] if not re.search(r"\s", m.group(0)) else "''",
+                      HEREDOC.sub("", command))
+
+
 def shell_rule_reads(command):
     """Rule-file paths a command cat/sed/head/tails, ignoring heredoc bodies and quoted text."""
-    # A quoted single word is a path argument and stays; quoted text with spaces is prose.
-    command = QUOTED.sub(lambda m: m.group(0)[1:-1] if not re.search(r"\s", m.group(0)) else "''",
-                         HEREDOC.sub("", command))
-    return SHELL_RULE_READ.findall(command)
+    return SHELL_RULE_READ.findall(_strip_prose(command))
+
+
+def runnable_tool_calls(command):
+    """{tool: count} of the Runnable tools a command really runs. A `python3 codeindex.py ...`
+    inside a heredoc body or quoted text (an edit script, a doc string) is not a run."""
+    command = _strip_prose(command)
+    calls = {}
+    for tool in RUNNABLE_TOOLS:
+        count = len(re.findall(r"python3?\s+\S*" + re.escape(tool), command))
+        if count:
+            calls[tool] = count
+    return calls
 
 
 def _grep_segments(command):
