@@ -4,8 +4,8 @@ help with the development of other projects.
 
 ## Installation
 
-Requires git and stock `python3`. Clone this repository outside the host project, then run the
-installer from inside the project:
+Requires Claude Code (or Codex), git and stock `python3`. Clone this repository outside the host
+project, then run the installer from inside the project:
 
 ```bash
 git clone git@github.com:aramirezJC/AIAgentCoreRules.git ~/Projects/AIAgentCoreRules
@@ -21,10 +21,28 @@ worktree settings), `.claude/skills/`, `CLAUDE.md` and `ai-agent-core.json`. Kee
 repository through your **global** gitignore (patterns `*GitIgnore*` and `*CLAUDE*`); the
 installer warns when `GitIgnoredExternals/` is not ignored. Restart Claude Code in the project afterwards.
 
+Run the first install yourself, in a terminal, not through Claude: it asks a question (Claude's
+shell and the `!` prefix have no TTY, so it stops), it writes the hooks and permissions in
+`.claude/settings.json`, and the session that ran it cannot load what it installed until it is
+restarted. Asking Claude to run `install.sh check` and explain the preview is fine, and so is
+letting it re-run the installer for an update.
+
+```bash
+# One-time global gitignore setup, if you have none yet
+git config --global core.excludesfile ~/.gitignore_global
+printf '*GitIgnore*\n*CLAUDE*\n' >> ~/.gitignore_global
+```
+
+To verify, start a new Claude Code session in the project: a **Session tracking (started)**
+block appears in the agent's context, and `/feature`, `/end-session` and the other commands are
+available.
+
 - Run the script with any shell (bash, zsh, sh); do not `source` it.
 - Scripts and CI: `install.sh --metadata-location externals --defaults` never prompts.
 - Codex: add `--agent codex` (or `--agent both`).
 - From elsewhere: `install.sh --project <path> …`.
+- A worktree made by hand with `git worktree add`: `install.sh prepare-worktree <path>` adds its
+  symlinks.
 - Updating: `git pull` in the clone, then re-run
   `GitIgnoredExternals/AIAgentCoreRules/Tools/setup/install.sh` — it is safe to re-run.
 

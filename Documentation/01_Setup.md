@@ -19,7 +19,12 @@ On the first run the installer links the clone as `GitIgnoredExternals/AIAgentCo
 does everything in steps 2–4. Run `install.sh` with any shell; do not `source` it. Inside a
 Claude Code session (`!` prefix or a hook), `CLAUDE_PROJECT_DIR` takes precedence over the cwd,
 so the installer targets the session's project; pass `--project <path>` to install into another
-project from there. Linking by hand
+project from there.
+
+Run the first install yourself in a terminal. It asks where the metadata goes, and Claude's
+shell has no TTY to answer. It also writes the hooks and permissions in `.claude/settings.json`,
+and Claude Code must be restarted to load them. Claude can run `install.sh check` and explain
+the preview, or re-run the installer for an update. Linking by hand
 still works and is left alone:
 
 ```bash
