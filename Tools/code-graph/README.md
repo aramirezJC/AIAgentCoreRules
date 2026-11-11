@@ -1,7 +1,7 @@
 # code-graph
 
 Local, read-only browser view and JSON API over a **codeindex** SQLite database
-(`schema_version` 2: assemblies → files → types → members, plus `base_ref` inheritance edges).
+(`schema_version` 3: assemblies → files → types → members, plus `base_ref` inheritance edges).
 For the engineer: search, an assembly → namespace → type tree, a pannable inheritance graph and a
 member list with `file:line`. For the agent: one `curl` returns a type's bases, derived types,
 members and location — instead of several greps or `codeindex.py` calls.
