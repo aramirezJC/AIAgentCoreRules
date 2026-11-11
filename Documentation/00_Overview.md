@@ -117,8 +117,8 @@ task needs. This keeps the agent's context budget free for the actual work.
    investigation, other) and records it.
 3. **Load** — it reads the process file for that mode and the rule files the work touches.
 4. **Work** — it follows the process, stopping at each gate for engineer confirmation.
-5. **Correct** — the engineer logs agent mistakes with `/inaccuracy` and deliberate changes
-   of direction with `/iteration`.
+5. **Correct** — the agent logs its own mistakes when corrected, and the engineer logs
+   deliberate changes of direction with `/iteration`.
 6. **Close** — `/end-session` compiles metrics and writes a retrospective with proposed rule
    changes, which the engineer approves or rejects.
 

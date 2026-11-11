@@ -13,8 +13,7 @@ engineer's part is logging corrections and running `/end-session`.
 | First thing worth saving | The session folder is created on the first `set`, `note` or `compile`, or after the first reply. Sessions opened and closed without work leave no folder | Automatic |
 | Naming (optional) | `/start-session <name>` names the session; the name goes into the folder and the metrics heading | Engineer |
 | Mode classified | The agent records the lane (feature, bug_fix, small_task, large_task, investigation, other), the work type (bug_fix, small_feature, large_feature, feature, question, other) and a short title | Agent |
-| Agent makes a mistake you correct | `/inaccuracy <what was wrong>` | Engineer |
-| Agent retracts a claim, or you reject its approach | It logs the inaccuracy itself, marked `agent` | Agent |
+| Agent retracts a claim, or you correct it or reject its approach | It logs the inaccuracy itself, marked `agent` | Agent |
 | A correction was never logged | `/end-session` records it from the retro's Corrections, marked `retro` | Agent |
 | You deliberately change direction | `/iteration <what changed>` | Engineer |
 | Wrap up | `/end-session` compiles metrics, writes the retrospective and opens both files | Engineer |
@@ -246,7 +245,7 @@ wraps it in a repeatable review of one time window, by default since the previou
    files them with `session_lifecycle.py file --to MetaReviews <files>`. Then work through the
    tickets one at a time.
 
-**Source files:** [[Processes/MetaReview|MetaReview process]] · [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]]
+**Source files:** [[Processes/MetaReview|MetaReview process]] · [[Tools/session-analysis/README|session-analysis README]] · [[Tools/session-lifecycle/README|session-lifecycle README]] · [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/iteration/SKILL|/iteration]]
 
 ---
 

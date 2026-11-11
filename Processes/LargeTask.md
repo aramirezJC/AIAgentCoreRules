@@ -36,7 +36,7 @@ steps:
     - "Work type: large_feature by default; `set --work-type other` for tooling, framework, config or rule work, bug_fix when the large change is a fix."
   2_discovery:
     - "SystemIndex: Read the Systems/ entry for every system the change lives in or USES (messages, states, prizes — match SystemIndex's trigger comments), and the SystemPatterns/ file if one matches."
-    - "Survey each area with /discover (one subagent per area, in ONE message). Read inline only the bodies the plan rests on."
+    - "Survey each area with an Explore agent (one per area, in ONE message), asked for a compact map. Read inline only the bodies the plan rests on."
     - "Existing utility first — before planning any helper, tool, window, exporter, logger or importer, look for one to extend: host metadata, then codeindex.py where/types. Record what you searched for the plan."
     - "Apply SmallTask 2_context's checks as they fit: listeners' handlers before choosing dispatch points; real data has the keys a consumer matches on; reuse an existing view's population and filter rules."
   3_plan:   # GATE — no code before the engineer approves
@@ -85,7 +85,7 @@ expected_loads:
   - "Rules/CodingStandards.md (C# changes)"
   - "plus each 3_rules row the change matched"
 expected_artifacts: ["plan.md in the session folder, written and approved before the first code edit"]
-expected_tools: [/discover, codeindex.py, typecheck.py, "/audit per step"]   # C# changes only for typecheck and /audit
+expected_tools: [Explore agents, codeindex.py, typecheck.py, "/audit per step"]   # C# changes only for typecheck and /audit
 expected_without_csharp: "runs of the changed tools against copies of real data, and their unit tests; CodingStandards and the C# tools are not expected"
 missed_gate: "Code written before plan.md was approved, or a second session continuing the same large task, is a router miss."
 ```
