@@ -107,15 +107,15 @@ phases:
     file: ./Phase2_Discovery.md
     goal: Load rules, explore codebase, confirm all dependencies are visible
     gate: Discovery report approved — no missing source files
-    report: GameProgressSaveSlim_Discovery.md
-    recommended_agent: explore        # use /discover <SystemName> for targeted area surveys
+    report: <FeatureName>_Discovery.md
+    recommended_agent: explore        # one Explore agent per system for targeted area surveys
     recommended_model: haiku          # pure search, no generation
 
   3_design:
     file: ./Phase3_Design.md
     goal: Reconcile the TDD with Discovery — file plan, missing contracts, Phase 3 TBDs, corrections — written back into the TDD (no separate design doc, no new diagrams)
     gate: Design delta approved (or confirmed empty) — NO CODE WRITTEN BEFORE THIS GATE
-    report: GameProgressSaveSlim_Design.md
+    report: <FeatureName>_Design.md
     recommended_agent: plan
     recommended_model: sonnet
 
@@ -123,7 +123,7 @@ phases:
     file: ./Phase4_Implementation.md
     goal: Write code file-by-file, published per task in small batch PRs (/publish-batch) the engineer reviews and merges
     gate: All files written and engineer-reviewed
-    report: GameProgressSaveSlim_Implementation.md
+    report: <FeatureName>_Implementation.md
     recommended_agent: general-purpose
     recommended_model: sonnet         # run /audit on each file before presenting it
 
@@ -131,7 +131,7 @@ phases:
     file: ./Phase5_UnitTests.md
     goal: JSON deserialization tests + behavior and boundary tests traced to UseCases.md
     gate: All tests passing, TBD cases logged as follow-up tasks
-    report: GameProgressSaveSlim_UnitTests.md
+    report: <FeatureName>_UnitTests.md
     recommended_agent: general-purpose
     recommended_model: sonnet
 
@@ -139,7 +139,7 @@ phases:
     file: ./Phase6_Integration.md
     goal: Wire feature into factories, registries, manifests; run required tools
     gate: Project compiles, all integration steps confirmed
-    report: GameProgressSaveSlim_Integration.md
+    report: <FeatureName>_Integration.md
     recommended_agent: explore        # verify integration points exist before editing
     recommended_model: haiku
 
@@ -147,7 +147,7 @@ phases:
     file: ./Phase7_Verification.md
     goal: Final rules compliance pass across all files
     gate: Engineer confirms feature complete
-    report: GameProgressSaveSlim_Verification.md
+    report: <FeatureName>_Verification.md
     recommended_agent: explore        # grep for rule violations, no generation needed
     recommended_model: haiku
 

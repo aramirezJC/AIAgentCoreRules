@@ -65,7 +65,7 @@ LANES = ["small_task", "large_task", "bug_fix", "investigation", "feature", "oth
 WORK_TYPES = ["bug_fix", "small_feature", "large_feature", "feature", "question", "other"]
 LANE_WORK_TYPE = {"small_task": "small_feature", "large_task": "large_feature", "bug_fix": "bug_fix",
                   "investigation": "question", "feature": "feature", "other": "other"}
-RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
+RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py", "unitysource.py"]
 # CreateFeature working folders, relative to the project root (Processes/CreateFeature/index.md
 # working_folder). Override with SESSION_FEATURES_ROOT or --features-root.
 DEFAULT_FEATURES_DIR = os.path.join("Assets", "GitIgnoreAssets", "Features")
@@ -677,7 +677,7 @@ def cmd_hook_start(args):
             "  python3 \"%s\" set --session-id %s --lane <%s> --work-type <%s> --title \"<short title>\""
             % (SCRIPT_PATH, session_id, "|".join(LANES), "|".join(WORK_TYPES)),
             "If the engineer named the session (/start-session <name>), also pass --name \"<name>\".",
-            "The engineer logs corrections with /inaccuracy and direction changes with /iteration.",
+            "The engineer logs direction changes with /iteration.",
             "When you retract a claim or the engineer rejects your approach, log it yourself at once:",
             "  python3 \"%s\" note --session-id %s --kind inaccuracy --source agent \"<what was wrong>\""
             % (SCRIPT_PATH, session_id),
@@ -1091,7 +1091,7 @@ def cmd_set(args):
 def cmd_note(args):
     folder, state = resolve(args)
     key = "inaccuracies" if args.kind == "inaccuracy" else "iterations"
-    # source: engineer (/inaccuracy, /iteration), agent (self-corrected live), or retro
+    # source: engineer (/iteration), agent (self-corrected live), or retro
     # (found by /end-session and not logged live). Lets reports tell live logging apart.
     state[key].append({"at": now_iso(), "text": args.text, "source": args.source})
     save_state(folder, state)

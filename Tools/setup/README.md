@@ -37,7 +37,7 @@ matched by command — an existing hook with the same command is left alone. Not
 a skill link that points elsewhere is reported as a conflict and kept. The one exception is a
 dangling skill link into a layer's `Skills/` folder (a renamed, deleted or moved skill): it is
 reported as `skills: prune stale <name>` and removed (`check` only reports it). Pruning runs
-before linking, so a skill that moved to another layer (e.g. `/uses`, host → core) is re-linked
+before linking, so a skill that moved to another layer (e.g. a skill moved host → core) is re-linked
 to its new layer in the same run instead of reported as a conflict.
 
 

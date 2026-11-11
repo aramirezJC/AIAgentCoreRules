@@ -35,9 +35,9 @@ steps:
   2_context:
     - "SystemIndex: Read the Systems/ entry for the owning system, and the SystemPatterns/ file if one matches."
     - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
-    - "Existing utility first — before writing any helper, tool, window, exporter, logger or importer, look for one to extend, in this order: (1) the host metadata (SystemIndex trigger comments, Systems/, SystemPatterns/); (2) the codebase (codeindex.py where/types on likely names, /discover when broad). Record what you searched for 4_propose."
+    - "Existing utility first — before writing any helper, tool, window, exporter, logger or importer, look for one to extend, in this order: (1) the host metadata (SystemIndex trigger comments, Systems/, SystemPatterns/); (2) the codebase (codeindex.py where/types on likely names, an Explore agent when broad). Record what you searched for 4_propose."
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
-    - "Anything broader than one targeted query → /discover, not inline search."
+    - "Anything broader than one targeted query → an Explore agent, not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
     - "When the change consumes data written by another skill or tool (a progress block, a sidecar, ids), check that real feature data actually has the keys the consumer matches on, before 4_propose."
     - "When a new check must agree with an existing view (tab, report), reuse the view's population and filter rules, such as perf_view's active-session rule, instead of re-deriving them."

@@ -219,6 +219,10 @@ confirm with `typecheck.py`, which is authoritative.
 Only files belonging to a generated `.csproj` are searched, so results cover code that
 actually compiles.
 
+**Events never land in `CALLS`.** `CALLS` matches `Member(`; event members are used as
+`Member +=` / `Member -=`. For an event, grep `\bMember\s*[+-]=` instead before reporting a zero.
+A zero result is a claim too: state which query produced it and why it could have found a use.
+
 ---
 
 ## unitysource.py

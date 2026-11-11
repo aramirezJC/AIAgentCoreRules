@@ -127,8 +127,8 @@ To add a saving mechanism, add its name to `token_breakdown.SAVINGS` and fill `s
 retro.md stays the source of truth. A page opened from disk cannot write back, so each open
 proposal has a button that copies its `retro --mark … --status applied` command.
 
-`note --source` records who logged the entry: `engineer` (default, the `/inaccuracy` and
-`/iteration` skills), `agent` (the agent's own self-correction) or `retro` (back-filled by
+`note --source` records who logged the entry: `engineer` (default, the
+`/iteration` skill), `agent` (the agent's own self-correction) or `retro` (back-filled by
 `/end-session` from the retro's Corrections). Older entries without a source count as `engineer`.
 
 `set --lane` on a session that already has a different lane appends `{at, from, to}` to

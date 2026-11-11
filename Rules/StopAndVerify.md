@@ -2,7 +2,7 @@
 
 # Stop and Verify Protocol
 
-Run before generating any code. If a check fails, look the missing piece up yourself first (Read, codeindex, /discover). Stop and ask only when it cannot be found.
+Run before generating any code. If a check fails, look the missing piece up yourself first (Read, codeindex, an Explore agent). Stop and ask only when it cannot be found.
 Tag definitions: [[CoreTags]]
 
 ---
@@ -67,7 +67,7 @@ the affected code and verify them again before presenting it:
 
 ## Stop Output Format
 
-When a dependency is missing, first search for it (codeindex.py where, Read, /discover). Only if
+When a dependency is missing, first search for it (codeindex.py where, Read, an Explore agent). Only if
 it is not in the repository — an external package, an unmerged branch, a server contract —
 output this before any code:
 

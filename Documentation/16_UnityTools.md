@@ -163,4 +163,4 @@ since the last sync, as `missing_asmdef_references` does.
 python3 -m unittest discover -s Tools/unity-tools/tests -p 'test_*.py'
 ```
 
-**Source files:** [[Tools/unity-tools/README|Unity tools README]] · [[Skills/uses/SKILL|/uses]]
+**Source files:** [[Tools/unity-tools/README|Unity tools README]]

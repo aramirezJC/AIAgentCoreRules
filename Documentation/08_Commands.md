@@ -10,7 +10,6 @@ commands — see the host project's documentation.
 |---|---|
 | `/start-session [name]` | Starts or resumes tracking, names the session (folder and metrics heading) when a name is given, and records the lane and work type. Tracking itself is automatic via the SessionStart hook — use it to name a session or when tracking context was lost. The lane commands (`/small-task`, `/bug-fix`, `/feature`, `/resume-work`, `/run-investigation-mode`, `/generate-meta-review`) run its tracking start as their step 0, so you do not need it before them. |
 | `/end-session` | If the session worked in a worktree that still has work in it, first asks whether to land it and, on yes, runs `/land-worktree`. Then compiles metrics and the router trace, writes the retrospective scaled to the lane, opens both files, and proposes (not applies) rule improvements. The `/new-session` prompt it prints for applying proposals tells the new session to run `session_lifecycle.py` from the host project root and to edit layer repos in a `git -C <abs layer> worktree add` worktree (absolute paths: `git -C` resolves a relative worktree path inside the layer, nesting it) — copied verbatim, never swapped for EnterWorktree, which isolates only the host project. It also tells the new session to check each layer's main checkout for a staged landing or uncommitted tracked changes before creating the worktree, and to tell you up front, since `/land-worktree` will not merge over them. |
-| `/inaccuracy <what was wrong>` | *Engineer only.* Logs an agent mistake you just corrected. |
 | `/iteration <what changed>` | *Engineer only.* Logs a deliberate change of direction or scope. |
 
 ## Feature work
@@ -36,10 +35,8 @@ commands — see the host project's documentation.
 
 | Command | What it does |
 |---|---|
-| `/discover <area>` | Surveys a system or directory in a subagent and returns a compact map: key types, entry points, integration points, gotchas and negative findings, each with `file:line`. Uses the host's Runnable tools when available. Offers to save the map as a Systems entry if none exists. |
 | `/generate-meta-review [time frame]` | Runs the Meta Review over the sessions in a window (`last 2 weeks`, `since 2026-09-01`, `2026-09-01..2026-09-30`; default since the previous review) and produces the report page and ticket list. |
 | `/audit [files]` | Checks C# files (default: changed files) against the coding standards, architecture principles, resource rules, rule tags and host project rules. Reports violations with `file:line` and a minimal fix. Report only — no edits unless asked. Fans out to subagents for more than 5 files. |
-| `/uses <Type> [Members]` | Who uses a type and which sites call the named members, via [[16_UnityTools\|`usages.py` and `codeindex.py`]]: declares/implements, calls (with lines), everything else per assembly. Lexical — confirm with `typecheck.py`. |
 
 ## Worktrees
 
@@ -54,7 +51,7 @@ commands — see the host project's documentation.
 |---|---|
 | `/token-usage-reports` | Sanitized token-usage and session-telemetry reports for current, recent or all sessions, exportable as Markdown or JSON. |
 
-**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/inaccuracy/SKILL|/inaccuracy]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/large-task/SKILL|/large-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/close-feature/SKILL|/close-feature]] · [[Skills/reopen-feature/SKILL|/reopen-feature]] · [[Skills/start-preview-server/SKILL|/start-preview-server]] · [[Skills/feature-pr/SKILL|/feature-pr]] · [[Skills/publish-batch/SKILL|/publish-batch]] · [[Skills/kill-server/SKILL|/kill-server]] · [[Skills/discover/SKILL|/discover]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/new-session/SKILL|/new-session]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
+**Source files:** [[Skills/start-session/SKILL|/start-session]] · [[Skills/end-session/SKILL|/end-session]] · [[Skills/iteration/SKILL|/iteration]] · [[Skills/feature/SKILL|/feature]] · [[Skills/small-task/SKILL|/small-task]] · [[Skills/large-task/SKILL|/large-task]] · [[Skills/bug-fix/SKILL|/bug-fix]] · [[Skills/run-investigation-mode/SKILL|/run-investigation-mode]] · [[Skills/generate-meta-review/SKILL|/generate-meta-review]] · [[Skills/checkpoint/SKILL|/checkpoint]] · [[Skills/resume-work/SKILL|/resume-work]] · [[Skills/active-features/SKILL|/active-features]] · [[Skills/close-feature/SKILL|/close-feature]] · [[Skills/reopen-feature/SKILL|/reopen-feature]] · [[Skills/start-preview-server/SKILL|/start-preview-server]] · [[Skills/feature-pr/SKILL|/feature-pr]] · [[Skills/publish-batch/SKILL|/publish-batch]] · [[Skills/kill-server/SKILL|/kill-server]] · [[Skills/audit/SKILL|/audit]] · [[Skills/land-worktree/SKILL|/land-worktree]] · [[Skills/new-session/SKILL|/new-session]] · [[Skills/token-usage-reports/SKILL|/token-usage-reports]]
 
 ---
 

@@ -341,7 +341,7 @@ read the findings back instead of reconstructing them from the TDD.
 Session metrics are already running (SessionStart hook — see MetaRouter Session Lifecycle), and the
 lane/title are already set by `/resume-work` or `/feature` before this phase file loads. Remind the
 engineer once:
-- `/inaccuracy <reason>` immediately after correcting an agent mistake.
+- Corrections: just say so; the agent logs its own mistakes (`note --kind inaccuracy --source agent`).
 - `/iteration <description>` when deliberately changing direction or refining scope.
 - `/end-session` at the end of every working session — each session of this feature gets its own metrics.
 
