@@ -63,7 +63,8 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   design document, so pattern guidance applies here, not only in Phase 3.
   A save/storage-mechanism decision in Architecture (or Data Reconciliation Strategy) is
   re-checked against every entry in the progress file's `sources_of_truth`, not just the GDD,
-  before it is marked decided.
+  before it is marked decided. The re-check uses the local copies (feature folder, preview); an
+  external entry is fetched only if the engineer asks or no local copy exists.
   The Architecture section embeds each `Diagrams/*.mmd` diagram inline, each in its own
   collapsible `<details><summary>Mermaid Diagram: <Name></summary>` block holding a fenced
   `mermaid` code block, so the TDD stays self-contained — a path mentioned in prose is not enough.
@@ -272,7 +273,9 @@ The session is tagged with the feature and phase, so the meta-analysis report ca
 **per feature** and **per phase**. Documents edited outside the feature folder, such as the
 Confluence TDD, are listed under `sources_of_truth` in the progress file with the version last
 published or read. `/resume-work` works local-first: it lists them as "not checked" and does not
-contact Confluence. Drift is checked only on request or in a publish/review pass.
+contact Confluence. A phase gate updates those versions only from that session's last publish or
+explicit read — it never fetches a page just to refresh a version. Drift is checked only on
+request or in a publish/review pass.
 
 Why not just reopen the old conversation? Reopening brings back the whole previous context,
 including rule files that may already have been summarised away. A resume starts clean and
