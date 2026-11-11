@@ -633,6 +633,23 @@ def breakdown_lines(state):
                      "{:,}".format(doc_review.get("tokens", 0)), "{:,}".format(doc_review.get("equivalent", 0)),
                      doc_review.get("round_trips", 0), measured.get("count", 0),
                      "{:,}".format(measured.get("tokens", 0)))]
+    return lines + missed_lines(breakdown.get("missed") or {})
+
+
+def missed_lines(missed):
+    """metrics.md subsection: lookups done by hand that code-graph, codeindex or usages answers."""
+    if not any(entry["count"] for entry in missed.values()):
+        return ["", "Missed index opportunities (code-graph / codeindex / usages): none."]
+    lines = ["", "### Missed index opportunities (estimated)", "",
+             "Lookups done by hand that code-graph, codeindex or usages answers. Tokens lost: each result minus "
+             "an index call (~%d tokens) × later calls." % token_breakdown.INDEX_CALL_TOKENS, "",
+             "| Kind | Count | Tokens lost | Round-trips lost |", "| --- | ---: | ---: | ---: |"]
+    for kind, entry in missed.items():
+        lines.append("| %s | %d | %s | %d |" % (kind, entry["count"], "{:,}".format(entry["tokens"]),
+                                                entry["round_trips"]))
+    for kind, entry in missed.items():
+        if entry["examples"]:
+            lines += ["", "%s:" % kind] + ["- %s" % example for example in entry["examples"]]
     return lines
 
 
@@ -650,7 +667,7 @@ def compile_folder(folder, state, project_dir):
         if state["agent"] == "codex":
             raise ValueError("Detailed cost attribution and comparison are not yet supported for Codex")
         state["breakdown"] = token_breakdown.analyse(state.get("transcript_path"), state["session_id"],
-                                                     import_roots(project_dir)[1])
+                                                     import_roots(project_dir)[1], type_grep_suggestions)
         state["comparison"] = session_comparison(folder, state)
     except Exception as error:
         state["breakdown"] = {"error": str(error)}
