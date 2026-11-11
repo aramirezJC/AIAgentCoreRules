@@ -62,6 +62,33 @@ See [Feature State](Documentation/13_FeatureState.md),
 [agent state protocol](Processes/FeatureState.md) for commands, migration limits and lifecycle
 payloads. The [tool README](Tools/feature-state/README.md) includes focused-read and update examples.
 
+## Code Graph
+
+`Tools/code-graph/` serves a local, read-only browser view and JSON API over the codeindex
+database (`<project>/Library/codeindex.sqlite`, built by `Tools/unity-tools/codeindex.py`):
+search, an assembly → namespace → type tree, an inheritance graph and member lists with
+`file:line`. One `curl` gives an agent a type's bases, derived types, members and location.
+
+Run it from the host project root, not from `Tools/code-graph/` (that folder would become the
+project, and `start` warns that no database exists there):
+
+```bash
+# Start or reuse the project's server; start prints the URL.
+GitIgnoreExternals/AIAgentCoreRules/Tools/code-graph/code-graph.sh start
+GitIgnoreExternals/AIAgentCoreRules/Tools/code-graph/code-graph.sh status
+GitIgnoreExternals/AIAgentCoreRules/Tools/code-graph/code-graph.sh stop
+
+curl -s "$URL/api/type?name=IEventManager&members=0"   # bases, derived types, location
+```
+
+Adjust the external-root spelling for the host project, as above. Options: `--project <path>`,
+`--db <path>`, and `--refresh-cmd "<command line>"` to override what the page's **Force refresh
+index** button runs. By default it runs `codeindex.py build --force` for the same project and
+database; `--refresh-cmd ""` hides the button. The server outlives agent sessions, restarts itself
+on the next `start` when the tool code or options changed, and keeps its state and logs in
+`<project>/.code-graph/`. See the [tool README](Tools/code-graph/README.md) for the full API and
+[Code Graph](Documentation/15_CodeGraph.md) for the page.
+
 ## Documentation
 
 `Documentation/` holds Confluence-ready pages describing the framework (overview, setup, work
