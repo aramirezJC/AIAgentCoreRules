@@ -16,7 +16,10 @@ cd <game project root>
 ```
 
 On the first run the installer links the clone as `GitIgnoredExternals/AIAgentCoreRules`, then
-does everything in steps 2–4. Run `install.sh` with any shell; do not `source` it. Linking by hand
+does everything in steps 2–4. Run `install.sh` with any shell; do not `source` it. Inside a
+Claude Code session (`!` prefix or a hook), `CLAUDE_PROJECT_DIR` takes precedence over the cwd,
+so the installer targets the session's project; pass `--project <path>` to install into another
+project from there. Linking by hand
 still works and is left alone:
 
 ```bash

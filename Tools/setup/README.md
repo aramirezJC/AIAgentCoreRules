@@ -7,6 +7,9 @@ the project — the project root is the main
 checkout of the git repository you are in, or the nearest folder holding `CLAUDE.md` outside git
 (`--project <path>` overrides). `project_root.py` holds that lookup; the session tracker uses the
 same module, so a new project needs no extra configuration for its reports to land in the right place.
+Inside a Claude Code session (`!` prefix or a hook), `CLAUDE_PROJECT_DIR` takes precedence over
+the cwd, so the installer targets the session's project. To install into another project from
+there, pass `--project <path>`.
 
 ```bash
 cd <project>
