@@ -128,8 +128,9 @@ architecture_checks:
      mechanism (e.g. which type implements a listener interface) unless the engineer has already
      confirmed it — that's an implementation decision for a later phase."
   - "Before marking a save/storage-mechanism decision in Architecture (or Data Reconciliation
-     Strategy), re-check it against every entry in the progress file's `sources_of_truth`, not just
-     the GDD — a source proposal can already decide it in writing."
+     Strategy), re-check it against every entry in the progress file's `sources_of_truth`, using the
+     local copies (feature folder, preview); fetch an external entry only if the engineer asks or no
+     local copy exists. Not just the GDD — a source proposal can already decide it in writing."
 ```
 
 ---
