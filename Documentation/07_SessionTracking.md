@@ -94,7 +94,8 @@ GitIgnoreReports/Sessions/<YYYY-MM-DD_HHMM>_<lane>_<name>_<id8>/
 - **Router trace** — the files loaded through `CLAUDE.md`, then every rule and process file
   loaded on demand, in order, with the time and how it was loaded
 - A count of each of the host project's Runnable tools the agent ran (for example `typecheck.py`,
-  `codeindex.py`, `usages.py`)
+  `codeindex.py`, `usages.py`). Only real invocations count: a `python3 codeindex.py …` inside a
+  heredoc body or quoted text (an edit script, a doc string) is not a run
 - **Token breakdown (estimated)** — tokens per category with the standardized-operations share,
   and tokens and round-trips saved per mechanism (see *Token charts* below)
 
