@@ -4,6 +4,8 @@
 
 State changes in this phase use the shared feature-state CLI described in index.md.
 Progress Markdown is generated; references to writing its fields mean tool operations.
+If `feature_state.py` is being called this phase and `Processes/FeatureState.md` has not been
+read yet this session, read it first — do not guess the tool's path or flags.
 
 
 Goal: Write code file-by-file following the approved design. Present each file to the engineer before moving to the next.
