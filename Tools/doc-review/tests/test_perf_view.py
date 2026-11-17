@@ -72,6 +72,25 @@ class TestModel(PerfViewTestCase):
         active = {s["id"]: s["active"] for s in perf_view.build_model(self.root)["sessions"]}
         self.assertEqual({"cccccccc": True, "bbbbbbbb": False, "aaaaaaaa": False, "dddddddd": False}, active)
 
+    def test_active_session_with_a_known_model_gets_a_context_window_gauge(self):
+        self.write_session("2026-11-17_0900_live", "eeeeeeee5", "2026-11-17T09:00:00-07:00", model="claude-sonnet-5",
+                           breakdown=dict(breakdown(4000, 1000), last_context=150000))
+        session = perf_view.build_model(self.root)["sessions"][0]
+        self.assertEqual({"model": "claude-sonnet-5", "max": 300000, "used": 150000, "free": 150000, "share": 0.5},
+                          session["context_window"])
+
+    def test_ended_session_gets_no_context_window_gauge(self):
+        self.write_session("2026-11-17_0900_done", "eeeeeeee5", "2026-11-17T09:00:00-07:00", model="claude-sonnet-5",
+                           ended_at="2026-11-17T10:00:00-07:00", breakdown=dict(breakdown(4000, 1000), last_context=150000))
+        session = perf_view.build_model(self.root)["sessions"][0]
+        self.assertIsNone(session["context_window"])
+
+    def test_active_session_without_a_recorded_model_gets_no_context_window_gauge(self):
+        self.write_session("2026-11-17_0900_nomodel", "eeeeeeee5", "2026-11-17T09:00:00-07:00",
+                           breakdown=dict(breakdown(4000, 1000), last_context=150000))
+        session = perf_view.build_model(self.root)["sessions"][0]
+        self.assertIsNone(session["context_window"])
+
     def test_overview_skips_uncompiled_sessions(self):
         self.write_three()
         overview = perf_view.build_model(self.root)["overview"]

@@ -476,6 +476,11 @@ PERF_CSS = """
   .perf-limit .bar { height: 8px; border-radius: 4px; background: #333944; overflow: hidden; margin-top: 3px; }
   .perf-limit .bar span { display: block; height: 100%; background: var(--s1); }
   .perf-limit.high .bar span { background: var(--warn); }
+  .perf-context { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; margin: 6px 0 10px; }
+  .perf-context-grid { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 13px;
+                        line-height: 1.3; letter-spacing: 1px; color: #e4e6eb; }
+  .perf-context-meta .model { color: #fff; font-weight: 600; }
+  .perf-context-meta .tokens { font-variant-numeric: tabular-nums; }
 """
 
 PERF_SCRIPT = """
@@ -600,6 +605,27 @@ PERF_SCRIPT = """
       + (live ? 'context ' + perfCompact(session.last_context) : 'peak ' + perfCompact(session.peak_context)) + '</span>';
   }
 
+  // /context-style gauge for an active session's last call (perf_view's context_window, via
+  // token_breakdown.context_window_usage). Two zones only -- used / free -- since no hook exposes
+  // /context's own autocompact-buffer reservation; "max" is a configured per-model assumption
+  // (token_breakdown.CONTEXT_WINDOW_TOKENS), not read from the session.
+  function perfContextGrid(session) {
+    const cw = session.context_window;
+    if (!cw) return '';
+    const total = 100;
+    const filled = Math.max(0, Math.min(total, Math.round(cw.share * total)));
+    const rows = [];
+    for (let r = 0; r < total; r += 10) {
+      const cells = [];
+      for (let c = r; c < r + 10; c++) cells.push(c < filled ? "⛁" : "⛶");
+      rows.push('<div>' + cells.join(" ") + '</div>');
+    }
+    return '<div class="perf-context"><div class="perf-context-grid">' + rows.join("") + '</div>'
+      + '<div class="perf-context-meta"><div class="model">' + escapeHtml(cw.model) + '</div>'
+      + '<div class="tokens" title="Max tokens is a configured assumption (token_breakdown.CONTEXT_WINDOW_TOKENS), not read from the session">'
+      + perfCompact(cw.used) + '/' + perfCompact(cw.max) + ' tokens (' + Math.round(cw.share * 100) + '%)</div></div></div>';
+  }
+
   function perfSession(session, colors) {
     const when = (session.started_at || "").slice(0, 16).replace("T", " ");
     const parts = ['<details class="perf-session' + (session.active ? ' active' : '') + '" data-key="' + escapeHtml(session.folder) + '"'
@@ -609,6 +635,7 @@ PERF_SCRIPT = """
       + (session.lane ? '<span class="perf-pill">' + escapeHtml(session.lane) + '</span>' : '')
       + perfContextPill(session)
       + '<span class="total">' + (session.usage.total != null ? perfCompact(session.usage.total) : session.compiled ? perfCompact(session.total) : '–') + '</span></summary>'];
+    parts.push(perfContextGrid(session));
     parts.push(perfUsage(session.usage));
     if (!session.compiled) {
       parts.push('<div class="empty">Token breakdown not compiled' + (session.error ? ': ' + escapeHtml(session.error) : ' yet') + '.</div>');
@@ -617,6 +644,7 @@ PERF_SCRIPT = """
         + perfPercent(session.total ? session.standardized / session.total : 0) + ' &middot; compiled '
         + escapeHtml((session.compiled_at || "").slice(0, 16).replace("T", " ")) + ' &middot; ' + escapeHtml(session.folder) + '</div>');
       parts.push(perfStack(session.categories, colors));
+      if (session.context_window) parts.push('<div class="meta">Estimated usage by category</div>');
       parts.push(perfCategoryTable(session.categories, colors, false));
       const d = session.doc_review;
       if (d && (d.count || d.miro_confluence.count)) {

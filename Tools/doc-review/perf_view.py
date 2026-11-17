@@ -225,6 +225,8 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
     for name, tokens in (breakdown.get("categories") or {}).items():
         categories.append({"name": name, "tokens": tokens, "share": tokens / total if total else 0.0})
     started_at = state.get("started_at") or ""
+    model = state.get("model") or ""
+    active = not state.get("ended_at") and now - state_path.stat().st_mtime < ACTIVE_WINDOW_SECONDS
     return {
         "id": state["session_id"][:8],
         "folder": state_path.parent.name,
@@ -235,7 +237,11 @@ def _session(state_path: Path, now: float) -> Optional[Dict]:
         "started_at": started_at,
         "ended_at": state.get("ended_at") or "",
         "compiled_at": state.get("compiled_at") or "",
-        "active": not state.get("ended_at") and now - state_path.stat().st_mtime < ACTIVE_WINDOW_SECONDS,
+        "active": active,
+        "model": model,
+        # Only an active session's gauge is current; a finished one's last call is no longer "now".
+        "context_window": token_breakdown.context_window_usage(model, breakdown.get("last_context") or 0)
+            if active and model else None,
         "usage": _usage(state.get("tokens") or {}),
         "compiled": bool(total),
         "error": breakdown.get("error") or "",

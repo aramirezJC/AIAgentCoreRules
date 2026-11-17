@@ -77,6 +77,21 @@ CONTEXT_WARNING_MIN_SESSIONS = 5
 # Latest plan rate_limits, written by session_lifecycle.py statusline into the sessions root and
 # read by the Performance tab (perf_view.current_usage).
 PLAN_USAGE_FILE = "plan_usage.json"
+# Context-window ceiling per model id (session.json "model", written by compile's main_model()), for the
+# Performance tab's /context-style gauge on active sessions. claude-sonnet-5 is grounded in an engineer's
+# own /context reading (2026-11-17: 300k); other ids default to DEFAULT_CONTEXT_WINDOW_TOKENS, Anthropic's
+# standard (non-long-context-beta) window -- correct here if an account's real ceiling differs.
+CONTEXT_WINDOW_TOKENS = {"claude-sonnet-5": 300_000}
+DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000
+
+
+def context_window_usage(model, used_tokens):
+    """{"model", "max", "used", "free", "share"} for the /context-style gauge -- used_tokens is a
+    session's last_context (its most recent call's real context size, not an estimate)."""
+    maximum = CONTEXT_WINDOW_TOKENS.get(model, DEFAULT_CONTEXT_WINDOW_TOKENS)
+    used = min(used_tokens, maximum)
+    return {"model": model or "", "max": maximum, "used": used, "free": maximum - used,
+            "share": used / maximum if maximum else 0.0}
 
 
 def size(value):
