@@ -103,6 +103,30 @@ class TagCandidatesTests(unittest.TestCase):
             },
         )
 
+    def test_table_rows_chunk_at_their_own_line_not_the_table_start(self):
+        repeated_row_1 = "No ServiceLocator.Instance — use constructor injection or LazyService today"
+        repeated_row_2 = "Never cast to a concrete type inside a high level system today"
+        core_tags_md = self._write(
+            "CoreTags.md",
+            "| Tag | Rule |\n|---|---|\n"
+            f"| **[DI]** | {repeated_row_1} |\n"
+            f"| **[IFACE]** | {repeated_row_2} |\n",
+        )
+        other_md = self._write(
+            "Other.md",
+            f"- {repeated_row_1}\n- {repeated_row_2}\n",
+        )
+        candidates = tc.build_candidates(
+            files=[core_tags_md, other_md], core_tags={}, ngram=8, near_dup_threshold=0.9,
+            min_words=6, tag_match_threshold=0.5,
+        )
+        di_hit = next(c for c in candidates if "servicelocator" in c.text.lower())
+        iface_hit = next(c for c in candidates if "concrete type" in c.text.lower())
+        di_line = next(occ.line for occ in di_hit.occurrences if occ.file == str(core_tags_md))
+        iface_line = next(occ.line for occ in iface_hit.occurrences if occ.file == str(core_tags_md))
+        self.assertEqual(di_line, 3)
+        self.assertEqual(iface_line, 4)
+
     def test_render_markdown_no_candidates(self):
         markdown = tc.render_markdown([])
         self.assertIn("No repeated or near-duplicate", markdown)

@@ -71,8 +71,14 @@ def _is_bullet_line(line: str) -> bool:
     return stripped.startswith("- ") or stripped.startswith("* ")
 
 
+def _is_table_row_line(line: str) -> bool:
+    return line.lstrip().startswith("|")
+
+
 def gather_chunks(file_path: Path, min_words: int = 6) -> List[Chunk]:
-    """Split a markdown file into comparable chunks: bullet lines on their own,
+    """Split a markdown file into comparable chunks: bullet lines and pipe-table
+    rows on their own (a table has no blank lines between rows, so without this
+    every row would merge into one block reported at the table's first line),
     everything else grouped into blank-line-separated paragraph blocks."""
     lines = file_path.read_text(encoding="utf-8").splitlines()
     chunks: List[Chunk] = []
@@ -92,11 +98,11 @@ def gather_chunks(file_path: Path, min_words: int = 6) -> List[Chunk]:
         if not line.strip():
             flush_block()
             continue
-        if _is_bullet_line(line):
+        if _is_bullet_line(line) or _is_table_row_line(line):
             flush_block()
-            bullet_text = line.strip()
-            if len(bullet_text.split()) >= min_words:
-                chunks.append(Chunk(text=bullet_text, file=str(file_path), line=idx))
+            line_text = line.strip()
+            if len(line_text.split()) >= min_words:
+                chunks.append(Chunk(text=line_text, file=str(file_path), line=idx))
             continue
         if not block_lines:
             block_start = idx
