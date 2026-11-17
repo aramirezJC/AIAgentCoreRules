@@ -25,7 +25,7 @@ import review_server  # noqa: E402
 def breakdown(total, ad_hoc, calls=10):
     return {"estimated": True, "total": total, "calls": calls, "standardized": total // 10,
             "categories": {"Runnable tools": total // 10, "Ad-hoc tool calls": ad_hoc,
-                           "Conversation & base context": total - total // 10 - ad_hoc}}
+                           "Conversation growth": total - total // 10 - ad_hoc}}
 
 
 class PerfViewTestCase(unittest.TestCase):

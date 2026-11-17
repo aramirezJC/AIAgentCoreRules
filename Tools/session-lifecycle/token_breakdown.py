@@ -11,8 +11,12 @@ estimate; the page and metrics.md label it so.
 
 Standardized operations are the framework's own mechanisms: Runnable tools, the session
 lifecycle script, skills, rule/process loads and subagents. Everything else a tool did is
-ad-hoc; the rest of the total is conversation and base context (system prompt, CLAUDE.md,
-replies, reasoning).
+ad-hoc; the rest of the total is system prompt, CLAUDE.md, memory files, replies and reasoning —
+a historical transcript never logs those as separate line items (only one opaque per-call usage
+total), unlike a live /context reading, so the best split available is STARTUP (a segment's first
+call, before any tool call has added anything — system prompt + CLAUDE.md + memory, essentially
+fixed per session) vs GROWTH (everything the remainder adds afterward — this session's own
+conversation).
 
 Dependency-free: imported by session_lifecycle.py.
 """
@@ -27,7 +31,8 @@ import statistics
 CHARS_PER_TOKEN = 4.0
 STANDARDIZED = ["Runnable tools", "Session lifecycle", "Skills", "Rule & process loads", "Subagents"]
 AD_HOC = "Ad-hoc tool calls"
-BASE = "Conversation & base context"
+STARTUP = "Session startup overhead"
+GROWTH = "Conversation growth"
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py", "unitysource.py", "cslint.py", "feature_state.py"]
 LIFECYCLE = "session_lifecycle.py"
 # Guesstimates of what one Runnable tool call replaces when done by hand: (context tokens, round-trips).
@@ -76,7 +81,7 @@ EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 # Low side: a Confluence republish after every doc edit, which the preview's live reload avoids, is not counted.
 DOC_REVIEW_PATTERN = r"python3?\s+\S*(doc_review|mermaid_preview)\.py(?:\s+([\w-]+))?"
 MIRO_CONFLUENCE_BY_COMMAND = {"serve": (18400, 3), "comments": (2400, 2), "reply": (1300, 1)}
-# Context-size warning: every call re-reads the whole current context ("Conversation & base context"
+# Context-size warning: every call re-reads the whole current context (startup + growth combined
 # was a median 80% of a session's tokens across 107 sessions, 2026-11-02), so a reset pays off most once
 # a session's per-call context reaches most sessions' peak. Shared by hook-prompt and the Performance tab.
 CONTEXT_WARNING_SHARE = 0.9
@@ -385,7 +390,13 @@ def analyse(transcript_path, session_id, roots, grep_suggestions=None):
     categories["Subagents"] += sum(run["total"] for run in runs.values())
 
     total = sum(context + output for _key, context, output in calls) + sum(run["total"] for run in runs.values())
-    categories[BASE] = max(total - sum(categories.values()), 0)
+    remainder = max(total - sum(categories.values()), 0)
+    # No tool call has run yet at a segment's first call, so its whole context is that segment's
+    # fixed startup bundle (system prompt, CLAUDE.md, memory files); clamp to the remainder since
+    # carried() can overshoot it slightly on the estimate's rounding.
+    startup = sum(carried(calls[start][1], start) for start in sorted({0, *boundaries}) if start < len(calls))
+    categories[STARTUP] = min(startup, remainder)
+    categories[GROWTH] = remainder - categories[STARTUP]
 
     savings = {name: {"tokens": 0, "round_trips": 0, "count": 0} for name in SAVINGS}
     for call, count in tool_uses_per_call.items():
