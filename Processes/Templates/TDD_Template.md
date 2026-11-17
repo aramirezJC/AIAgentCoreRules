@@ -45,14 +45,16 @@ empty group rather than omitting it.]
 ### 🟢 New
 
 #### `TypeOrFileName`
-- **Nature:** [one line]
-- **Reason:** [one line]
-- **Implementation:** [2–4 lines, concrete and checkable]
+[One-line TLDR — what this item is and why, scannable with no need to expand]
 
 <details>
 <summary>More detail</summary>
 
-[anything beyond the three lines above]
+- **Nature:** [one line]
+- **Reason:** [one line]
+- **Implementation:** [2–4 lines, concrete and checkable]
+
+[anything beyond Nature/Reason/Implementation]
 </details>
 
 ### 🟡 Modified
@@ -85,11 +87,14 @@ file), not in this local Markdown copy.]
 
 ### File Plan
 [Filled or completed in Phase 3 from the Discovery report; Phase 4 works through it task by task.
-May be partly filled in Phase 1 when the files are already known.]
+May be partly filled in Phase 1 when the files are already known. **Use Cases** is optional —
+leave it blank for a task with no specific use case (a refactor, a tooling task); otherwise list
+the ids (from `[FeatureName]_UseCases.md`, see its id convention in [[Phase1_Intake]]) this file's
+change exists to satisfy, e.g. `SlimF8-F11`.]
 
-| Task | Path | Change | Responsibility |
-|---|---|---|---|
-| T1 | | | |
+| Task | Path | Change | Responsibility | Use Cases |
+|---|---|---|---|---|
+| T1 | | | | |
 
 ## Best Practices
 [Rules an implementer of this feature must follow, grouped by the strongest mechanism that can
@@ -106,28 +111,29 @@ process.]
 
 [The `#` column is the task id (T1, T2 …), unique across the whole plan and never renumbered.
 /publish-batch names the task's branch and PRs after it, and the doc-review Progress tab shows
-the task's batch progress next to it.]
+the task's batch progress next to it. **Use Cases** is optional — same convention as the File
+Plan's column above: blank for a task with no specific use case, otherwise the ids it satisfies.]
 
 ### Stage Level (ie V0, V1 …)
 * **Level of effort:** [Insert t-shirt size plus estimate in days]
 
-| # | Title | Task | Assignee | **Status** |
-| --- | --- | --- | --- | --- |
-| T1 | Sample task | Sample Task | Andrea Ramirez | [ ] |
-| T2 | Designer show and tell | Show and tell to designer! | Andrea Ramirez | [ ] |
+| # | Title | Task | Assignee | Use Cases | **Status** |
+| --- | --- | --- | --- | --- | --- |
+| T1 | Sample task | Sample Task | Andrea Ramirez | | [ ] |
+| T2 | Designer show and tell | Show and tell to designer! | Andrea Ramirez | | [ ] |
 
 ### Final touches
 * **Level of effort:** At least 5 days.
 
-| # | Title | Task | Assignee | **Status** |
-| --- | --- | --- | --- | --- |
-| T3 | Data reconciliation | Implement and validate data reconciliation strategy | Andrea Ramirez | [ ] |
-| T4 | CS gifting | Implement CS Gifting Strategy | Andrea Ramirez | [ ] |
-| T5 | BI calls | Add BI calls | Andrea Ramirez | [ ] |
-| T6 | Unit tests | Add Unit Tests | Andrea Ramirez | [ ] |
-| T7 | Design and support tools | Implement design and support tools | Andrea Ramirez | [ ] |
-| T8 | QA debug functionality | Implement QA Debug functionality | Andrea Ramirez | [ ] |
-| T9 | RST backport | Backport Systems to RST | Andrea Ramirez | [ ] |
+| # | Title | Task | Assignee | Use Cases | **Status** |
+| --- | --- | --- | --- | --- | --- |
+| T3 | Data reconciliation | Implement and validate data reconciliation strategy | Andrea Ramirez | | [ ] |
+| T4 | CS gifting | Implement CS Gifting Strategy | Andrea Ramirez | | [ ] |
+| T5 | BI calls | Add BI calls | Andrea Ramirez | | [ ] |
+| T6 | Unit tests | Add Unit Tests | Andrea Ramirez | | [ ] |
+| T7 | Design and support tools | Implement design and support tools | Andrea Ramirez | | [ ] |
+| T8 | QA debug functionality | Implement QA Debug functionality | Andrea Ramirez | | [ ] |
+| T9 | RST backport | Backport Systems to RST | Andrea Ramirez | | [ ] |
 
 ## Design And Support Tools
 List of tools and mechanisms that the feature will need long term. Following are some examples:

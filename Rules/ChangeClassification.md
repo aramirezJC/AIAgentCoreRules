@@ -127,34 +127,48 @@ Data Reconciliation when a feature has nothing to say there):
 ### 🔴 Deleted
 ```
 
-Each item gets exactly this shape — three lines visible, anything beyond that collapsed:
+Each item gets exactly this shape — one TLDR line visible, everything else collapsed:
 
 ```markdown
 #### `TypeOrFileName`
-- **Nature:** one line — what kind of change (new class, new interface, deleted file, …).
-- **Reason:** one line — why this change exists.
-- **Implementation:** 2–4 lines — concrete and checkable, not prose padding.
+One-line TLDR — what this item is and why, scannable on its own with no need to expand.
 
 <details>
 <summary>More detail</summary>
 
-(anything beyond the three lines above: deeper rationale, edge cases, gotchas, code sketches)
+- **Nature:** one line — what kind of change (new class, new interface, deleted file, …).
+- **Reason:** one line — why this change exists.
+- **Implementation:** 2–4 lines — concrete and checkable, not prose padding.
+
+(anything beyond Nature/Reason/Implementation: deeper rationale, edge cases, gotchas, code
+sketches)
 </details>
 ```
 
-Omit the `<details>` block entirely when there is nothing beyond the three lines — an empty
-collapsible is worse than no collapsible. The group heading is where the tag lives — don't repeat
-it on the item heading too (`#### 🟢 NEW — \`X\`` under `### 🟢 New` says the same thing twice).
+The TLDR line is prose, not a fourth labeled field — it exists so the heading list alone is
+useful without expanding every item. Never omit the `<details>` block: unlike the old shape,
+Nature/Reason/Implementation now live inside it, so an item without one would have nothing but
+the TLDR. The group heading is where the tag lives — don't repeat it on the item heading too
+(`#### 🟢 NEW — \`X\`` under `### 🟢 New` says the same thing twice).
+
+`Tools/doc-review/progress_view.py` tracks a TDD's drafted/approved status by diffing each
+heading's whitespace-collapsed body against the template's placeholder text — it does not parse
+the Nature/Reason/Implementation sub-structure, so moving those fields inside the collapsible is
+safe for that tool. A template and a real TDD must still move together: re-verify this against
+the current `progress_view.py` before relying on it again, since tooling can change after this
+note is written.
 
 ### File Plan table
 
 The existing `| Task | Path | New / Modified | Responsibility |` table's third column becomes
-`Change`, using the same tags (adds Deleted, which the table never supported):
+`Change`, using the same tags (adds Deleted, which the table never supported). A fifth column,
+`Use Cases`, cross-references the use-case ids (see [[Phase1_Intake]]'s `id_convention`) the
+task's change exists to satisfy — optional, blank for a task with no specific use case:
 
 ```markdown
-| Task | Path | Change | Responsibility |
-|---|---|---|---|
-| T1 | relative/path/FileName.cs | 🟢 New | one-line description |
+| Task | Path | Change | Responsibility | Use Cases |
+|---|---|---|---|---|
+| T1 | relative/path/FileName.cs | 🟢 New | one-line description | SlimF8-F11 |
 ```
 
 ---
