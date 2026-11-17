@@ -16,7 +16,11 @@ import session_lifecycle  # noqa: E402
 def hook(command):
     stdout = io.StringIO()
     payload = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
-    with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout):
+    # cmd_hook_bash now logs a firing to hooks.log (token-usage savings pass, 2026-11-17 end-session
+    # follow-up); hook_log is stubbed out here so this module-level helper never resolves reports_root
+    # against the real project and writes into its live GitIgnoreReports/Sessions/hooks.log.
+    with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout), \
+         mock.patch.object(session_lifecycle, "hook_log"):
         assert session_lifecycle.cmd_hook_bash(argparse.Namespace(reports_root=None)) == 0
     text = stdout.getvalue()
     return json.loads(text)["hookSpecificOutput"]["additionalContext"] if text else ""

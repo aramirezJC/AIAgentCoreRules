@@ -30,9 +30,11 @@ engineer's part is logging corrections and running `/end-session`.
 | The lane changes in a large session | Recording a lane change on a session past ~30M tokens prints a fresh-session offer with the matching command (`/new-session "/bug-fix <symptom>"`, …) | Agent offers, you decide |
 | Session closes without `/end-session` | The SessionEnd hook still compiles metrics (no retrospective) and records the exit time and reason; a resumed session's end time is updated on each exit. It fires only when the process exits, not when the app marks an idle session completed | Automatic |
 
-Every hook run appends one line to `GitIgnoreReports/Sessions/hooks.log` (event, session, the
-agent's working directory, outcome). If a session's metrics look stale, check that log first: no `end`
-line means the hook never fired; `no folder for this session` or `ERROR` means it fired and failed.
+Most hooks append one line to `GitIgnoreReports/Sessions/hooks.log` on every run (event, session,
+the agent's working directory, outcome); `hook-read` and `hook-bash` log only when they fire a
+nudge or hit an `ERROR`, not on a silent check, so their absence from the log does not mean they
+never ran. If a session's metrics look stale, check that log first: no `end` line means the hook
+never fired; `no folder for this session` or `ERROR` means it fired and failed.
 Reports always go to the project's main checkout (found from git, or the folder holding `CLAUDE.md`),
 whatever folder the agent has `cd`'d into, so a session never splits into two folders. Nothing to
 configure per project — `install.py` and the tracker share the same root lookup. Global options

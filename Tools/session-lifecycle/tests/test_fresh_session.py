@@ -135,7 +135,10 @@ class ShellRuleReadTests(unittest.TestCase):
     def hook(self, command):
         stdout = io.StringIO()
         payload = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
-        with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout):
+        # cmd_hook_bash now logs a firing to hooks.log; stubbed out so this helper never writes
+        # into the real project's live GitIgnoreReports/Sessions/hooks.log.
+        with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout), \
+             mock.patch.object(session_lifecycle, "hook_log"):
             self.assertEqual(session_lifecycle.cmd_hook_bash(argparse.Namespace(reports_root=None)), 0)
         return stdout.getvalue()
 
@@ -225,6 +228,35 @@ class HookReadTests(unittest.TestCase):
         with open(path, "w") as handle:
             handle.write("x" * session_lifecycle.CS_SHAPE_READ_MIN_BYTES)
         self.assertEqual(self.hook(path), "")
+
+
+class HookBashFiringLogTests(unittest.TestCase):
+    """End-session follow-up to retro 90556129, proposal #1: hook-bash had the same gap as
+    hook-read — hooks.log only ever recorded its errors, never a real firing."""
+
+    def hook(self, command, reports_root):
+        stdout = io.StringIO()
+        payload = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
+        with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout):
+            self.assertEqual(session_lifecycle.cmd_hook_bash(argparse.Namespace(reports_root=reports_root)), 0)
+        return stdout.getvalue()
+
+    def test_firing_is_logged_with_which_detectors_fired(self):
+        tmp = tempfile.mkdtemp(prefix="hook-bash-log-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        reports = os.path.join(tmp, "reports")
+        self.hook('sed -n 1,5p Rules/CoreTags.md; grep -rl "class Foo" Assets', reports)
+        with open(os.path.join(reports, "hooks.log")) as handle:
+            log = handle.read()
+        self.assertIn("bash ", log)
+        self.assertIn("fired: rule-read, type-grep", log)
+
+    def test_silent_command_logs_nothing(self):
+        tmp = tempfile.mkdtemp(prefix="hook-bash-log-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        reports = os.path.join(tmp, "reports")
+        self.hook("git status", reports)
+        self.assertFalse(os.path.isfile(os.path.join(reports, "hooks.log")))
 
 
 if __name__ == "__main__":

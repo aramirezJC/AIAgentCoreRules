@@ -1228,6 +1228,11 @@ def cmd_hook_bash(args):
         if notes:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse", "additionalContext": "\n".join(notes)}}))
+            # Proposed change #1 (retro 90556129, end-session follow-up): hooks.log was error-only for
+            # this hook too, so none of its 3 detectors could be tuned from real firing frequency.
+            fired = ([name for name, hits in
+                      (("rule-read", paths), ("type-grep", lookups), ("feature-doc", doc_paths)) if hits])
+            hook_log(args, "bash", hook, "fired: %s" % ", ".join(fired))
     except Exception as error:   # a hook must never block a command
         hook_log(args, "bash", hook, "ERROR %s" % error)
     return 0
