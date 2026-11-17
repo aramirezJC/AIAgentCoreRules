@@ -172,7 +172,8 @@ rather than requiring an external `flock` command. The detached process survives
 `doc_review.py serve-project <project> [--features-root ROOT] [--port N] [--open]` is the
 foreground entry point. Home lists active features. Selection is encoded as `?feature=Name`,
 so browser windows can review different features independently. Fixed tabs are Home, Plan, TDD,
-GDD, Class Diagram, Flow Diagram and LLM Performance; absent artifacts show placeholders.
+GDD, Framework Class Diagram, Concrete Class Diagram, Flow Diagram, Life Cycle Diagram and
+LLM Performance; absent artifacts show placeholders.
 Migrate legacy features explicitly using the feature-state tool before reviewing them.
 
 Feature comments live in `<feature-directory>/review.json`, independent of the selected document.

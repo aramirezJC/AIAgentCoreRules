@@ -112,6 +112,48 @@ time; no values changed.)
 
 ---
 
+## Diagram types and naming
+
+A feature's `Diagrams/*.mmd` can hold up to four diagram types, each its own `.mmd` file, its
+own artifact role (`Tools/feature-state/feature_state.py`'s `artifact_roles`), and its own tab
+in the local preview (`Tools/doc-review/project_server.py`'s `TITLES`/`ROLES`). Name new
+diagrams this way — the first time this is written down as a forward convention, not just a
+legacy-alias list:
+
+```yaml
+diagram_types:
+  framework_class_diagram:
+    file:    "01a_FrameworkClassDiagram.mmd"
+    syntax:  "mermaid classDiagram"
+    shows:   "Abstract/interface/base types the feature's own types extend or implement, plus unchanged framework types shown only for context."
+    colors:  "This file's 3(+1)-color NEW/MODIFIED/DELETED/existingStyle scheme — existingStyle is the common case here."
+  concrete_class_diagram:
+    file:    "01b_ConcreteClassDiagram.mmd"
+    syntax:  "mermaid classDiagram"
+    shows:   "Only the feature's own concrete NEW/MODIFIED/DELETED types — no abstract/framework context (that's the diagram above)."
+    colors:  "Same 3-color scheme; existingStyle is rare here by construction."
+  flow_diagram:
+    file:    "02_FlowDiagram.mmd"
+    syntax:  "mermaid flowchart"
+    shows:   "Process/control flow — unchanged, see Scope above."
+    colors:  "The general/decision/terminator/failure palette above, not this scheme."
+  life_cycle_diagram:
+    file:    "03_LifeCycleDiagram.mmd"
+    syntax:  "mermaid stateDiagram-v2"
+    shows:   "The states a key object or record moves through over its lifetime, and the transitions between them (e.g. created -> active -> forgiven -> cleared)."
+    colors:  "No classDef scheme — stateDiagram-v2's default styling. Decided against inventing one: no diagram in this repo uses stateDiagram-v2 yet, and classDef/class support for it varies by mermaid-cli version. Name any terminal state in one line of prose next to the diagram instead of a colored legend."
+```
+
+A feature with only the historical single class diagram (pre-dating this split) still works:
+`legacy_migration.py` maps its old filenames (`01_ClassStructure.mmd`, `01_ClassDiagram.mmd`)
+to `framework_class_diagram` — that single diagram already mixed framework context with the
+feature's own types, which is what `framework_class_diagram` alone also allows. Splitting its
+concrete types out into a separate `01b_ConcreteClassDiagram.mmd` is optional, done when the
+framework diagram gets crowded enough that the split earns its own tab, not required for every
+feature.
+
+---
+
 ## File/type list format
 
 Used in a TDD's **Architecture** section (Phase 1, type-level — exact paths may still be TBD,
