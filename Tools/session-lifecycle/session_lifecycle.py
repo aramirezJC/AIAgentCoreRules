@@ -22,6 +22,8 @@ Subcommands:
                  and suggests codeindex/usages for a grep over C# for a type or member name.
     hook-edit    PreToolUse hook on Edit|Write. First .cs edit of a session: typecheck baseline on the
                  untouched tree, result to the agent. Every .cs edit: last_cs_edit in typecheck.json.
+    hook-agent   PreToolUse hook on Agent. Reminds the agent of the lane's agent_model rule
+                 (LANE_AGENT_MODEL) when a spawned call's model does not match.
     hook-lint    PostToolUse hook on Edit|Write. cslint on the edited .cs file's changed lines.
     hook-stop-check  Stop hook (sync). Blocks once when a .cs file changed after the last typecheck run.
     statusline   statusLine command. Saves the plan rate_limits Claude Code sends to <sessions root>/plan_usage.json
@@ -75,6 +77,9 @@ LANES = ["small_task", "large_task", "bug_fix", "investigation", "feature", "oth
 WORK_TYPES = ["bug_fix", "small_feature", "large_feature", "feature", "question", "other"]
 LANE_WORK_TYPE = {"small_task": "small_feature", "large_task": "large_feature", "bug_fix": "bug_fix",
                   "investigation": "question", "feature": "feature", "other": "other"}
+# agent_model (SmallTask.md, BugFix.md, LargeTask.md): the model every Agent tool call spawned in
+# this lane should pass, unless the step it comes from pins its own. Lanes not listed have no rule.
+LANE_AGENT_MODEL = {"small_task": "haiku", "bug_fix": "haiku", "large_task": "sonnet"}
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py", "unitysource.py", "cslint.py"]
 # CreateFeature working folders, relative to the project root (Processes/CreateFeature/index.md
 # working_folder). Override with SESSION_FEATURES_ROOT or --features-root.
@@ -1437,6 +1442,38 @@ def cmd_hook_edit(args):
     return 0
 
 
+def cmd_hook_agent(args):
+    """PreToolUse hook on Agent: when the session's lane has an agent_model rule (LANE_AGENT_MODEL)
+    and the spawned call's model does not match it, remind the agent of the rule. subagent_type
+    "fork" is exempt (its model override is always ignored). Warns only; never blocks the call."""
+    hook = {}
+    try:
+        hook = read_hook_input()
+        tool_input = hook.get("tool_input") or {}
+        if tool_input.get("subagent_type") == "fork":
+            return 0
+        hook_project_dir(hook)
+        folder = find_folder(reports_root(args), hook.get("session_id"))
+        if not folder:
+            return 0
+        lane = load_state(folder).get("lane")
+        expected = LANE_AGENT_MODEL.get(lane)
+        if not expected:
+            return 0
+        model = tool_input.get("model")
+        if model == expected:
+            return 0
+        note = ("This session's lane (%s) passes model: \"%s\" on every spawned Agent call (Explore "
+                "agents, fan-out) unless the step it comes from pins its own model — see this lane's "
+                "process file's agent_model rule. This call had model=%s." %
+                (lane, expected, repr(model)))
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
+        hook_log(args, "agent", hook, "nudged %s -> %s (got %s)" % (lane, expected, model))
+    except Exception as error:   # a hook must never block a spawn
+        hook_log(args, "agent", hook, "ERROR %s" % error)
+    return 0
+
+
 def cmd_hook_lint(args):
     """PostToolUse hook on Edit|Write: cslint the edited .cs file's changed lines and hand the agent
     the mechanical-tag violations at once. Silent when clean."""
@@ -1737,6 +1774,7 @@ def main():
     sub.add_parser("hook-bash").set_defaults(func=cmd_hook_bash)
     sub.add_parser("hook-read").set_defaults(func=cmd_hook_read)
     sub.add_parser("hook-edit").set_defaults(func=cmd_hook_edit)
+    sub.add_parser("hook-agent").set_defaults(func=cmd_hook_agent)
     sub.add_parser("hook-lint").set_defaults(func=cmd_hook_lint)
     sub.add_parser("hook-stop-check").set_defaults(func=cmd_hook_stop_check)
     sub.add_parser("statusline", help="statusLine command: saves rate_limits to plan_usage.json, prints a short line").set_defaults(func=cmd_statusline)
