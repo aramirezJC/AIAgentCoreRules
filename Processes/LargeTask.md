@@ -22,6 +22,7 @@ escalate_when:
   - "It turns out to fit SmallTask's fits_when → say so and offer to continue as /small-task (re-run `set --lane small_task`)."
 lane_switch:
   - "Entering this lane from another one in the same session (e.g. a small task that outgrew its limits) → record `set --lane large_task` before 3_plan, and offer the choice first: continue here, or /new-session \"/large-task <ask>\". The engineer decides."
+agent_model: "sonnet — every Agent tool call spawned in this lane (Explore agents, fan-out) passes model: sonnet, unless the step it comes from (e.g. /audit) pins its own model."
 ```
 
 ---
@@ -36,7 +37,7 @@ steps:
     - "Work type: large_feature by default; `set --work-type other` for tooling, framework, config or rule work, bug_fix when the large change is a fix."
   2_discovery:
     - "SystemIndex: Read the Systems/ entry for every system the change lives in or USES (messages, states, prizes — match SystemIndex's trigger comments), and the SystemPatterns/ file if one matches."
-    - "Survey each area with an Explore agent (one per area, in ONE message), asked for a compact map. Read inline only the bodies the plan rests on."
+    - "Survey each area with an Explore agent (one per area, in ONE message, model: sonnet), asked for a compact map. Read inline only the bodies the plan rests on."
     - "Existing utility first — before planning any helper, tool, window, exporter, logger or importer, look for one to extend: host metadata, then codeindex.py where/types. Record what you searched for the plan."
     - "Apply SmallTask 2_context's checks as they fit: listeners' handlers before choosing dispatch points; real data has the keys a consumer matches on; reuse an existing view's population and filter rules."
   3_plan:   # GATE — no code before the engineer approves
