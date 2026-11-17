@@ -19,6 +19,7 @@ escalate_when:
   - "Or offer a split: list two or more small tasks (each within fits_when), do the first here, and hand each remaining one off as a ready-to-run `claude \"/small-task …\"` command with self-contained context (files, formats, where to work)."
 lane_switch:
   - "Entering this lane from another one in the same session → offer the split as a choice first: continue here, or /new-session \"/small-task <ask>\". Relay the fresh-session offer `set` prints for a large session. The engineer decides."
+agent_model: "haiku — every Agent tool call spawned in this lane (Explore agents, fan-out) passes model: haiku, unless the step it comes from (e.g. /audit) pins its own model."
 ```
 
 ---
@@ -37,7 +38,7 @@ steps:
     - "Also read the entry for every system the change USES, not only the one it lives in: sending or listening for a message → the message-bus entry; pushing, popping or setting states → the navigation/state entry; guarding or touching reward flows → the prize entry. Match the change against SystemIndex's trigger comments."
     - "Existing utility first — before writing any helper, tool, window, exporter, logger or importer, look for one to extend, in this order: (1) the host metadata (SystemIndex trigger comments, Systems/, SystemPatterns/); (2) the codebase (codeindex.py where/types on likely names, an Explore agent when broad). Record what you searched for 4_propose."
     - "Model example: codeindex.py where/members <Example>; Read only the bodies you will copy the shape of."
-    - "Anything broader than one targeted query → an Explore agent, not inline search."
+    - "Anything broader than one targeted query → an Explore agent (model: haiku), not inline search."
     - "If the change sends or listens for a message/event: read every listener's handler before choosing dispatch points — how often it fires changes what the listener computes."
     - "When the change consumes data written by another skill or tool (a progress block, a sidecar, ids), check that real feature data actually has the keys the consumer matches on, before 4_propose."
     - "When a new check must agree with an existing view (tab, report), reuse the view's population and filter rules, such as perf_view's active-session rule, instead of re-deriving them."
