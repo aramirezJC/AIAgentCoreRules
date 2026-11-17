@@ -115,6 +115,6 @@ tokens on their own, before counting what they compounded into.
 ```yaml
 tool_output:
   - "[TRIM] Default to the minimum output needed to answer the question — pipe through tail/grep/head, use Read with limit/offset, summarize a test run's pass/fail counts instead of pasting the full log."
-  - "[TRIM] Multi-round exploratory or trial-and-error work (browser automation probing, iterative debug scripts, anything that needs several retries to get right) belongs in a fork, not the main thread — see [[MetaRouter]]'s [DELEGATE]. Only the final working script and its conclusion need to come back."
+  - "[TRIM] Multi-round exploratory or trial-and-error work (browser automation probing, iterative debug scripts, anything that needs several retries to get right) belongs in a fork, not the main thread — see [[MetaRouter]]'s [DELEGATE] section for what should come back from it."
   - "[TRIM] Verbosity is fine when the engineer asks for it, or when the raw output is itself the deliverable (a diff under review, a stack trace being diagnosed)."
 ```
