@@ -651,8 +651,10 @@ PERF_SCRIPT = """
     const plan = current.plan;
     const parts = ['<h2>Current usage</h2>'];
     if (!plan) {
-      parts.push('<div class="empty">Plan limits unavailable: no capture yet. Register the status line '
-        + '(session_lifecycle.py statusline) in .claude/settings.json; it needs a Pro or Max plan.</div>');
+      parts.push('<div class="empty">Plan limits unavailable: no capture yet. Set up the status line once — '
+        + '<code>python3 &lt;core&gt;/Tools/setup/install.py install</code> adds it automatically (skips it if '
+        + 'you already have one of your own), or add it by hand per Tools/session-lifecycle/README.md. '
+        + 'Needs a Pro or Max plan; starts showing after your next reply in any session.</div>');
     } else {
       const age = Math.round(plan.age_seconds / 60);
       parts.push('<div class="meta">Plan limits, captured ' + (age < 1 ? 'just now' : age + ' min ago')

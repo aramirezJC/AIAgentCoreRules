@@ -66,16 +66,24 @@ every folder, for one-off cleanup.
 | `hook-edit` | PreToolUse (`Edit\|Write`) | 30 | First .cs edit: typecheck baseline; every .cs edit: `last_cs_edit` |
 | `hook-lint` | PostToolUse (`Edit\|Write`) | 10 | `cslint.py` on the edited .cs file's changed lines |
 
-**Status line (optional, wired by hand).** `statusline` is a `statusLine` command, not a hook, and
-the installer does not merge it. Claude Code pipes it JSON on every assistant message; for Pro/Max
-plans that includes `rate_limits` (`five_hour`, `seven_day`, `spend_limit`: `used_percentage`,
+**Status line (optional).** `statusline` is a `statusLine` command, not a hook; `../setup/install.py
+install` sets it automatically — but only when the project has no `statusLine` at all, the same
+"add, never overwrite" rule merge_hooks uses for a hook command already present in an event — so an
+engineer's own status line is left alone. Claude Code pipes it JSON on every assistant message; for
+Pro/Max plans that includes `rate_limits` (`five_hour`, `seven_day`, `spend_limit`: `used_percentage`,
 `resets_at`). It saves the latest to `<sessions root>/plan_usage.json`, which the preview's
-Performance tab shows under **Current usage**, and prints e.g. `Opus · 5h 23% · 7d 41%`:
+Performance tab shows under **Current usage**, and prints e.g. `Opus · 5h 23% · 7d 41%`. Needs an
+absolute path to the project's own core checkout, not `$CLAUDE_PROJECT_DIR`: unlike hooks, the
+statusLine command's cwd and environment are undocumented, so `install.py` writes the real path
+(`CORE_ABS_PLACEHOLDER` in `settings.core.json`, substituted per project):
 
 ```json
 "statusLine": {"type": "command",
                "command": "python3 <project>/GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py statusline"}
 ```
+
+To add it by hand instead (e.g. before the next `install.py` run, or in a project that will never
+run it), paste the snippet above with `<project>` replaced.
 
 **Typecheck and lint hooks.** On the session's first `.cs` edit inside a Unity project, `hook-edit`
 runs `typecheck.py --files <file>` on the still-untouched tree (~3-4 s) and hands the agent the

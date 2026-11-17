@@ -1,4 +1,8 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "python3 __AIAgentCoreRules_ABS__/Tools/session-lifecycle/session_lifecycle.py statusline"
+  },
   "hooks": {
     "SessionStart": [
       {
