@@ -78,6 +78,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py hook-read",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [

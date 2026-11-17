@@ -62,7 +62,8 @@ every folder, for one-off cleanup.
 | `hook-stop` | Stop, `async` | 30 | Throttled recompile after each reply |
 | `hook-stop-check` | Stop, sync | 20 | Blocks the stop once when a .cs file changed after the last `typecheck.py` run |
 | `hook-prompt` | UserPromptSubmit | 10 | Idle-gap cost note; context-size warning |
-| `hook-bash` | PreToolUse (`Bash`) | 10 | Read-not-cat reminder for rule files; codeindex/usages for a C# grep |
+| `hook-bash` | PreToolUse (`Bash`) | 10 | Read-not-cat reminder for rule and feature-doc files; codeindex/usages for a C# grep |
+| `hook-read` | PreToolUse (`Read`) | 10 | codeindex/code-graph reminder for a whole-file `.cs` Read with no `limit`/`offset` |
 | `hook-edit` | PreToolUse (`Edit\|Write`) | 30 | First .cs edit: typecheck baseline; every .cs edit: `last_cs_edit` |
 | `hook-lint` | PostToolUse (`Edit\|Write`) | 10 | `cslint.py` on the edited .cs file's changed lines |
 
