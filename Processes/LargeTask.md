@@ -54,8 +54,8 @@ steps:
     - "A deliverable that is only a document or report (no code or rule edits) needs no plan.md. The Scope Gate answers (shape, output location) are its plan; state 'done when' in chat and go on to discovery. Any follow-up edits the report recommends go through 3_plan as usual."
   3_rules:   # routing table, by what the change touches
     csharp:                    [../Rules/CodingStandards.md]
-    new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]
-    subscriptions_timers_loads:[../Rules/ResourceManagementRules.md]
+    new_class_or_interface:    [../Rules/ArchitecturalPrinciples.md]   # language-agnostic (SOLID); applies to any new class/interface, not just C#
+    subscriptions_timers_loads:[../Rules/ResourceManagementRules.md]   # language-agnostic (acquire/release symmetry); applies to any subscription/timer/load, not just C#
     async_sequences:           [../Rules/MultyStepOperationsRules.md]
     csharp_tests:              [../Rules/TestingRules.md]   # Python tool tests: 5_tests (unittest in the tool's tests/), no rule file
   4_implement:   # one plan step at a time
