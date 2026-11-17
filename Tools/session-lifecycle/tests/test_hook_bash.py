@@ -81,5 +81,45 @@ class TypeGrepTests(unittest.TestCase):
         self.assertIn("codeindex.py where Foo", context)
 
 
+class FeatureDocReadTests(unittest.TestCase):
+    """Token-usage savings pass, 2026-11-17: a feature doc (TDD, progress, checkpoint JSON) read
+    via cat/sed/head/tail/grep bypasses Read's limit/offset and the partial-file-read saving."""
+
+    def test_cat_of_a_tdd_gets_the_reminder(self):
+        context = hook("cat Assets/GitIgnoreAssets/Features/Thing/Thing_TDD.md")
+        self.assertIn("Features/Thing/Thing_TDD.md", context)
+        self.assertIn("limit/offset", context)
+
+    def test_grep_context_of_a_progress_file_gets_the_reminder(self):
+        context = hook('grep -A5 "Phase 4" Assets/GitIgnoreAssets/Features/Thing/Thing_Progress.md')
+        self.assertIn("Thing_Progress.md", context)
+
+    def test_head_of_a_checkpoint_json_gets_the_reminder(self):
+        context = hook("head -c 2000 Assets/GitIgnoreAssets/Features/Thing/Thing_Checkpoint.json")
+        self.assertIn("Thing_Checkpoint.json", context)
+
+    def test_non_feature_doc_reads_are_silent(self):
+        for command in (
+            "cat Assets/Scripts/Foo.cs",
+            "cat Assets/GitIgnoreAssets/features/thing/thing_tdd.md",
+            "git log --oneline Assets/GitIgnoreAssets/Features/Thing/Thing_TDD.md",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(hook(command), "")
+
+    def test_quoted_or_heredoc_mentions_are_silent(self):
+        for command in (
+            'echo "cat Assets/GitIgnoreAssets/Features/Thing/Thing_TDD.md"',
+            "cat > t.md <<'EOF'\nsed -n 1,5p Features/Thing/Thing_Progress.md\nEOF\npython3 t.py",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(hook(command), "")
+
+    def test_feature_doc_and_type_grep_reminders_coexist(self):
+        context = hook('cat Assets/GitIgnoreAssets/Features/Thing/Thing_TDD.md; grep -rl "class Foo" Assets')
+        self.assertIn("Thing_TDD.md", context)
+        self.assertIn("codeindex.py where Foo", context)
+
+
 if __name__ == "__main__":
     unittest.main()
