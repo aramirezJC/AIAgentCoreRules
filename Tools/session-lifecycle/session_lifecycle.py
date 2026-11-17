@@ -111,6 +111,15 @@ GREP_PROGRAMS = ("grep", "egrep", "rg")
 GREP_VALUE_OPTIONS = ("-A", "-B", "-C", "-m", "-f", "-g", "--glob", "-t", "--type", "--include", "--exclude")
 CS_TARGET = re.compile(r"\.cs\b|(?:^|/)Assets(?:/|$)|^cs$|--type=cs|-tcs")
 TYPE_DECL_PATTERN = re.compile(r"\b(class|interface|enum|struct|record)\s+([A-Z]\w*)")
+# hook-bash (token-usage savings pass, 2026-11-17): a shell excerpt of a feature doc (TDD, progress
+# file, checkpoint JSON) bypasses Read's limit/offset and the partial-file-read saving it earns.
+# Same shape as SHELL_RULE_READ above, widened to Features/ markdown and JSON, plus grep -A/-B/-C.
+FEATURE_DOC_READ = re.compile(
+    r"(?:^|[;&|]|\$\()\s*(?:cat|sed|head|tail|grep|egrep|rg)\b[^|;&\n]*?(\S*\bFeatures/\S*\.(?:md|json))",
+    re.MULTILINE)
+# hook-read (token-usage savings pass, 2026-11-17): below this, a whole-file Read costs less than
+# the round trip to codeindex.py/code-graph.sh would, so it is not worth nagging about.
+CS_SHAPE_READ_MIN_BYTES = 4000
 # `file --to` targets (MR-20261016-06): folders next to the sessions root that background jobs
 # cannot Write into directly.
 FILE_TARGETS = ["MetaReviews"]
@@ -1086,6 +1095,12 @@ def shell_rule_reads(command):
     return SHELL_RULE_READ.findall(_strip_prose(command))
 
 
+def feature_doc_reads(command):
+    """Feature-doc paths (TDD, progress, checkpoint JSON) a command cat/sed/head/tail/greps,
+    ignoring heredoc bodies and quoted text. Same shape as shell_rule_reads, for Features/ docs."""
+    return FEATURE_DOC_READ.findall(_strip_prose(command))
+
+
 def runnable_tool_calls(command):
     """{tool: count} of the Runnable tools a command really runs. A `python3 codeindex.py ...`
     inside a heredoc body or quoted text (an edit script, a doc string) is not a run."""
@@ -1203,11 +1218,45 @@ def cmd_hook_bash(args):
             notes.append("This grep looks up a C# name; the index answers it with file:start-end and full "
                          "signatures: %s. Keep grep for free text." %
                          "; ".join(" or ".join(prefix + c for c in s) for s in lookups))
+        doc_paths = feature_doc_reads(command)
+        if doc_paths:
+            notes.append("Use the Read tool with limit/offset to excerpt a feature doc (%s) instead of "
+                         "cat/sed/grep -A/-B — it earns the partial-file-read saving and keeps the excerpt "
+                         "exact; shell reads are only inferred." % ", ".join(doc_paths))
         if notes:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse", "additionalContext": "\n".join(notes)}}))
     except Exception as error:   # a hook must never block a command
         hook_log(args, "bash", hook, "ERROR %s" % error)
+    return 0
+
+
+def cmd_hook_read(args):
+    """PreToolUse hook on Read: when a sizeable .cs file is read whole (no limit/offset), suggest
+    codeindex.py/code-graph.sh for its shape first. Warns only; never blocks the read."""
+    hook = {}
+    try:
+        hook = read_hook_input()
+        tool_input = hook.get("tool_input") or {}
+        path = tool_input.get("file_path") or ""
+        if not path.endswith(".cs") or "limit" in tool_input or "offset" in tool_input:
+            return 0
+        hook_project_dir(hook)
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            return 0
+        if size < CS_SHAPE_READ_MIN_BYTES:
+            return 0
+        name = os.path.splitext(os.path.basename(path))[0]
+        prefix = unity_tools_prefix()
+        note = ("%d bytes read whole for %s.cs. If this is only for its shape (members, base type), "
+                "%scodeindex.py members %s or %scodeindex.py where %s answers without the bodies — "
+                "code-graph.sh's /api/type in one call if you need more than one lookup on it. Read "
+                "the file itself once you need the bodies to copy or edit." % (size, name, prefix, name, prefix, name))
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
+    except Exception as error:   # a hook must never block a read
+        hook_log(args, "read", hook, "ERROR %s" % error)
     return 0
 
 
@@ -1675,6 +1724,7 @@ def main():
     sub.add_parser("hook-stop").set_defaults(func=cmd_hook_stop)
     sub.add_parser("hook-prompt").set_defaults(func=cmd_hook_prompt)
     sub.add_parser("hook-bash").set_defaults(func=cmd_hook_bash)
+    sub.add_parser("hook-read").set_defaults(func=cmd_hook_read)
     sub.add_parser("hook-edit").set_defaults(func=cmd_hook_edit)
     sub.add_parser("hook-lint").set_defaults(func=cmd_hook_lint)
     sub.add_parser("hook-stop-check").set_defaults(func=cmd_hook_stop_check)

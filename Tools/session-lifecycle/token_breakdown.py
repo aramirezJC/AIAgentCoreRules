@@ -28,7 +28,7 @@ CHARS_PER_TOKEN = 4.0
 STANDARDIZED = ["Runnable tools", "Session lifecycle", "Skills", "Rule & process loads", "Subagents"]
 AD_HOC = "Ad-hoc tool calls"
 BASE = "Conversation & base context"
-RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py"]
+RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py", "unitysource.py", "cslint.py", "feature_state.py"]
 LIFECYCLE = "session_lifecycle.py"
 # Guesstimates of what one Runnable tool call replaces when done by hand: (context tokens, round-trips).
 #   codeindex: one exploratory file read plus a grep to find it.
@@ -407,8 +407,10 @@ def analyse(transcript_path, session_id, roots, grep_suggestions=None):
             hits = [tool for tool in RUNNABLE_TOOLS
                     for _ in re.findall(r"python3?\s+\S*" + re.escape(tool), command)]
             for tool in hits:
-                avoided, round_trips = AVOIDED_BY_TOOL[tool]
-                saving = savings[tool]
+                # Tools without a measured guesstimate (see AVOIDED_BY_TOOL above) still
+                # classify correctly as "Runnable tools" above; they just carry no savings credit.
+                avoided, round_trips = AVOIDED_BY_TOOL.get(tool, (0, 0))
+                saving = savings.setdefault(tool, {"tokens": 0, "round_trips": 0, "count": 0})
                 saving["count"] += 1
                 saving["round_trips"] += round_trips
                 saving["tokens"] += carried(max(avoided - op["tokens"] // len(hits), 0), op["at"])
