@@ -435,6 +435,12 @@ PERF_CSS = """
   .perf-scope { display: inline-flex; border: 1px solid #333944; border-radius: 6px; overflow: hidden; margin: 10px 0 0; }
   .perf-scope button { background: none; border: 0; color: #9aa3b5; font: inherit; font-size: 13px; padding: 4px 12px; cursor: pointer; }
   .perf-scope button.on { background: #333944; color: #fff; }
+  .perf-limit { margin: 8px 0; }
+  .perf-limit .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  .perf-limit .row .pct { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .perf-limit .bar { height: 8px; border-radius: 4px; background: #333944; overflow: hidden; margin-top: 3px; }
+  .perf-limit .bar span { display: block; height: 100%; background: var(--s1); }
+  .perf-limit.high .bar span { background: var(--warn); }
 """
 
 PERF_SCRIPT = """
@@ -604,6 +610,41 @@ PERF_SCRIPT = """
       + 'Used: measured Miro/Confluence MCP calls in ' + d.miro_confluence.sessions + ' session(s).</div>';
   }
 
+  // Current usage (perf_view.current_usage): plan rate_limits from the statusline capture, and token burn.
+  function perfCurrent(current, tile) {
+    if (!current) return '';
+    const plan = current.plan;
+    const parts = ['<h2>Current usage</h2>'];
+    if (!plan) {
+      parts.push('<div class="empty">Plan limits unavailable: no capture yet. Register the status line '
+        + '(session_lifecycle.py statusline) in .claude/settings.json; it needs a Pro or Max plan.</div>');
+    } else {
+      const age = Math.round(plan.age_seconds / 60);
+      parts.push('<div class="meta">Plan limits, captured ' + (age < 1 ? 'just now' : age + ' min ago')
+        + (plan.stale ? ' (stale: no reply with the status line since)' : '') + '</div>');
+      if (!plan.windows.length) parts.push('<div class="empty">Every captured window has reset since.</div>');
+      plan.windows.forEach((w) => {
+        const pct = Math.max(0, Math.min(100, w.used_percentage));
+        const reset = w.resets_at ? 'resets ' + new Date(w.resets_at * 1000).toLocaleString(undefined,
+          {weekday: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+        const usd = w.used_usd != null && w.limit_usd != null ? ' &middot; $' + Number(w.used_usd).toFixed(2) + ' of $'
+          + Number(w.limit_usd).toFixed(0) + (w.period ? ' ' + escapeHtml(w.period) : '') : '';
+        parts.push('<div class="perf-limit' + (pct >= 80 ? ' high' : '') + '"><div class="row"><span>' + escapeHtml(w.label)
+          + ' limit <span class="meta">' + reset + usd + '</span></span><span class="pct">' + pct.toFixed(0) + '%</span></div>'
+          + '<div class="bar"><span style="width:' + pct + '%"></span></div></div>');
+      });
+    }
+    const burn = current.burn;
+    if (burn) {
+      parts.push('<div class="perf-tiles">' + burn.windows.map((w) => tile(escapeHtml(w.label), perfCompact(w.tokens)
+        + ' <span class="meta">' + w.calls + ' calls</span>')).join('')
+        + tile("Active sessions", String(burn.active_sessions)) + '</div>');
+      parts.push('<div class="meta">Token burn: context + output of every model call in tracked sessions, '
+        + 'subagents included (the same unit as below). Plan limits are measured by the service, not from these tokens.</div>');
+    }
+    return parts.join('');
+  }
+
   // Per tab: "feature" (only the served feature's sessions) or "all". Kept across live refreshes.
   const perfScopes = {};
 
@@ -628,8 +669,8 @@ PERF_SCRIPT = """
         + escapeHtml(model.root) + '</div>'
         + (model.feature ? perfScopeToggle(model, scope)
           + '<div class="meta">Feature sessions: tagged with set --feature, or listed under sessions: in the Progress file.</div>' : '')
-        + perfContextWarning(model),
-        '<div class="perf-tiles">' + tile("Sessions", o.compiled + (o.sessions > o.compiled ? ' <span class="meta">/ ' + o.sessions + '</span>' : ''))
+        + perfContextWarning(model) + perfCurrent(model.current, tile),
+        '<h2>Sessions overview</h2><div class="perf-tiles">' + tile("Sessions", o.compiled + (o.sessions > o.compiled ? ' <span class="meta">/ ' + o.sessions + '</span>' : ''))
           + tile("Total tokens", perfCompact(o.total)) + tile("Average / session", perfCompact(o.mean))
           + tile("Median", perfCompact(o.median)) + tile("Std deviation", perfCompact(o.stdev))
           + tile("Context warning at", model.context_warning && model.context_warning.threshold != null

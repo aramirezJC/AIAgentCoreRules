@@ -24,6 +24,8 @@ Subcommands:
                  untouched tree, result to the agent. Every .cs edit: last_cs_edit in typecheck.json.
     hook-lint    PostToolUse hook on Edit|Write. cslint on the edited .cs file's changed lines.
     hook-stop-check  Stop hook (sync). Blocks once when a .cs file changed after the last typecheck run.
+    statusline   statusLine command. Saves the plan rate_limits Claude Code sends to <sessions root>/plan_usage.json
+                 (Performance tab, current usage) and prints e.g. "Opus · 5h 23% · 7d 41%".
     set          Record name, lane, work type and title.
     note         Log an inaccuracy or iteration.
     compile      Refresh token report, router trace and metrics.md.
@@ -1615,6 +1617,43 @@ def cmd_path(args):
     print(folder)
 
 
+def cmd_statusline(args):
+    """statusLine command. Claude Code pipes rate_limits (Pro/Max plans, after the first API response)
+    on every assistant message; keep the latest in <sessions root>/plan_usage.json for the Performance
+    tab and print a short status line. A payload without rate_limits keeps the previous capture."""
+    payload = read_hook_input()
+    limits = payload.get("rate_limits") if isinstance(payload, dict) else None
+    if isinstance(limits, dict) and limits:
+        try:
+            save_plan_usage(reports_root(args), {"captured_at": time.time(),
+                                                 "session_id": payload.get("session_id") or "",
+                                                 "rate_limits": limits})
+        except OSError:
+            pass   # a status line must never fail; the tab shows the last capture
+    print(status_text(payload if isinstance(payload, dict) else {}))
+    return 0
+
+
+def save_plan_usage(root, data):
+    os.makedirs(root, exist_ok=True)
+    path = os.path.join(root, token_breakdown.PLAN_USAGE_FILE)
+    with open(path + ".tmp", "w") as handle:
+        json.dump(data, handle, indent=2)
+    os.replace(path + ".tmp", path)
+
+
+def status_text(payload):
+    """'Opus · 5h 23% · 7d 41%': model, then each rate-limit window still in its period."""
+    model = payload.get("model") or {}
+    parts = [model.get("display_name")] if isinstance(model, dict) and model.get("display_name") else []
+    limits = payload.get("rate_limits") or {}
+    for key, label in (("five_hour", "5h"), ("seven_day", "7d"), ("spend_limit", "spend")):
+        window = limits.get(key) if isinstance(limits, dict) else None
+        if isinstance(window, dict) and window.get("used_percentage") is not None:
+            parts.append("%s %d%%" % (label, round(window["used_percentage"])))
+    return " · ".join(parts)
+
+
 def cmd_file(args):
     """Copy outputs written elsewhere (a background job's tmp dir) into a reports folder that is a
     sibling of the sessions root, e.g. GitIgnoreReports/MetaReviews."""
@@ -1639,6 +1678,7 @@ def main():
     sub.add_parser("hook-edit").set_defaults(func=cmd_hook_edit)
     sub.add_parser("hook-lint").set_defaults(func=cmd_hook_lint)
     sub.add_parser("hook-stop-check").set_defaults(func=cmd_hook_stop_check)
+    sub.add_parser("statusline", help="statusLine command: saves rate_limits to plan_usage.json, prints a short line").set_defaults(func=cmd_statusline)
     features = sub.add_parser("features", help="list CreateFeature features that are not complete or closed (/active-features)")
     features.add_argument("--features-root", help="override $SESSION_FEATURES_ROOT, ai-agent-core.json paths.features, or legacy <project>/%s" % DEFAULT_FEATURES_DIR)
     features.add_argument("--json", action="store_true")

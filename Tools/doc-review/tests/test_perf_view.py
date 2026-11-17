@@ -259,5 +259,74 @@ class TestServerTab(PerfViewTestCase):
         self.assertIn("Runnable tools", source["standardized_names"])
 
 
+
+def call(message_id, stamp, tokens):
+    """One assistant transcript line: tokens split as 10 uncached input + the rest cache read."""
+    iso = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(stamp))
+    return json.dumps({"type": "assistant", "timestamp": iso, "message": {
+        "id": message_id, "usage": {"input_tokens": 10, "cache_read_input_tokens": tokens - 10}}}) + "\n"
+
+
+class TestCurrentUsage(PerfViewTestCase):
+    NOW = time.mktime((2026, 11, 17, 12, 0, 0, 0, 0, -1))   # local noon, so "today" starts 12 h earlier
+
+    def write_plan(self, captured_at, **limits):
+        (self.root / "plan_usage.json").write_text(json.dumps({"captured_at": captured_at, "rate_limits": limits}))
+
+    def test_no_capture_gives_no_plan(self):
+        self.assertIsNone(perf_view.build_model(self.root, now=self.NOW)["current"]["plan"])
+
+    def test_plan_keeps_open_windows_and_drops_reset_ones(self):
+        self.write_plan(self.NOW - 60,
+                        five_hour={"used_percentage": 23.5, "resets_at": self.NOW + 3600},
+                        seven_day={"used_percentage": 41.2, "resets_at": self.NOW - 1},
+                        spend_limit={"used_percentage": 62.8, "resets_at": self.NOW + 86400,
+                                     "used_usd": 314.12, "limit_usd": 500, "period": "monthly"})
+        plan = perf_view.build_model(self.root, now=self.NOW)["current"]["plan"]
+        self.assertEqual([("five_hour", 23.5), ("spend_limit", 62.8)],
+                         [(w["key"], w["used_percentage"]) for w in plan["windows"]])
+        self.assertEqual((314.12, 500, "monthly"), (plan["windows"][1]["used_usd"], plan["windows"][1]["limit_usd"],
+                                                    plan["windows"][1]["period"]))
+        self.assertEqual((60, False), (plan["age_seconds"], plan["stale"]))
+
+    def test_old_capture_is_stale(self):
+        self.write_plan(self.NOW - perf_view.PLAN_STALE_SECONDS - 1, five_hour={"used_percentage": 5})
+        self.assertTrue(perf_view.build_model(self.root, now=self.NOW)["current"]["plan"]["stale"])
+
+    def test_plan_capture_is_watched(self):
+        self.write_three()
+        self.assertNotIn(self.root / "plan_usage.json", perf_view.watched_paths(self.root))
+        self.write_plan(self.NOW, five_hour={"used_percentage": 5})
+        self.assertIn(self.root / "plan_usage.json", perf_view.watched_paths(self.root))
+
+    def test_burn_sums_main_and_subagent_calls_per_window(self):
+        transcripts = self.root.parent / "transcripts"
+        transcripts.mkdir()
+        main = transcripts / "s1.jsonl"
+        # 13 h ago (yesterday), 3 h ago, 30 min ago twice (same message id = one call), 10 min ago
+        main.write_text(call("m0", self.NOW - 13 * 3600, 999) + call("m1", self.NOW - 3 * 3600, 100)
+                        + call("m2", self.NOW - 1800, 200) + call("m2", self.NOW - 1799, 250)
+                        + call("m3", self.NOW - 600, 300))
+        subagents = transcripts / "s1" / "subagents"
+        subagents.mkdir(parents=True)
+        (subagents / "agent-x.jsonl").write_text(call("a1", self.NOW - 1200, 1000))
+        state = self.write_session("2026-11-17_0900_burn", "s1", "2026-11-17T09:00:00-07:00", transcript_path=str(main))
+        os.utime(state, (self.NOW, self.NOW))   # active is judged against the model's clock
+        burn = perf_view.build_model(self.root, now=self.NOW)["current"]["burn"]
+        windows = {w["key"]: (w["tokens"], w["calls"], w["sessions"]) for w in burn["windows"]}
+        self.assertEqual({"last_hour": (1550, 3, 1), "last_5h": (1650, 4, 1), "today": (1650, 4, 1)}, windows)
+        self.assertEqual(["last_hour", "last_5h", "today"], [w["key"] for w in burn["windows"]])
+        self.assertEqual(1, burn["active_sessions"])
+
+    def test_burn_skips_transcripts_untouched_in_the_window(self):
+        old = self.root.parent / "old.jsonl"
+        old.write_text(call("m1", self.NOW - 600, 100))
+        stamp = self.NOW - 2 * 86400
+        os.utime(old, (stamp, stamp))
+        self.write_session("2026-11-15_0900_old", "s2", "2026-11-15T09:00:00-07:00", transcript_path=str(old))
+        burn = perf_view.build_model(self.root, now=self.NOW)["current"]["burn"]
+        self.assertEqual([0, 0, 0], [w["tokens"] for w in burn["windows"]])
+
+
 if __name__ == "__main__":
     unittest.main()

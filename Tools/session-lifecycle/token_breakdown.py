@@ -17,6 +17,7 @@ replies, reasoning).
 Dependency-free: imported by session_lifecycle.py.
 """
 
+import datetime
 import glob
 import json
 import os
@@ -73,6 +74,9 @@ MIRO_CONFLUENCE_BY_COMMAND = {"serve": (18400, 3), "comments": (2400, 2), "reply
 # a session's per-call context reaches most sessions' peak. Shared by hook-prompt and the Performance tab.
 CONTEXT_WARNING_SHARE = 0.9
 CONTEXT_WARNING_MIN_SESSIONS = 5
+# Latest plan rate_limits, written by session_lifecycle.py statusline into the sessions root and
+# read by the Performance tab (perf_view.current_usage).
+PLAN_USAGE_FILE = "plan_usage.json"
 
 
 def size(value):
@@ -116,6 +120,39 @@ def read_calls(path):
                 calls.append((key, context, output))
     return calls
 
+
+def timed_calls(path):
+    """[(epoch seconds, tokens)] one per model call, tokens = context + output as in read_calls;
+    the call's time is its first content block's timestamp. Calls without a timestamp are skipped."""
+    calls, index = [], {}
+    try:
+        handle = open(path, errors="replace")
+    except OSError:
+        return calls
+    with handle:
+        for line in handle:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            message = entry.get("message") or {}
+            usage = message.get("usage")
+            if entry.get("type") != "assistant" or not usage:
+                continue
+            tokens = (usage.get("input_tokens") or 0) + (usage.get("cache_read_input_tokens") or 0) \
+                + (usage.get("cache_creation_input_tokens") or 0) + (usage.get("output_tokens") or 0)
+            key = message.get("id") or entry.get("uuid")
+            if key in index:
+                stamp, old = calls[index[key]]
+                calls[index[key]] = (stamp, max(old, tokens))
+                continue
+            try:
+                stamp = datetime.datetime.fromisoformat(entry.get("timestamp", "").replace("Z", "+00:00")).timestamp()
+            except (AttributeError, ValueError):
+                continue
+            index[key] = len(calls)
+            calls.append((stamp, tokens))
+    return calls
 
 def context_warning_threshold(peaks):
     """CONTEXT_WARNING_SHARE x the median peak per-call context of other sessions, or None with too few."""
