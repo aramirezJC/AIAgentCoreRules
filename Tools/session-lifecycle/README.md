@@ -66,6 +66,17 @@ every folder, for one-off cleanup.
 | `hook-edit` | PreToolUse (`Edit\|Write`) | 30 | First .cs edit: typecheck baseline; every .cs edit: `last_cs_edit` |
 | `hook-lint` | PostToolUse (`Edit\|Write`) | 10 | `cslint.py` on the edited .cs file's changed lines |
 
+**Status line (optional, wired by hand).** `statusline` is a `statusLine` command, not a hook, and
+the installer does not merge it. Claude Code pipes it JSON on every assistant message; for Pro/Max
+plans that includes `rate_limits` (`five_hour`, `seven_day`, `spend_limit`: `used_percentage`,
+`resets_at`). It saves the latest to `<sessions root>/plan_usage.json`, which the preview's
+Performance tab shows under **Current usage**, and prints e.g. `Opus · 5h 23% · 7d 41%`:
+
+```json
+"statusLine": {"type": "command",
+               "command": "python3 <project>/GitIgnoredExternals/AIAgentCoreRules/Tools/session-lifecycle/session_lifecycle.py statusline"}
+```
+
 **Typecheck and lint hooks.** On the session's first `.cs` edit inside a Unity project, `hook-edit`
 runs `typecheck.py --files <file>` on the still-untouched tree (~3-4 s) and hands the agent the
 result as `additionalContext`, so pre-existing errors are not blamed on the change. Every `.cs`
