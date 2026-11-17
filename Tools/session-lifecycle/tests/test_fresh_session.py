@@ -165,5 +165,67 @@ class ShellRuleReadTests(unittest.TestCase):
                 self.assertNotEqual(self.hook(command), "")
 
 
+class HookReadTests(unittest.TestCase):
+    """Token-usage savings pass, 2026-11-17: a sizeable .cs file read whole (no limit/offset) gets
+    a codeindex.py/code-graph.sh nudge for its shape; small files and partial reads stay silent."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hook-read-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.env = mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": self.tmp})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        self.cwd = os.getcwd()
+        self.addCleanup(os.chdir, self.cwd)
+
+    def write_cs(self, name, size):
+        path = os.path.join(self.tmp, name)
+        with open(path, "w") as handle:
+            handle.write("x" * size)
+        return path
+
+    def hook(self, path, extra_input=None, reports_root=None):
+        tool_input = dict({"file_path": path}, **(extra_input or {}))
+        stdout = io.StringIO()
+        payload = io.StringIO(json.dumps({"tool_name": "Read", "tool_input": tool_input}))
+        with mock.patch.object(sys, "stdin", payload), contextlib.redirect_stdout(stdout):
+            self.assertEqual(session_lifecycle.cmd_hook_read(argparse.Namespace(reports_root=reports_root)), 0)
+        return stdout.getvalue()
+
+    def test_sizeable_whole_file_read_gets_the_nudge(self):
+        path = self.write_cs("LivesManager.cs", session_lifecycle.CS_SHAPE_READ_MIN_BYTES)
+        output = json.loads(self.hook(path))
+        self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "PreToolUse")
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("codeindex.py members LivesManager", context)
+        self.assertIn("codeindex.py where LivesManager", context)
+
+    def test_firing_is_logged_so_frequency_can_be_revisited(self):
+        """Retro 90556129, proposal #3: CS_SHAPE_READ_MIN_BYTES can't be revisited against real
+        firing frequency until hooks.log actually records a firing."""
+        reports = os.path.join(self.tmp, "reports")
+        path = self.write_cs("LivesManager.cs", session_lifecycle.CS_SHAPE_READ_MIN_BYTES)
+        self.hook(path, reports_root=reports)
+        with open(os.path.join(reports, "hooks.log")) as handle:
+            log = handle.read()
+        self.assertIn("read ", log)
+        self.assertIn("nudged %d bytes LivesManager.cs" % session_lifecycle.CS_SHAPE_READ_MIN_BYTES, log)
+
+    def test_small_file_is_silent(self):
+        path = self.write_cs("Tiny.cs", session_lifecycle.CS_SHAPE_READ_MIN_BYTES - 1)
+        self.assertEqual(self.hook(path), "")
+
+    def test_partial_read_is_silent(self):
+        path = self.write_cs("LivesManager.cs", session_lifecycle.CS_SHAPE_READ_MIN_BYTES)
+        self.assertEqual(self.hook(path, {"limit": 50}), "")
+        self.assertEqual(self.hook(path, {"offset": 10}), "")
+
+    def test_non_csharp_file_is_silent(self):
+        path = os.path.join(self.tmp, "Notes.md")
+        with open(path, "w") as handle:
+            handle.write("x" * session_lifecycle.CS_SHAPE_READ_MIN_BYTES)
+        self.assertEqual(self.hook(path), "")
+
+
 if __name__ == "__main__":
     unittest.main()

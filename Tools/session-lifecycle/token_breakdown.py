@@ -31,10 +31,17 @@ BASE = "Conversation & base context"
 RUNNABLE_TOOLS = ["typecheck.py", "codeindex.py", "usages.py", "unitysource.py", "cslint.py", "feature_state.py"]
 LIFECYCLE = "session_lifecycle.py"
 # Guesstimates of what one Runnable tool call replaces when done by hand: (context tokens, round-trips).
-#   codeindex: one exploratory file read plus a grep to find it.
-#   usages:    a grep over Assets/ plus two call-site reads.
-#   typecheck: grepping the tail of Editor.log, after waiting for the editor to recompile.
-AVOIDED_BY_TOOL = {"codeindex.py": (3000, 2), "usages.py": (6000, 3), "typecheck.py": (4000, 2)}
+#   codeindex:     one exploratory file read plus a grep to find it.
+#   usages:        a grep over Assets/ plus two call-site reads.
+#   typecheck:     grepping the tail of Editor.log, after waiting for the editor to recompile.
+#   unitysource:   a web search for the engine's behaviour (forum posts, decompiled-source mirrors)
+#                  plus an Editor repro script to confirm copy-vs-reference semantics by hand.
+#   cslint:        manually grepping the diff once per tag family ([EXPLICIT], [ALLMAN], [ACCESS],
+#                  [FIELD], [DI], [LOG], [ASYNC]) and re-reading the surrounding lines of each hit.
+#   feature_state: reading the whole progress/state JSON to find the current phase/status, then a
+#                  careful hand-edit to keep its revision and schema consistent.
+AVOIDED_BY_TOOL = {"codeindex.py": (3000, 2), "usages.py": (6000, 3), "typecheck.py": (4000, 2),
+                    "unitysource.py": (8000, 4), "cslint.py": (2500, 2), "feature_state.py": (3000, 2)}
 DOC_REVIEW_SAVING = "Doc review vs Miro/Confluence"
 CODE_GRAPH_SAVING = "code-graph API"
 SAVINGS = ["Parallel tool calls", "Subagent delegation", "Partial file reads",

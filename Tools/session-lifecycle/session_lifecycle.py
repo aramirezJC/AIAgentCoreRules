@@ -118,7 +118,9 @@ FEATURE_DOC_READ = re.compile(
     r"(?:^|[;&|]|\$\()\s*(?:cat|sed|head|tail|grep|egrep|rg)\b[^|;&\n]*?(\S*\bFeatures/\S*\.(?:md|json))",
     re.MULTILINE)
 # hook-read (token-usage savings pass, 2026-11-17): below this, a whole-file Read costs less than
-# the round trip to codeindex.py/code-graph.sh would, so it is not worth nagging about.
+# the round trip to codeindex.py/code-graph.sh would, so it is not worth nagging about. A judgment
+# call, not measured data — revisit once hooks.log (cmd_hook_read now logs each firing) shows real
+# firing frequency across a few sessions (retro 90556129, proposal #3).
 CS_SHAPE_READ_MIN_BYTES = 4000
 # `file --to` targets (MR-20261016-06): folders next to the sessions root that background jobs
 # cannot Write into directly.
@@ -1255,6 +1257,10 @@ def cmd_hook_read(args):
                 "code-graph.sh's /api/type in one call if you need more than one lookup on it. Read "
                 "the file itself once you need the bodies to copy or edit." % (size, name, prefix, name, prefix, name))
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
+        # Proposed change #3 (retro 90556129): below-threshold reads were silent, so hooks.log never
+        # showed a real firing frequency to revisit CS_SHAPE_READ_MIN_BYTES against. Log the firing
+        # case only — mirrors cmd_hook_prompt/cmd_hook_edit, which log the active case, not every check.
+        hook_log(args, "read", hook, "nudged %d bytes %s.cs" % (size, name))
     except Exception as error:   # a hook must never block a read
         hook_log(args, "read", hook, "ERROR %s" % error)
     return 0
