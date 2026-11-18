@@ -203,6 +203,7 @@ PAGE_TEMPLATE = """<!doctype html>
 
   function batchHtml(batch) {{
     if (!batch) return '';
+    if (batch.table_approved) return ' <span class="pill batch" title="Task Table Proposal approved; batch plan not yet split">table approved · batches pending</span>';
     if (batch.done) return ' <span class="pill batch done">batches done (' + batch.total + ')</span>';
     const pr = batch.open_pr == null ? '' : ' · ' + (batch.open_pr_url
       ? '<a href="' + escapeHtml(batch.open_pr_url) + '" target="_blank" rel="noopener">#' + escapeHtml(batch.open_pr) + '</a>'
