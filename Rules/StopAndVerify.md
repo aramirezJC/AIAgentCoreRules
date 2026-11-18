@@ -31,6 +31,7 @@ the larger one, or by picking the more impressive one.
 ```yaml
 pre_generation:
   - "[CTX] Inventory every interface, class, enum, and base type the solution requires. Confirm each is present in context."
+  - "[CTX] Before reading a whole file — or grepping a declared C# type/member — just to learn its shape, run one codeindex.py / code-graph /api/type query first."
   - "[SIG] Locate every property, method, and field you intend to use in the provided source text."
   - "[BEHAV] Every runtime behaviour the code relies on (copy vs reference, platform support, accepted formats, argument order) is grounded, not assumed."
   - "[SO]  Verify Unity ScriptableObjects use CreateInstance<T>(), never new T()."
