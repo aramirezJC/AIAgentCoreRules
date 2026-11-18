@@ -98,9 +98,14 @@ python3 Tools/feature-state/feature_state.py task <feature_dir> \
 ```
 
 Both are existing operations (`artifact`, `task`); `table_approved` is the only new field,
-added with merge semantics so no other task field is touched. A resumed session reads
-`table_approved: true` plus the persisted `_Task<id>_Plan.md` as "table stage done — resume
-at the batch plan," not another round of this table.
+added with merge semantics so no other task field is touched.
+
+`resume-work`'s restate step reports `checkpoint.in_flight`/`next`, not `tasks[]` directly, so
+this stage must still be reflected there like any other Phase 4 step: as soon as the table is
+posted, set the Checkpoint's `in_flight` to "`<id>`: full-task table awaiting engineer review."
+Once `table_approved` is recorded, set `next` to "`/publish-batch plan <FeatureName> <id>`" and
+clear `in_flight` — otherwise a resumed session reports a stale or generic next action instead
+of picking up exactly here.
 
 ---
 
