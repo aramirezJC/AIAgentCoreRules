@@ -22,8 +22,8 @@ Subcommands:
                  and suggests codeindex/usages for a grep over C# for a type or member name.
     hook-edit    PreToolUse hook on Edit|Write. First .cs edit of a session: typecheck baseline on the
                  untouched tree, result to the agent. Every .cs edit: last_cs_edit in typecheck.json.
-    hook-agent   PreToolUse hook on Agent. Reminds the agent of the lane's agent_model rule
-                 (LANE_AGENT_MODEL) when a spawned call's model does not match.
+    hook-agent   PreToolUse hook on Agent. Denies the spawn when the lane's agent_model rule
+                 (LANE_AGENT_MODEL) is set and the call's model does not match it.
     hook-lint    PostToolUse hook on Edit|Write. cslint on the edited .cs file's changed lines.
     hook-stop-check  Stop hook (sync). Blocks once when a .cs file changed after the last typecheck run.
     statusline   statusLine command. Saves the plan rate_limits Claude Code sends to <sessions root>/plan_usage.json
@@ -1444,8 +1444,8 @@ def cmd_hook_edit(args):
 
 def cmd_hook_agent(args):
     """PreToolUse hook on Agent: when the session's lane has an agent_model rule (LANE_AGENT_MODEL)
-    and the spawned call's model does not match it, remind the agent of the rule. subagent_type
-    "fork" is exempt (its model override is always ignored). Warns only; never blocks the call."""
+    and the spawned call's model does not match it, deny the spawn so the agent must retry with the
+    right model. subagent_type "fork" is exempt (its model override is always ignored)."""
     hook = {}
     try:
         hook = read_hook_input()
@@ -1463,13 +1463,15 @@ def cmd_hook_agent(args):
         model = tool_input.get("model")
         if model == expected:
             return 0
-        note = ("This session's lane (%s) passes model: \"%s\" on every spawned Agent call (Explore "
-                "agents, fan-out) unless the step it comes from pins its own model — see this lane's "
-                "process file's agent_model rule. This call had model=%s." %
-                (lane, expected, repr(model)))
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
-        hook_log(args, "agent", hook, "nudged %s -> %s (got %s)" % (lane, expected, model))
-    except Exception as error:   # a hook must never block a spawn
+        reason = ("This session's lane (%s) requires model: \"%s\" on every spawned Agent call (Explore "
+                  "agents, fan-out) unless the step it comes from pins its own model — see this lane's "
+                  "process file's agent_model rule. This call had model=%s. Retry with model: \"%s\"." %
+                  (lane, expected, repr(model), expected))
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                  "permissionDecision": "deny",
+                                                  "permissionDecisionReason": reason}}))
+        hook_log(args, "agent", hook, "denied %s -> %s (got %s)" % (lane, expected, model))
+    except Exception as error:   # a hook must never trap a spawn
         hook_log(args, "agent", hook, "ERROR %s" % error)
     return 0
 

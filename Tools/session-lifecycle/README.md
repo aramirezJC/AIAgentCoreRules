@@ -65,7 +65,7 @@ every folder, for one-off cleanup.
 | `hook-bash` | PreToolUse (`Bash`) | 10 | Read-not-cat reminder for rule and feature-doc files; codeindex/usages for a C# grep |
 | `hook-read` | PreToolUse (`Read`) | 10 | codeindex/code-graph reminder for a whole-file `.cs` Read with no `limit`/`offset` |
 | `hook-edit` | PreToolUse (`Edit\|Write`) | 30 | First .cs edit: typecheck baseline; every .cs edit: `last_cs_edit` |
-| `hook-agent` | PreToolUse (`Agent`) | 10 | Reminds the agent of the lane's `agent_model` rule (`LANE_AGENT_MODEL`) when a spawned call's model doesn't match |
+| `hook-agent` | PreToolUse (`Agent`) | 10 | Denies the spawn when the lane's `agent_model` rule (`LANE_AGENT_MODEL`) is set and the call's model doesn't match it |
 | `hook-lint` | PostToolUse (`Edit\|Write`) | 10 | `cslint.py` on the edited .cs file's changed lines |
 
 **Status line (optional).** `statusline` is a `statusLine` command, not a hook; `../setup/install.py

@@ -68,7 +68,7 @@ steps:
     - "Re-read a rule file when a step starts work it governs; do not rely on memory of it in a long session."
   5_tests:
     - "C# behaviour or framework change: tests are required — TestingRules, then the host's testing setup rules. Cover the changed behaviour and its boundaries."
-    - "Python tool or skill tooling: unit tests in the tool's tests/ folder, plus a run against copies of real data — never the originals."
+    - "Python tool or skill tooling: unit tests in the tool's tests/ folder, plus a run against copies of real data — never the originals. A session-lifecycle hook/tool that writes to hooks.log or a session folder: use --reports-root <tmp dir> (or a copied session folder), not the live project's real GitIgnoreReports/Sessions."
     - "Rules/Markdown only: no tests; 6_verify's checks are the evidence. Say so."
   6_verify:
     - "Apply SmallTask 6_verify in full (typecheck verbatim on failure, real-data runs, rendered-value checks for views, faked clients for external writes)."
