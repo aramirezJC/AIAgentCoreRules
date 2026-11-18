@@ -7,6 +7,9 @@ hash the source file's bytes, and store/retrieve the agent-written Markdown desc
 keyed by that hash, so a second encounter with the same bytes is a cache hit instead of
 another vision pass.
 
+For storyboards and flow diagrams, the tool auto-extracts any ```mermaid code fence from
+the description into a sibling <hash>.mmd file for rendering via the doc-review preview server.
+
 Usage:
     python3 deimagify.py check <path>                   # hash the file, report hit/miss
     python3 deimagify.py store <path> --from <md-file>   # cache a description for this file's hash
@@ -14,20 +17,24 @@ Usage:
     python3 deimagify.py forget <path>                   # drop the cached entry for this file's hash
     python3 deimagify.py list                            # show every cached entry
 
-Cache location: ~/.claude/deimagify-cache/ — one <hash>.md per description, plus an
-index.json with path/size/cached-at per hash (for `list` and debugging). Keyed by content
-hash, not path, so a moved or copied file still hits cache; a changed file (different bytes)
-is a fresh miss. Lives outside every git repo, so there's nothing to commit.
+Cache location: ~/.claude/deimagify-cache/ — one <hash>.md per description, plus a sibling
+<hash>.mmd (auto-extracted from ```mermaid fences), plus an index.json with path/size/cached-at
+per hash (for `list` and debugging). Keyed by content hash, not path, so a moved or copied file
+still hits cache; a changed file (different bytes) is a fresh miss. Lives outside every git
+repo, so there's nothing to commit.
 """
 import argparse
 import hashlib
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 CACHE_DIR = Path.home() / ".claude" / "deimagify-cache"
 INDEX_PATH = CACHE_DIR / "index.json"
+MERMAID_FENCE_RE = re.compile(r"```mermaid\s*\n(.*?)```", re.DOTALL)
 
 
 def file_hash(path: Path) -> str:
@@ -53,6 +60,15 @@ def description_path_for(digest: str) -> Path:
     return CACHE_DIR / f"{digest}.md"
 
 
+def diagram_path_for(digest: str) -> Path:
+    return CACHE_DIR / f"{digest}.mmd"
+
+
+def extract_mermaid(text: str) -> Optional[str]:
+    match = MERMAID_FENCE_RE.search(text)
+    return match.group(1).strip() + "\n" if match else None
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     path = Path(args.path).expanduser().resolve()
     if not path.is_file():
@@ -63,6 +79,9 @@ def cmd_check(args: argparse.Namespace) -> int:
     if description_path.is_file():
         print(f"HIT {digest} {description_path}")
         print(description_path.read_text())
+        diagram_path = diagram_path_for(digest)
+        if diagram_path.is_file():
+            print(f"DIAGRAM {diagram_path}")
         return 0
     print(f"MISS {digest} {description_path}")
     return 1
@@ -81,6 +100,11 @@ def cmd_store(args: argparse.Namespace) -> int:
     text = sys.stdin.read() if args.source == "-" else Path(args.source).expanduser().read_text()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     description_path.write_text(text)
+    diagram_path = diagram_path_for(digest)
+    diagram_path.unlink(missing_ok=True)
+    mermaid_code = extract_mermaid(text)
+    if mermaid_code:
+        diagram_path.write_text(mermaid_code)
     index = load_index()
     index[digest] = {
         "source_path": str(path),
@@ -89,6 +113,8 @@ def cmd_store(args: argparse.Namespace) -> int:
     }
     save_index(index)
     print(f"STORED {digest} {description_path}")
+    if mermaid_code:
+        print(f"DIAGRAM {diagram_path}")
     return 0
 
 
@@ -99,9 +125,13 @@ def cmd_forget(args: argparse.Namespace) -> int:
         return 2
     digest = file_hash(path)
     description_path = description_path_for(digest)
+    diagram_path = diagram_path_for(digest)
     removed = False
     if description_path.exists():
         description_path.unlink()
+        removed = True
+    if diagram_path.exists():
+        diagram_path.unlink()
         removed = True
     index = load_index()
     if digest in index:
@@ -118,7 +148,8 @@ def cmd_list(args: argparse.Namespace) -> int:
         print("(empty cache)")
         return 0
     for digest, meta in sorted(index.items(), key=lambda kv: kv[1].get("cached_at", "")):
-        print(f"{digest}  {meta.get('cached_at', '?')}  {meta.get('source_path', '?')}")
+        diagram_marker = " [diagram]" if diagram_path_for(digest).is_file() else ""
+        print(f"{digest}  {meta.get('cached_at', '?')}  {meta.get('source_path', '?')}{diagram_marker}")
     return 0
 
 

@@ -12,11 +12,12 @@ Paths are relative to the AIAgentCoreRules root (the parent of the `Rules/` fold
 ```yaml
 how_to_run:
   tool:  "python3 <core>/Tools/deimagify/deimagify.py check|store|forget|list <path> ..."
-  cache: "~/.claude/deimagify-cache/<sha256>.md, one per file's content hash, plus index.json
-          (path/size/cached-at). Keyed by content hash, not path — a renamed or copied file
-          still hits; a changed file (different bytes) is a fresh miss. Lives outside every
-          git repo and the host project's gitignored folders, so there is nothing to commit
-          and no worktree-isolation concerns."
+  cache: "~/.claude/deimagify-cache/<sha256>.md, one per file's content hash, plus a sibling
+          <sha256>.mmd auto-extracted from any ```mermaid fence in the description on store,
+          plus index.json (path/size/cached-at). Keyed by content hash, not path — a renamed
+          or copied file still hits; a changed file (different bytes) is a fresh miss. Lives
+          outside every git repo and the host project's gitignored folders, so there is nothing
+          to commit and no worktree-isolation concerns."
   does_not_read_images: "The tool itself never opens the image or PDF — it only hashes bytes
           and stores/retrieves text. Reading and describing stays with the agent's native
           multimodal Read tool."
@@ -56,10 +57,13 @@ For each path in `$ARGUMENTS`:
 4. **Store it.** Write the Markdown to a scratch file (the session's own tmp directory, or
    `$CLAUDE_JOB_DIR/tmp` in a background job), then:
    `python3 <core>/Tools/deimagify/deimagify.py store <path> --from <tmp-markdown-file>`
-   (`--from -` also accepts stdin.)
+   (`--from -` also accepts stdin.) The tool automatically extracts any `` ```mermaid `` fence
+   into a sibling `<hash>.mmd` file — no extra step needed.
 
-5. **Present the description (and any Mermaid diagram) to the engineer.** A later
-   `/deimagify` call on the same bytes is now a cache hit.
+5. **Present the description (and any Mermaid diagram) to the engineer.** When a `## Flow`
+   section was produced, also give the preview command:
+   `python3 <core>/Tools/doc-review/doc_review.py serve <hash>.md <hash>.mmd`
+   A later `/deimagify` call on the same bytes is now a cache hit.
 
 ## Refreshing a stale description
 
