@@ -45,7 +45,8 @@ empty group rather than omitting it.]
 ### 🟢 New
 
 #### `TypeOrFileName`
-[One-line TLDR — what this item is and why, scannable with no need to expand]
+[TLDR — what this item is and why, scannable with no need to expand. Aim for no more than
+~5 lines; go longer only if the item genuinely needs it to stay understandable on its own.]
 
 <details>
 <summary>More detail</summary>

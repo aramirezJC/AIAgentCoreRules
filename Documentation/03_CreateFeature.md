@@ -73,9 +73,10 @@ fixtures of them, Phase 8 has `phase_N_<name>` keys, and in-flight progress file
   A class is described by its actionable methods (what it does); the wiring mechanism (e.g. which
   type implements a listener interface) is left to a later phase unless the engineer has already
   confirmed it.
-  Each Files & Types Changed item (and each File Plan row) shows one visible TLDR line under its
-  heading; Nature, Reason and Implementation move inside a collapsible "More detail" block (see
-  [[ChangeClassification]]) so the heading list alone stays scannable.
+  Each Files & Types Changed item (and each File Plan row) shows one visible TLDR under its
+  heading — aim for ~5 lines or fewer, longer only if the item needs it; Nature, Reason and
+  Implementation move inside a collapsible "More detail" block (see [[ChangeClassification]]) so
+  the heading list alone stays scannable.
 - **1c consistency and gap review** — findings are a numbered list, each tagged ✅ (passes),
   ⚠️ (passes but needs attention) or ❌ (fails). For every ⚠️ or ❌ the engineer chooses to
   **acknowledge and continue** or **rework now**, and the outcome is recorded beside the finding.
