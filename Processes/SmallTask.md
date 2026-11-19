@@ -48,6 +48,7 @@ steps:
     subscriptions_timers_loads:[../Rules/ResourceManagementRules.md]
     async_sequences:           [../Rules/MultyStepOperationsRules.md]
     tests_requested:           [../Rules/TestingRules.md]
+    tdd_architecture_presentation: [../Rules/ChangeClassification.md]   # TDD Architecture / Files & Types Changed TLDR+collapsible formatting
   4_propose:
     - "Before writing: list files to create/modify, one line each. Wait for OK only if more than 2 files or any public contract changes."
     - "A meta-review ticket or handoff note with Change and Done-when already is the approved plan: state the file list and proceed; wait only if the plan departs from it."
@@ -70,6 +71,7 @@ steps:
     - "Run typecheck.py. Report its result verbatim if it fails. (The session hooks took the baseline before the first .cs edit and block the stop until a run follows the last edit.)"
     - "port_or_cherry_pick: `git cherry <target> <source>` to drop commits already present; `git show --cc <merge>` to find merges carrying their own changes (replay those with `cherry-pick -m 1`); `git merge-tree --write-tree --merge-base <src-base> <target> <src-tip>` as a dry run; after the pick, `git diff <src-merge> HEAD -- <PR files>` must be empty or explained; then `typecheck.py --changed --base <target> --include-new` (it only picks up files git reports as changed — a new .cs file in a gitignored folder such as Assets/GitIgnoreAssets/ is not compiled, so its types show as CS0246, until Unity regenerates the .csproj; focus the Editor once)."
     - "No C# changed (a Python tool, a skill, Markdown): run the changed tool against copies of real data instead — never the originals — and report what was exercised."
+    - "A documentation change that must match a rendering convention (e.g. TDD Architecture TLDR/collapsible): verify by starting the local preview server (/start-preview-server) and confirming the live rendered output, not just the raw markdown structure."
     - "A session-lifecycle hook or tool whose output writes to hooks.log or a session folder: verify with --reports-root <tmp dir> (or a copied session folder), never the live project's real GitIgnoreReports/Sessions — a direct run leaves fabricated entries mixed into genuine hook history."
     - "A change to a tool that renders a view (preview tab, report): compare the rendered VALUES (statuses, counts, ids) against the source data for at least one real item — a model that builds is not verification. If a long-running server serves it, restart it and check the served page."
     - "A tool that writes to an external service (GitHub, Confluence, Slack): verify its reads and dry run on real data, cover the write path with a faked client, and run a real write only on a target the engineer names; otherwise report the real write as untested."
