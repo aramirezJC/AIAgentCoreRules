@@ -45,6 +45,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 GitIgnoredExternals/AIAgentCoreRules/Tools/popup/popup.py hook-stop",
+            "timeout": 660,
+            "async": true
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
