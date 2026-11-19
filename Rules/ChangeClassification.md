@@ -169,11 +169,11 @@ Data Reconciliation when a feature has nothing to say there):
 ### 🔴 Deleted
 ```
 
-Each item gets exactly this shape — one TLDR line visible, everything else collapsed:
+Each item gets exactly this shape — a short TLDR visible, everything else collapsed:
 
 ```markdown
 #### `TypeOrFileName`
-One-line TLDR — what this item is and why, scannable on its own with no need to expand.
+TLDR — what this item is and why, scannable on its own with no need to expand.
 
 <details>
 <summary>More detail</summary>
@@ -187,11 +187,12 @@ sketches)
 </details>
 ```
 
-The TLDR line is prose, not a fourth labeled field — it exists so the heading list alone is
-useful without expanding every item. Never omit the `<details>` block: unlike the old shape,
-Nature/Reason/Implementation now live inside it, so an item without one would have nothing but
-the TLDR. The group heading is where the tag lives — don't repeat it on the item heading too
-(`#### 🟢 NEW — \`X\`` under `### 🟢 New` says the same thing twice).
+The TLDR is prose, not a fourth labeled field — it exists so the heading list alone is useful
+without expanding every item. Aim for ~5 lines or fewer; go longer only if the item genuinely
+needs it to stand on its own — this is a guideline, not a hard cap. Never omit the `<details>`
+block: unlike the old shape, Nature/Reason/Implementation now live inside it, so an item without
+one would have nothing but the TLDR. The group heading is where the tag lives — don't repeat it
+on the item heading too (`#### 🟢 NEW — \`X\`` under `### 🟢 New` says the same thing twice).
 
 `Tools/doc-review/progress_view.py` tracks a TDD's drafted/approved status by diffing each
 heading's whitespace-collapsed body against the template's placeholder text — it does not parse
